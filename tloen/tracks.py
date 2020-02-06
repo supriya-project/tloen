@@ -4,7 +4,6 @@ from typing import Dict, Mapping, Optional, Set, Type, Union
 from uuid import UUID, uuid4
 
 from supriya.enums import AddAction, CalculationRate
-from supriya.midi import NoteOffMessage, NoteOnMessage
 from supriya.typing import Default
 
 import tloen  # noqa
@@ -12,6 +11,7 @@ import tloen  # noqa
 from .bases import Allocatable, AllocatableContainer, Container, Mixer
 from .clips import Slot
 from .devices import DeviceObject
+from .midi import NoteOffMessage, NoteOnMessage
 from .parameters import Action, Boolean, Float, Parameter, ParameterGroup
 from .sends import Receive, Send, Target
 from .synthdefs import build_patch_synthdef, build_peak_rms_synthdef

@@ -2,8 +2,7 @@ import bisect
 import math
 
 from supriya.enums import CalculationRate, DoneAction
-from supriya.synthdefs.SynthDefFactory import SynthDefFactory
-from supriya.synthdefs.UGenArray import UGenArray
+from supriya.synthdefs import SynthDefFactory, UGenArray
 from supriya.ugens import (
     In,
     InFeedback,

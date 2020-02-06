@@ -1,9 +1,9 @@
 import pytest
-
 import supriya
-import tloen
 from supriya import scsynth
 from supriya.realtime.servers import AsyncServer, Server
+
+import tloen
 
 
 @pytest.fixture(autouse=True)

@@ -1,9 +1,9 @@
 from uuid import UUID, uuid4
 
 import rtmidi
-from supriya.midi import ControllerChangeMessage, NoteOffMessage, NoteOnMessage
 
 from .bases import ApplicationObject
+from .midi import ControllerChangeMessage, NoteOffMessage, NoteOnMessage
 
 
 class Controller(ApplicationObject):

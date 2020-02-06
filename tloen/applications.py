@@ -4,7 +4,7 @@ from collections import deque
 from threading import RLock
 from typing import Deque, Optional, Tuple
 
-from supriya.nonrealtime.Session import Session
+from supriya.nonrealtime import Session
 from supriya.osc import find_free_port
 from supriya.provider import Provider
 from uqbar.containers import UniqueTreeTuple

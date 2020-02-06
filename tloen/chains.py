@@ -1,13 +1,13 @@
 from typing import Callable, Generator, Optional, Sequence, Tuple
 
 from supriya.enums import AddAction, CalculationRate
-from supriya.midi import MidiMessage
 from supriya.typing import Default
 
 import tloen  # noqa
 
 from .bases import Allocatable, AllocatableContainer, Mixer
 from .devices import DeviceObject
+from .midi import MidiMessage
 from .sends import Send, Target
 from .synthdefs import build_patch_synthdef
 from .tracks import UserTrackObject

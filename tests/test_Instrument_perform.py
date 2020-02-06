@@ -2,10 +2,10 @@ import time
 
 import pytest
 from supriya.assets.synthdefs import default
-from supriya.midi import NoteOnMessage
 from uqbar.strings import normalize
 
 from tloen import Application, Instrument
+from tloen.midi import NoteOnMessage
 
 
 @pytest.fixture

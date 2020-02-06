@@ -3,9 +3,9 @@ import time
 
 import pytest
 from supriya.assets.synthdefs import default
-from supriya.midi import NoteOffMessage, NoteOnMessage
 
 from tloen import Application, Arpeggiator, Instrument
+from tloen.midi import NoteOffMessage, NoteOnMessage
 
 
 @pytest.fixture(autouse=True)

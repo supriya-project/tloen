@@ -2,9 +2,9 @@ import enum
 from typing import Dict, List, Tuple
 
 from supriya.clock import TempoClock, TimeUnit
-from supriya.midi import NoteOffMessage, NoteOnMessage
 
 from .devices import DeviceObject
+from .midi import NoteOffMessage, NoteOnMessage
 
 
 class Chord(DeviceObject):

@@ -17,9 +17,9 @@ from uuid import UUID, uuid4
 
 from supriya.clock import Moment
 from supriya.enums import AddAction, CalculationRate
-from supriya.midi import MidiMessage, NoteOffMessage, NoteOnMessage
 
 from .bases import Allocatable
+from .midi import MidiMessage, NoteOffMessage, NoteOnMessage
 from .parameters import Action, Boolean, Parameter, ParameterGroup
 from .sends import Patch
 from .synthdefs import build_patch_synthdef

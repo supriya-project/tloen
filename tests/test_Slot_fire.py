@@ -3,9 +3,9 @@ import time
 
 import pytest
 from supriya.clock import Moment
-from supriya.midi import NoteOffMessage, NoteOnMessage
 
 from tloen import Application, Instrument, Note
+from tloen.midi import NoteOffMessage, NoteOnMessage
 
 
 @pytest.fixture(autouse=True)
