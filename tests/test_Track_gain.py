@@ -20,5 +20,5 @@ def test_gain(dc_index_synthdef_factory):
     assert message.to_list() == [None, [[25, 0, -6.0]]]
     time.sleep(0.2)
     assert track.rms_levels["prefader"] == (1.0,)
-    assert track.rms_levels["postfader"] == (0.5011872053146362,)
-    assert context.master_track.rms_levels["input"] == (0.5011872053146362,)
+    assert round(track.rms_levels["postfader"][0], 4) == 0.5012
+    assert round(context.master_track.rms_levels["input"][0], 4) == 0.5012
