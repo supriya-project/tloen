@@ -89,7 +89,7 @@ class FancyFrame:
             ]
         )
         self.container = HSplit(
-            [top_row, middle_row, bottom_row,],
+            [top_row, middle_row, bottom_row],
             width=width,
             height=height,
             style=style,
@@ -105,3 +105,27 @@ class FancyFrame:
             self.__pt_container__().height = height
         if width is not ...:
             self.__pt_container__().width = width
+
+
+class ServerStatusWidget:
+    def __init__(self, application):
+        self.application = application
+
+    def __pt_container__(self):
+        return self.container
+
+
+class TransportWidget:
+    def __init__(self, application):
+        self.application = application
+
+    def __pt_container__(self):
+        return self.container
+
+
+class BrowserWidget:
+    def __init__(self, application):
+        self.application = application
+
+    def __pt_container__(self):
+        return self.container
