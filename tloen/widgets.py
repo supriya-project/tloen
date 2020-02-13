@@ -13,7 +13,14 @@ from prompt_toolkit.layout.containers import (
     Window,
 )
 from prompt_toolkit.layout.dimension import AnyDimension
-from prompt_toolkit.widgets.base import Label
+from prompt_toolkit.widgets.base import Label, Button
+
+
+class Direction:
+    UP = "up"
+    DOWN = "down"
+    LEFT = "left"
+    RIGHT = "right"
 
 
 class Border:
@@ -29,6 +36,66 @@ class Border:
     LIGHT_ARC_TOP_LEFT = "\u256d"
     LIGHT_ARC_BOTTOM_RIGHT = "\u256f"
     LIGHT_ARC_BOTTOM_LEFT = "\u2570"
+
+
+class Triangle:
+    BLACK_DOWN = "\u25bc"
+    BLACK_DOWN_SMALL = "\u25be"
+    BLACK_LEFT = "\u25c0"
+    BLACK_LEFT_SMALL = "\u25c2"
+    BLACK_RIGHT = "\u25b6"
+    BLACK_RIGHT_SMALL = "\u25b8"
+    BLACK_UP = "\u25b2"
+    BLACK_UP_SMALL = "\u25b4"
+    WHITE_DOWN = "\u25bd"
+    WHITE_DOWN_SMALL = "\u25bf"
+    WHITE_LEFT = "\u25c1"
+    WHITE_LEFT_SMALL = "\u25c3"
+    WHITE_RIGHT = "\u25b7"
+    WHITE_RIGHT_SMALL = "\u25b9"
+    WHITE_UP = "\u25b3"
+    WHITE_UP_SMALL = "\u25b5"
+
+
+class Pointer:
+    BLACK_LEFT = "\u25c4"
+    BLACK_RIGHT = "\u25ba"
+    WHITE_LEFT = "\u25c5"
+    WHITE_RIGHT = "\u25bb"
+
+
+class Scrollbar:
+
+    def __init__(self, vertical=True, total_dimension=10, visible_dimension=5, offset=0):
+        self.total_dimenion = 0
+        self.visible_dimension = 0
+        self.offset = 0
+        self.vertical = bool(vertical)
+        if self.vertical:
+            self.scroll_window = Window(width=1, char=Border.LIGHT_VERTICAL)
+            self.container = HSplit([
+                Button(width=1, text=Triangle.BLACK_UP, handler=lambda: self.scroll(Direction.UP)),
+                self.scroll_window,
+                Button(width=1, text=Triangle.BLACK_DOWN, handler=lambda: self.scroll(Direction.DOWN)),
+            ])
+        else:
+            self.scroll_window = Window(height=1, char=Border.LIGHT_HORIZONTAL)
+            self.container = VSplit([
+                Button(width=1, text=Triangle.BLACK_LEFT, handler=lambda: self.scroll(Direction.LEFT)),
+                self.scroll_window,
+                Button(width=1, text=Triangle.BLACK_RIGHT, handler=lambda: self.scroll(Direction.RIGHT)),
+            ])
+
+    def __pt_container__(self) -> Container:
+        return self.container
+
+    def scroll(self, direction):
+        pass
+
+    def set_scroll(self, total_dimension, visible_dimension, offset):
+        self.total_dimension = total_dimension
+        self.visible_dimension = visible_dimension
+        self.offset = offset
 
 
 class FancyFrame:
