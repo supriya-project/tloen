@@ -2,7 +2,7 @@ import time
 
 import pytest
 
-from tloen import Application, AudioEffect, Chain, RackDevice
+from tloen.core import Application, AudioEffect, Chain, RackDevice
 
 
 @pytest.mark.parametrize(

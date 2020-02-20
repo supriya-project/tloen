@@ -3,7 +3,7 @@ import time
 import pytest
 from supriya.synthdefs import SynthDefFactory
 
-from tloen import Application, AudioEffect
+from tloen.core import Application, AudioEffect
 
 
 @pytest.fixture

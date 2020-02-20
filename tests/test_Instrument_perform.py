@@ -4,8 +4,8 @@ import pytest
 from supriya.assets.synthdefs import default
 from uqbar.strings import normalize
 
-from tloen import Application, Instrument
-from tloen.midi import NoteOnMessage
+from tloen.core import Application, Instrument
+from tloen.core.midi import NoteOnMessage
 
 
 @pytest.fixture

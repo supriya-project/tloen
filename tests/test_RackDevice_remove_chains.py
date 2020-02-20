@@ -1,4 +1,4 @@
-from tloen import Application, RackDevice
+from tloen.core import Application, RackDevice
 
 
 def test_1():

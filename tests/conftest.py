@@ -3,7 +3,7 @@ from supriya.enums import DoneAction
 from supriya.synthdefs import SynthDefFactory
 from supriya.ugens import DC, Linen
 
-from tloen import Application, AudioEffect, RackDevice
+from tloen.core import Application, AudioEffect, RackDevice
 
 # @pytest.fixture(autouse=True)
 # def logger(caplog):

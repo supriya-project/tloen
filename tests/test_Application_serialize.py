@@ -1,7 +1,7 @@
 import yaml
 from uqbar.strings import normalize
 
-from tloen import Application, Arpeggiator, Instrument, RackDevice
+from tloen.core import Application, Arpeggiator, Instrument, RackDevice
 
 
 def test_1():

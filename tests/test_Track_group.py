@@ -1,4 +1,4 @@
-from tloen import Application, Track
+from tloen.core import Application, Track
 
 
 def test_1():

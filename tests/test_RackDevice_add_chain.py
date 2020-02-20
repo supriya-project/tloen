@@ -1,4 +1,4 @@
-from tloen import Application, Chain, RackDevice
+from tloen.core import Application, Chain, RackDevice
 
 
 def test_1():

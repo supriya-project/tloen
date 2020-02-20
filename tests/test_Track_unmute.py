@@ -1,4 +1,4 @@
-from tloen import Application
+from tloen.core import Application
 
 
 def test_repeat():

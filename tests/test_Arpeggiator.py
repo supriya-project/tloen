@@ -4,13 +4,13 @@ import time
 import pytest
 from supriya.assets.synthdefs import default
 
-from tloen import Application, Arpeggiator, Instrument
-from tloen.midi import NoteOffMessage, NoteOnMessage
+from tloen.core import Application, Arpeggiator, Instrument
+from tloen.core.midi import NoteOffMessage, NoteOnMessage
 
 
 @pytest.fixture(autouse=True)
 def logger(caplog):
-    caplog.set_level(logging.DEBUG, logger="tloen")
+    caplog.set_level(logging.DEBUG, logger="tloen.core")
     caplog.set_level(logging.DEBUG, logger="supriya.clock")
 
 

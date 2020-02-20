@@ -1,4 +1,4 @@
-from tloen import Application, Clip
+from tloen.core import Application, Clip
 
 
 def test_1():

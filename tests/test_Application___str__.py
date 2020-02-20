@@ -1,6 +1,6 @@
 from uqbar.strings import normalize
 
-from tloen import Application
+from tloen.core import Application
 
 
 def test_1():

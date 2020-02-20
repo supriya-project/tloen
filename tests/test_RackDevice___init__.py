@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from tloen import RackDevice
+from tloen.core import RackDevice
 
 
 def test_1():

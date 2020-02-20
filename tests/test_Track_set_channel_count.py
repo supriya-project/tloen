@@ -2,7 +2,7 @@ import time
 
 from uqbar.strings import normalize
 
-from tloen import Action, Allocatable, Parameter
+from tloen.core import Action, Allocatable, Parameter
 
 
 def test_channel_count(channel_count_application):

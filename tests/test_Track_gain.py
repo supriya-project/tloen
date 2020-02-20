@@ -1,6 +1,6 @@
 import time
 
-from tloen import Application, AudioEffect
+from tloen.core import Application, AudioEffect
 
 
 def test_gain(dc_index_synthdef_factory):

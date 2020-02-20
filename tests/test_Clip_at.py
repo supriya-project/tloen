@@ -1,4 +1,4 @@
-from tloen import Clip, Note, NoteMoment
+from tloen.core import Clip, Note, NoteMoment
 
 offsets = [-0.5, 0, 0.125, 0.25, 0.5, 0.75, 1, 1.25, 2.25]
 

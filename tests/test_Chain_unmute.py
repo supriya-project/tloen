@@ -1,6 +1,6 @@
 import time
 
-from tloen import Application, AudioEffect, RackDevice
+from tloen.core import Application, AudioEffect, RackDevice
 
 
 def test_repeat(dc_index_synthdef_factory):

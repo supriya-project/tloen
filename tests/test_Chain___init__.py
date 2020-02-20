@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from tloen import Chain, Target
+from tloen.core import Chain, Target
 
 
 def test_1():

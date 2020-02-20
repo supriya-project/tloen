@@ -4,7 +4,7 @@ import pytest
 from supriya.synthdefs import SynthDefCompiler, SynthDefFactory
 from uqbar.strings import normalize
 
-from tloen import Application, AudioEffect, DeviceIn, DeviceOut, Instrument
+from tloen.core import Application, AudioEffect, DeviceIn, DeviceOut, Instrument
 
 
 @pytest.fixture

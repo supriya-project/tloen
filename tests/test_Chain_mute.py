@@ -2,7 +2,7 @@ import time
 
 import pytest
 
-from tloen import Chain
+from tloen.core import Chain
 
 
 @pytest.mark.parametrize(
