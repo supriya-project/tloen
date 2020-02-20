@@ -3,7 +3,7 @@ from typing import Callable, Generator, Optional, Sequence, Tuple
 from supriya.enums import AddAction, CalculationRate
 from supriya.typing import Default
 
-import tloen  # noqa
+import tloen.core  # noqa
 
 from .bases import Allocatable, AllocatableContainer, Mixer
 from .devices import DeviceObject
@@ -139,9 +139,9 @@ class ChainContainer(AllocatableContainer):
         return items
 
     @property
-    def mixer(self) -> Optional["tloen.RackDevice"]:
+    def mixer(self) -> Optional["RackDevice"]:
         for parent in self.parentage:
-            if isinstance(parent, tloen.RackDevice):
+            if isinstance(parent, RackDevice):
                 return parent
         return None
 

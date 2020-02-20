@@ -4,7 +4,7 @@ from uuid import UUID, uuid4
 from supriya.enums import AddAction
 from supriya.querytree import QueryTreeGroup
 
-import tloen  # noqa
+import tloen.core  # noqa
 
 from .bases import Allocatable, Mixer
 from .sends import DirectOut
@@ -67,7 +67,7 @@ class Context(Allocatable, Mixer):
             if self.parent:
                 self.parent.remove_contexts(self)
 
-    def move(self, container: "tloen.Application", position: int):
+    def move(self, container: "tloen.core.Application", position: int):
         with self.lock([self, container]):
             container._contexts._mutate(slice(position, position), [self])
 
@@ -94,7 +94,7 @@ class Context(Allocatable, Mixer):
             ],
         ).annotate(self.provider.annotation_map)
 
-    def remove_tracks(self, *tracks: "tloen.Track"):
+    def remove_tracks(self, *tracks: "tloen.core.Track"):
         with self.lock([self, *tracks]):
             if not all(track in self.tracks for track in tracks):
                 raise ValueError

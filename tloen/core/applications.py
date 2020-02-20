@@ -9,7 +9,7 @@ from supriya.osc import find_free_port
 from supriya.provider import Provider
 from uqbar.containers import UniqueTreeTuple
 
-import tloen  # noqa
+import tloen.core  # noqa
 
 from .bases import Container
 from .clips import Scene
