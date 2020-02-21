@@ -55,7 +55,7 @@ def test_transcript(chain_mute_solo_application, soloed_chain_names, muted_chain
         for muted_chain_name in muted_chain_names:
             muted_chain = chain_mute_solo_application.primary_context[muted_chain_name]
             osc_messages.append(
-                [15, muted_chain.node_proxies["output"].identifier, "active", 0]
+                ["/n_set", muted_chain.node_proxies["output"].identifier, "active", 0]
             )
         assert len(transcript.sent_messages) == 1
         _, message = transcript.sent_messages[0]

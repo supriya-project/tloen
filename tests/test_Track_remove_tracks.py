@@ -82,4 +82,4 @@ def test_4():
     assert track_two.provider is context.provider
     assert len(transcript.sent_messages) == 1
     _, message = transcript.sent_messages[0]
-    assert message.to_list() == [None, [[15, 1009, "gate", 0]]]
+    assert message.to_list() == [None, [["/n_set", 1009, "gate", 0]]]

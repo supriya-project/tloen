@@ -39,7 +39,7 @@ def test_stacked():
     assert message.to_list() == [
         None,
         [
-            [15, track.node_proxies["output"].identifier, "active", 1]
+            ["/n_set", track.node_proxies["output"].identifier, "active", 1]
             for track in [context["a"], context["b"], context["c"]]
         ],
     ]

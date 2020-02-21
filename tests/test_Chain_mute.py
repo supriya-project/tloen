@@ -56,7 +56,7 @@ def test_transcript(chain_mute_solo_application, chain_names):
         _, message = transcript.sent_messages[0]
         assert message.to_list() == [
             None,
-            [[15, chain.node_proxies["output"].identifier, "active", 0]],
+            [["/n_set", chain.node_proxies["output"].identifier, "active", 0]],
         ]
 
 

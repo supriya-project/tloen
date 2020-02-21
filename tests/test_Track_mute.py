@@ -47,7 +47,7 @@ def test_transcript(track_mute_solo_application, track_names):
         assert message.to_list() == [
             None,
             [
-                [15, x.node_proxies["output"].identifier, "active", 0]
+                ["/n_set", x.node_proxies["output"].identifier, "active", 0]
                 for x in affected_tracks
             ],
         ]
