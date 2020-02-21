@@ -3,7 +3,7 @@ from contextlib import AsyncExitStack, asynccontextmanager
 from types import MappingProxyType
 from typing import Any, Dict, Mapping, Optional, Set, Union
 
-from supriya.commands import NodeQueryRequest
+from supriya.commands import NodeQueryRequest, FailResponse
 from supriya.enums import AddAction
 from supriya.provider import (
     BusGroupProxy,
@@ -386,6 +386,8 @@ class Allocatable(ApplicationObject):
                 continue
             request = NodeQueryRequest(node_id)
             response = await request.communicate_async(server=self.provider.server)
+            if isinstance(response, FailResponse):
+                raise RuntimeError(repr(response))
             if (response.next_node_id or -1) > 0:
                 stack.append(response.next_node_id)
             if (response.head_node_id or -1) > 0:

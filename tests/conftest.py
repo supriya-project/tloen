@@ -5,9 +5,13 @@ from supriya.ugens import DC, Linen
 
 from tloen.core import Application, AudioEffect, RackDevice
 
-# @pytest.fixture(autouse=True)
-# def logger(caplog):
-#    caplog.set_level(logging.DEBUG, logger="supriya.osc")
+
+@pytest.fixture(autouse=True)
+def logger(caplog):
+    import logging
+
+    caplog.set_level(logging.DEBUG, logger="supriya.osc")
+    caplog.set_level(logging.DEBUG, logger="supriya.server")
 
 
 @pytest.fixture
@@ -67,6 +71,7 @@ async def track_mute_solo_application(dc_index_synthdef_factory):
             synthdef_kwargs=dict(index=i),
         )
     yield application
+    await application.quit()
 
 
 @pytest.fixture

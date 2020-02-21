@@ -21,9 +21,12 @@ from tloen.core import Application, AudioEffect, Track
 @pytest.mark.asyncio
 async def test_levels(track_mute_solo_application, track_names, levels):
     await track_mute_solo_application.boot()
+    # print(track_mute_solo_application)
+    # print(track_mute_solo_application.primary_context.provider.server.status)
+    await asyncio.sleep(2.0)
+    # print(track_mute_solo_application.primary_context.master_track.rms_levels)
     for track_name in track_names:
-        track = track_mute_solo_application.primary_context[track_name]
-        await track.solo()
+        await track_mute_solo_application.primary_context[track_name].solo()
     await asyncio.sleep(0.2)
     assert [
         int(_)
