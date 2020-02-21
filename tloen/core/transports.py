@@ -80,23 +80,23 @@ class Transport(ApplicationObject):
             },
         }
 
-    def set_tempo(self, beats_per_minute: float):
-        with self.lock([self]):
+    async def set_tempo(self, beats_per_minute: float):
+        async with self.lock([self]):
             self._set_tempo(beats_per_minute)
 
-    def set_time_signature(self, numerator, denominator):
-        with self.lock([self]):
+    async def set_time_signature(self, numerator, denominator):
+        async with self.lock([self]):
             self._clock.change(time_signature=[numerator, denominator])
 
-    def start(self):
-        with self.lock([self]):
+    async def start(self):
+        async with self.lock([self]):
             for dependency in self._dependencies:
                 dependency._start()
             self._clock.start()
 
-    def stop(self):
+    async def stop(self):
         self._clock.stop()
-        with self.lock([self]):
+        async with self.lock([self]):
             for dependency in self._dependencies:
                 dependency._stop()
             self.application.flush()

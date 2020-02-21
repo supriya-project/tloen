@@ -1,14 +1,17 @@
+import pytest
+
 from tloen.core import Application
 
 
-def test_1():
+@pytest.mark.asyncio
+async def test_1():
     """
     Remove one track
     """
     application = Application()
-    context = application.add_context()
-    track = context.add_track()
-    context.remove_tracks(track)
+    context = await application.add_context()
+    track = await context.add_track()
+    await context.remove_tracks(track)
     assert list(context.tracks) == []
     assert track.application is None
     assert track.graph_order == ()
@@ -16,15 +19,16 @@ def test_1():
     assert track.provider is None
 
 
-def test_2():
+@pytest.mark.asyncio
+async def test_2():
     """
     Remove two tracks
     """
     application = Application()
-    context = application.add_context()
-    track_one = context.add_track()
-    track_two = context.add_track()
-    context.remove_tracks(track_one, track_two)
+    context = await application.add_context()
+    track_one = await context.add_track()
+    track_two = await context.add_track()
+    await context.remove_tracks(track_one, track_two)
     assert list(context.tracks) == []
     assert track_one.application is None
     assert track_one.graph_order == ()
@@ -36,15 +40,16 @@ def test_2():
     assert track_two.provider is None
 
 
-def test_3():
+@pytest.mark.asyncio
+async def test_3():
     """
     Remove first track, leaving second untouched
     """
     application = Application()
-    context = application.add_context()
-    track_one = context.add_track()
-    track_two = context.add_track()
-    context.remove_tracks(track_one)
+    context = await application.add_context()
+    track_one = await context.add_track()
+    track_two = await context.add_track()
+    await context.remove_tracks(track_one)
     assert list(context.tracks) == [track_two]
     assert track_one.application is None
     assert track_one.graph_order == ()
@@ -56,16 +61,17 @@ def test_3():
     assert track_two.provider is None
 
 
-def test_4():
+@pytest.mark.asyncio
+async def test_4():
     """
     Boot, remove first track, leaving second untouched
     """
     application = Application()
-    context = application.add_context()
-    track_one = context.add_track()
-    track_two = context.add_track()
-    application.boot()
-    context.remove_tracks(track_one)
+    context = await application.add_context()
+    track_one = await context.add_track()
+    track_two = await context.add_track()
+    await application.boot()
+    await context.remove_tracks(track_one)
     assert context.provider is not None
     assert list(context.tracks) == [track_two]
     assert track_one.application is None

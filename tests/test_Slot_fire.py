@@ -1,5 +1,5 @@
 import logging
-import time
+import asyncio
 
 import pytest
 from supriya.clock import Moment
@@ -15,11 +15,12 @@ def logger(caplog):
 
 
 @pytest.fixture
-def application():
-    application = Application.new(1, 2, 2).boot()
+async def application():
+    application = await Application.new(1, 2, 2)
+    await application.boot()
     track = application.contexts[0].tracks[0]
-    track.add_device(Instrument)
-    track.slots[0].add_clip(
+    await track.add_device(Instrument)
+    await track.slots[0].add_clip(
         notes=[
             Note(0, 0.25, pitch=60),
             Note(0.25, 0.5, pitch=62),
@@ -28,18 +29,19 @@ def application():
         ]
     )
     yield application
-    application.quit()
+    await application.quit()
 
 
-def test_1(mocker, application):
+@pytest.mark.asyncio
+async def test_1(mocker, application):
     """
     Fire non-empty slot, then fire empty-slot
     """
     time_mock = mocker.patch.object(application.transport._clock, "get_current_time")
     time_mock.return_value = 0.0
     with application.contexts[0].tracks[0].devices[0].capture() as transcript:
-        application.contexts[0].tracks[0].slots[0].fire()
-        time.sleep(0.01)
+        await application.contexts[0].tracks[0].slots[0].fire()
+        await asyncio.sleep(0.01)
     assert application.transport.is_running
     assert list(transcript) == [
         Instrument.CaptureEntry(
@@ -56,8 +58,8 @@ def test_1(mocker, application):
         )
     ]
     with application.contexts[0].tracks[0].devices[0].capture() as transcript:
-        application.contexts[0].tracks[0].slots[1].fire()
-        time.sleep(0.01)
+        await application.contexts[0].tracks[0].slots[1].fire()
+        await asyncio.sleep(0.01)
     assert list(transcript) == [
         Instrument.CaptureEntry(
             moment=Moment(
@@ -74,15 +76,16 @@ def test_1(mocker, application):
     ]
 
 
-def test_2(mocker, application):
+@pytest.mark.asyncio
+async def test_2(mocker, application):
     """
     Fire non-empty slot, then re-fire same slot
     """
     time_mock = mocker.patch.object(application.transport._clock, "get_current_time")
     time_mock.return_value = 0.0
     with application.contexts[0].tracks[0].devices[0].capture() as transcript:
-        application.contexts[0].tracks[0].slots[0].fire()
-        time.sleep(0.01)
+        await application.contexts[0].tracks[0].slots[0].fire()
+        await asyncio.sleep(0.01)
     assert application.transport.is_running
     assert list(transcript) == [
         Instrument.CaptureEntry(
@@ -99,8 +102,8 @@ def test_2(mocker, application):
         )
     ]
     with application.contexts[0].tracks[0].devices[0].capture() as transcript:
-        application.contexts[0].tracks[0].slots[0].fire()
-        time.sleep(0.01)
+        await application.contexts[0].tracks[0].slots[0].fire()
+        await asyncio.sleep(0.01)
     assert list(transcript) == [
         Instrument.CaptureEntry(
             moment=Moment(

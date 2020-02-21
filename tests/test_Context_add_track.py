@@ -1,13 +1,16 @@
+import pytest
+
 from tloen.core import Application, Track
 
 
-def test_1():
+@pytest.mark.asyncio
+async def test_1():
     """
     Add one track
     """
     application = Application()
-    context = application.add_context()
-    track = context.add_track()
+    context = await application.add_context()
+    track = await context.add_track()
     assert isinstance(track, Track)
     assert len(track.postfader_sends) == 1
     assert list(context.tracks) == [track]
@@ -18,14 +21,15 @@ def test_1():
     assert track.provider is context.provider
 
 
-def test_2():
+@pytest.mark.asyncio
+async def test_2():
     """
     Add two tracks
     """
     application = Application()
-    context = application.add_context()
-    track_one = context.add_track()
-    track_two = context.add_track()
+    context = await application.add_context()
+    track_one = await context.add_track()
+    track_two = await context.add_track()
     assert list(context.tracks) == [track_one, track_two]
     assert track_one.application is context.application
     assert track_one.graph_order == (3, 0, 0, 0)
@@ -37,15 +41,16 @@ def test_2():
     assert track_two.provider is context.provider
 
 
-def test_3():
+@pytest.mark.asyncio
+async def test_3():
     """
     Add one track, boot, add second track
     """
     application = Application()
-    context = application.add_context()
-    track_one = context.add_track()
-    application.boot()
-    track_two = context.add_track()
+    context = await application.add_context()
+    track_one = await context.add_track()
+    await application.boot()
+    track_two = await context.add_track()
     assert list(context.tracks) == [track_one, track_two]
     assert track_one.application is context.application
     assert track_one.graph_order == (3, 0, 0, 0)

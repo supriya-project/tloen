@@ -1,25 +1,28 @@
-import time
+import pytest
+
+import asyncio
 
 from tloen.core import Application, AudioEffect, RackDevice
 
 
-def test_repeat(dc_index_synthdef_factory):
+@pytest.mark.asyncio
+async def test_repeat(dc_index_synthdef_factory):
     """
     Unmuting more than once is a no-op
     """
     application = Application(channel_count=1)
-    context = application.add_context()
-    track = context.add_track()
-    rack = track.add_device(RackDevice)
-    chain = rack.add_chain()
-    chain.add_device(AudioEffect, synthdef=dc_index_synthdef_factory)
-    application.boot()
-    chain.mute()
-    time.sleep(0.2)
+    context = await application.add_context()
+    track = await context.add_track()
+    rack = await track.add_device(RackDevice)
+    chain = await rack.add_chain()
+    await chain.add_device(AudioEffect, synthdef=dc_index_synthdef_factory)
+    await application.boot()
+    await chain.mute()
+    await asyncio.sleep(0.2)
     assert [int(_) for _ in context.master_track.rms_levels["input"]] == [0]
-    chain.unmute()
-    time.sleep(0.2)
+    await chain.unmute()
+    await asyncio.sleep(0.2)
     assert [int(_) for _ in context.master_track.rms_levels["input"]] == [1]
     with context.provider.server.osc_protocol.capture() as transcript:
-        chain.unmute()
+        await chain.unmute()
     assert not len(transcript.sent_messages)

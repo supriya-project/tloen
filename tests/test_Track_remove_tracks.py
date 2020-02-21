@@ -1,15 +1,17 @@
+import pytest
 from tloen.core import Application
 
 
-def test_1():
+@pytest.mark.asyncio
+async def test_1():
     """
     Remove one track
     """
     application = Application()
-    context = application.add_context()
-    parent = context.add_track()
-    track = parent.add_track()
-    parent.remove_tracks(track)
+    context = await application.add_context()
+    parent = await context.add_track()
+    track = await parent.add_track()
+    await parent.remove_tracks(track)
     assert list(parent.tracks) == []
     assert track.application is None
     assert track.graph_order == ()
@@ -17,16 +19,17 @@ def test_1():
     assert track.provider is None
 
 
-def test_2():
+@pytest.mark.asyncio
+async def test_2():
     """
     Remove two tracks
     """
     application = Application()
-    context = application.add_context()
-    parent = context.add_track()
-    track_one = parent.add_track()
-    track_two = parent.add_track()
-    parent.remove_tracks(track_one, track_two)
+    context = await application.add_context()
+    parent = await context.add_track()
+    track_one = await parent.add_track()
+    track_two = await parent.add_track()
+    await parent.remove_tracks(track_one, track_two)
     assert list(parent.tracks) == []
     assert track_one.application is None
     assert track_one.graph_order == ()
@@ -38,16 +41,17 @@ def test_2():
     assert track_two.provider is None
 
 
-def test_3():
+@pytest.mark.asyncio
+async def test_3():
     """
     Remove first track, leaving second untouched
     """
     application = Application()
-    context = application.add_context()
-    parent = context.add_track()
-    track_one = parent.add_track()
-    track_two = parent.add_track()
-    parent.remove_tracks(track_one)
+    context = await application.add_context()
+    parent = await context.add_track()
+    track_one = await parent.add_track()
+    track_two = await parent.add_track()
+    await parent.remove_tracks(track_one)
     assert list(parent.tracks) == [track_two]
     assert track_one.application is None
     assert track_one.graph_order == ()
@@ -59,18 +63,19 @@ def test_3():
     assert track_two.provider is None
 
 
-def test_4():
+@pytest.mark.asyncio
+async def test_4():
     """
     Boot, remove first track, leaving second untouched
     """
     application = Application()
-    context = application.add_context()
-    parent = context.add_track()
-    track_one = parent.add_track()
-    track_two = parent.add_track()
-    application.boot()
+    context = await application.add_context()
+    parent = await context.add_track()
+    track_one = await parent.add_track()
+    track_two = await parent.add_track()
+    await application.boot()
     with context.provider.server.osc_protocol.capture() as transcript:
-        parent.remove_tracks(track_one)
+        await parent.remove_tracks(track_one)
     assert list(parent.tracks) == [track_two]
     assert track_one.application is None
     assert track_one.graph_order == ()

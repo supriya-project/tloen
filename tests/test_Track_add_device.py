@@ -1,4 +1,4 @@
-import time
+import asyncio
 
 import pytest
 from supriya.synthdefs import SynthDefCompiler, SynthDefFactory
@@ -20,14 +20,15 @@ def synthdef_factory():
     return factory
 
 
-def test_AudioEffect_1(synthdef_factory):
+@pytest.mark.asyncio
+async def test_AudioEffect_1(synthdef_factory):
     """
     Add one device
     """
     application = Application()
-    context = application.add_context()
-    track = context.add_track()
-    device = track.add_device(AudioEffect, synthdef=synthdef_factory)
+    context = await application.add_context()
+    track = await context.add_track()
+    device = await track.add_device(AudioEffect, synthdef=synthdef_factory)
     assert isinstance(device, AudioEffect)
     assert device.synthdef == synthdef_factory
     assert list(track.devices) == [device]
@@ -37,15 +38,16 @@ def test_AudioEffect_1(synthdef_factory):
     assert device.provider is context.provider
 
 
-def test_AudioEffect_2(synthdef_factory):
+@pytest.mark.asyncio
+async def test_AudioEffect_2(synthdef_factory):
     """
     Add two devices
     """
     application = Application()
-    context = application.add_context()
-    track = context.add_track()
-    device_one = track.add_device(AudioEffect, synthdef=synthdef_factory)
-    device_two = track.add_device(AudioEffect, synthdef=synthdef_factory)
+    context = await application.add_context()
+    track = await context.add_track()
+    device_one = await track.add_device(AudioEffect, synthdef=synthdef_factory)
+    device_two = await track.add_device(AudioEffect, synthdef=synthdef_factory)
     assert list(track.devices) == [device_one, device_two]
     assert device_one.application is context.application
     assert device_one.graph_order == (3, 0, 0, 0, 5, 0)
@@ -57,17 +59,18 @@ def test_AudioEffect_2(synthdef_factory):
     assert device_two.provider is context.provider
 
 
-def test_AudioEffect_3(synthdef_factory):
+@pytest.mark.asyncio
+async def test_AudioEffect_3(synthdef_factory):
     """
     Boot, add one device
     """
     synthdef = synthdef_factory.build(channel_count=2)
     application = Application()
-    context = application.add_context()
-    track = context.add_track()
-    application.boot()
+    context = await application.add_context()
+    track = await context.add_track()
+    await application.boot()
     with context.provider.server.osc_protocol.capture() as transcript:
-        device = track.add_device(AudioEffect, synthdef=synthdef_factory)
+        device = await track.add_device(AudioEffect, synthdef=synthdef_factory)
     assert list(track.devices) == [device]
     assert device.application is context.application
     assert device.graph_order == (3, 0, 0, 0, 5, 0)
@@ -92,7 +95,7 @@ def test_AudioEffect_3(synthdef_factory):
         None,
         [["/d_recv", compiled_synthdefs, [None, bundle_contents]]],
     ]
-    time.sleep(0.1)
+    await asyncio.sleep(0.1)
     assert track.peak_levels == dict(
         input=(0.0, 0.0), postfader=(0.25, 0.25), prefader=(0.25, 0.25)
     )
@@ -101,18 +104,19 @@ def test_AudioEffect_3(synthdef_factory):
     )
 
 
-def test_AudioEffect_4(synthdef_factory):
+@pytest.mark.asyncio
+async def test_AudioEffect_4(synthdef_factory):
     """
     Add one device, boot, add second device
     """
     synthdef = synthdef_factory.build(channel_count=2)
     application = Application()
-    context = application.add_context()
-    track = context.add_track()
-    device_one = track.add_device(AudioEffect, synthdef=synthdef_factory)
-    application.boot()
+    context = await application.add_context()
+    track = await context.add_track()
+    device_one = await track.add_device(AudioEffect, synthdef=synthdef_factory)
+    await application.boot()
     with context.provider.server.osc_protocol.capture() as transcript:
-        device_two = track.add_device(AudioEffect, synthdef=synthdef_factory)
+        device_two = await track.add_device(AudioEffect, synthdef=synthdef_factory)
     assert list(track.devices) == [device_one, device_two]
     assert device_one.application is context.application
     assert device_one.graph_order == (3, 0, 0, 0, 5, 0)
@@ -135,7 +139,7 @@ def test_AudioEffect_4(synthdef_factory):
             ["/s_new", "mixer/patch[hard,mix]/2x2", 1055, 1, 1050, "in_", 30.0, "out", 18.0],
         ],
     ]
-    time.sleep(0.1)
+    await asyncio.sleep(0.1)
     assert track.peak_levels == dict(
         input=(0.0, 0.0), postfader=(0.5, 0.5), prefader=(0.5, 0.5)
     )
@@ -144,13 +148,14 @@ def test_AudioEffect_4(synthdef_factory):
     )
 
 
-def test_AudioEffect_query(synthdef_factory):
+@pytest.mark.asyncio
+async def test_AudioEffect_query(synthdef_factory):
     application = Application()
-    context = application.add_context()
-    track = context.add_track()
-    application.boot()
-    track.add_device(AudioEffect, synthdef=synthdef_factory)
-    assert str(track.query()) == normalize(
+    context = await application.add_context()
+    track = await context.add_track()
+    await application.boot()
+    await track.add_device(AudioEffect, synthdef=synthdef_factory)
+    assert str(await track.query()) == normalize(
         """
         NODE TREE 1002 group (Track)
             1009 group (Parameters)
@@ -186,13 +191,14 @@ def test_AudioEffect_query(synthdef_factory):
     )
 
 
-def test_Instrument_query(dc_instrument_synthdef_factory):
+@pytest.mark.asyncio
+async def test_Instrument_query(dc_instrument_synthdef_factory):
     application = Application()
-    context = application.add_context()
-    track = context.add_track()
-    application.boot()
-    track.add_device(Instrument, synthdef=dc_instrument_synthdef_factory)
-    assert str(track.query()) == normalize(
+    context = await application.add_context()
+    track = await context.add_track()
+    await application.boot()
+    await track.add_device(Instrument, synthdef=dc_instrument_synthdef_factory)
+    assert str(await track.query()) == normalize(
         """
         NODE TREE 1002 group (Track)
             1009 group (Parameters)

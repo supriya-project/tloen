@@ -1,10 +1,13 @@
+import pytest
+
 from tloen.core import Application, Track
 
 
-def test_1():
+@pytest.mark.asyncio
+async def test_1():
     track_a = Track()
     track_b = Track()
-    group_track = Track.group([track_a, track_b])
+    group_track = await Track.group([track_a, track_b])
     assert isinstance(group_track, Track)
     assert list(group_track.tracks) == [track_a, track_b]
     assert group_track.application is track_a.application
@@ -19,13 +22,14 @@ def test_1():
     assert track_b.parent is group_track.tracks
 
 
-def test_2():
+@pytest.mark.asyncio
+async def test_2():
     application = Application()
-    context = application.add_context()
-    track_a = context.add_track()
-    track_b = context.add_track()
-    track_c = context.add_track()
-    group_track = Track.group([track_b, track_c])
+    context = await application.add_context()
+    track_a = await context.add_track()
+    track_b = await context.add_track()
+    track_c = await context.add_track()
+    group_track = await Track.group([track_b, track_c])
     assert list(context.tracks) == [track_a, group_track]
     assert list(group_track.tracks) == [track_b, track_c]
     assert group_track.application is application
@@ -35,14 +39,15 @@ def test_2():
     assert track_c.provider is context.provider
 
 
-def test_3():
+@pytest.mark.asyncio
+async def test_3():
     application = Application()
-    context = application.add_context()
-    track_a = context.add_track()
-    track_b = context.add_track()
-    track_c = context.add_track()
-    application.boot()
-    group_track = Track.group([track_b, track_c])
+    context = await application.add_context()
+    track_a = await context.add_track()
+    track_b = await context.add_track()
+    track_c = await context.add_track()
+    await application.boot()
+    group_track = await Track.group([track_b, track_c])
     assert list(context.tracks) == [track_a, group_track]
     assert list(group_track.tracks) == [track_b, track_c]
     assert group_track.application is application

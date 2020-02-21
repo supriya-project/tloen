@@ -293,19 +293,19 @@ class DeviceObject(Allocatable):
 
     ### PUBLIC METHODS ###
 
-    def activate(self):
-        with self.lock([self]):
+    async def activate(self):
+        async with self.lock([self]):
             self._is_active = True
 
     def capture(self):
         return self.Capture(self)
 
-    def deactivate(self):
-        with self.lock([self]):
+    async def deactivate(self):
+        async with self.lock([self]):
             self._is_active = False
 
-    def delete(self):
-        with self.lock([self]):
+    async def delete(self):
+        async with self.lock([self]):
             if self.parent is None:
                 raise ValueError
             self.parent._remove(self)
@@ -314,16 +314,16 @@ class DeviceObject(Allocatable):
         pass
 
     @classmethod
-    def group(cls, devices):
-        with cls.lock(devices):
+    async def group(cls, devices):
+        async with cls.lock(devices):
             pass
 
-    def move(self, container, position):
-        with self.lock([self, container]):
+    async def move(self, container, position):
+        async with self.lock([self, container]):
             container.devices._mutate(slice(position, position), [self])
 
-    def perform(self, midi_messages, moment=None):
-        with self.lock([self], seconds=moment.seconds if moment is not None else None):
+    async def perform(self, midi_messages, moment=None):
+        async with self.lock([self], seconds=moment.seconds if moment is not None else None):
             return self._perform_loop(moment, self._perform, midi_messages)
 
     def serialize(self):
@@ -334,8 +334,8 @@ class DeviceObject(Allocatable):
                     mapping.pop(key)
         return serialized
 
-    def set_channel_count(self, channel_count: Optional[int]):
-        with self.lock([self]):
+    async def set_channel_count(self, channel_count: Optional[int]):
+        async with self.lock([self]):
             if channel_count is not None:
                 assert 1 <= channel_count <= 8
                 channel_count = int(channel_count)

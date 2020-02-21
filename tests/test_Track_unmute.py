@@ -1,38 +1,44 @@
+import pytest
+
 from tloen.core import Application
 
 
-def test_repeat():
+@pytest.mark.asyncio
+async def test_repeat():
     """
     Unmuting more than once is a no-op
     """
     application = Application()
-    context = application.add_context()
-    context.add_track(name="a")
-    application.boot()
-    context["a"].mute()
-    context["a"].unmute()
+    context = await application.add_context()
+    await context.add_track(name="a")
+    await application.boot()
+    await context["a"].mute()
+    await context["a"].unmute()
     with context.provider.server.osc_protocol.capture() as transcript:
-        context["a"].unmute()
+        await context["a"].unmute()
     assert not len(transcript.sent_messages)
 
 
-def test_stacked():
+@pytest.mark.asyncio
+async def test_stacked():
     """
     Unmuting while a parent is muted is a no-op
     """
     application = Application()
-    context = application.add_context()
-    context.add_track(name="a").add_track(name="b").add_track(name="c")
-    application.boot()
-    context["a"].mute()
-    context["b"].mute()
-    context["c"].mute()
+    context = await application.add_context()
+    track_a = await context.add_track(name="a")
+    track_b = await track_a.add_track(name="b")
+    await track_b.add_track(name="c")
+    await application.boot()
+    await context["a"].mute()
+    await context["b"].mute()
+    await context["c"].mute()
     with context.provider.server.osc_protocol.capture() as transcript:
-        context["c"].unmute()
-        context["b"].unmute()
+        await context["c"].unmute()
+        await context["b"].unmute()
     assert not len(transcript.sent_messages)
     with context.provider.server.osc_protocol.capture() as transcript:
-        context["a"].unmute()
+        await context["a"].unmute()
     assert len(transcript.sent_messages) == 1
     _, message = transcript.sent_messages[0]
     # Unmuting the root-most parent unmutes all children at once

@@ -1,14 +1,17 @@
+import pytest
+
 from tloen.core import Application, Track
 
 
-def test_1():
+@pytest.mark.asyncio
+async def test_1():
     """
     Add one track
     """
     application = Application()
-    context = application.add_context()
-    parent = context.add_track()
-    track = parent.add_track()
+    context = await application.add_context()
+    parent = await context.add_track()
+    track = await parent.add_track()
     assert isinstance(track, Track)
     assert len(track.postfader_sends) == 1
     assert list(parent.tracks) == [track]
@@ -19,15 +22,16 @@ def test_1():
     assert track.provider is context.provider
 
 
-def test_2():
+@pytest.mark.asyncio
+async def test_2():
     """
     Add two tracks
     """
     application = Application()
-    context = application.add_context()
-    parent = context.add_track()
-    track_one = parent.add_track()
-    track_two = parent.add_track()
+    context = await application.add_context()
+    parent = await context.add_track()
+    track_one = await parent.add_track()
+    track_two = await parent.add_track()
     assert list(parent.tracks) == [track_one, track_two]
     assert track_one.application is context.application
     assert track_one.graph_order == (3, 0, 0, 0, 1, 0)
@@ -39,17 +43,18 @@ def test_2():
     assert track_two.provider is context.provider
 
 
-def test_3():
+@pytest.mark.asyncio
+async def test_3():
     """
     Add one track, boot, add second track
     """
     application = Application()
-    context = application.add_context()
-    parent = context.add_track()
-    track_one = parent.add_track()
-    application.boot()
+    context = await application.add_context()
+    parent = await context.add_track()
+    track_one = await parent.add_track()
+    await application.boot()
     with context.provider.server.osc_protocol.capture() as transcript:
-        track_two = parent.add_track()
+        track_two = await parent.add_track()
     assert context.provider is not None
     assert len(transcript.sent_messages) == 1
     assert list(parent.tracks) == [track_one, track_two]

@@ -18,7 +18,7 @@ def test_1():
     assert isinstance(chain.send_target, Target)
     assert isinstance(chain.uuid, UUID)
     assert len(chain.devices) == 0
-    assert len(chain.postfader_sends) == 1
+    assert len(chain.postfader_sends) == 0
     assert len(chain.prefader_sends) == 0
     assert not chain.is_cued
     assert not chain.is_muted

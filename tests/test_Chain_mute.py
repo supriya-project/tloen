@@ -1,4 +1,4 @@
-import time
+import asyncio
 
 import pytest
 
@@ -18,12 +18,13 @@ from tloen.core import Chain
         (["inner/b/b"], [1, 1, 1, 1, 1, 1, 1, 0]),
     ],
 )
-def test_levels_nested(chain_mute_solo_application, chain_names, levels):
-    chain_mute_solo_application.boot()
+@pytest.mark.asyncio
+async def test_levels_nested(chain_mute_solo_application, chain_names, levels):
+    await chain_mute_solo_application.boot()
     for chain_name in chain_names:
         chain = chain_mute_solo_application.primary_context[chain_name]
-        chain.mute()
-    time.sleep(0.2)
+        await chain.mute()
+    await asyncio.sleep(0.2)
     assert [
         int(_)
         for _ in chain_mute_solo_application.primary_context.master_track.rms_levels[
@@ -45,13 +46,14 @@ def test_levels_nested(chain_mute_solo_application, chain_names, levels):
         ["inner/b/b"],
     ],
 )
-def test_transcript(chain_mute_solo_application, chain_names):
-    chain_mute_solo_application.boot()
+@pytest.mark.asyncio
+async def test_transcript(chain_mute_solo_application, chain_names):
+    await chain_mute_solo_application.boot()
     context = chain_mute_solo_application.primary_context
     for chain_name in chain_names:
         chain = context[chain_name]
         with context.provider.server.osc_protocol.capture() as transcript:
-            chain.mute()
+            await chain.mute()
         assert len(transcript.sent_messages) == 1
         _, message = transcript.sent_messages[0]
         assert message.to_list() == [
@@ -74,12 +76,13 @@ def test_transcript(chain_mute_solo_application, chain_names):
         (["inner/b/b"], [1, 1, 1, 1, 1, 1, 1, 0]),
     ],
 )
-def test_is_active(chain_mute_solo_application, booted, chain_names, expected):
+@pytest.mark.asyncio
+async def test_is_active(chain_mute_solo_application, booted, chain_names, expected):
     if booted:
-        chain_mute_solo_application.boot()
+        await chain_mute_solo_application.boot()
     for chain_name in chain_names:
         chain = chain_mute_solo_application.primary_context[chain_name]
-        chain.mute()
+        await chain.mute()
     all_chains = list(
         chain_mute_solo_application.primary_context.depth_first(prototype=Chain)
     )
@@ -101,12 +104,13 @@ def test_is_active(chain_mute_solo_application, booted, chain_names, expected):
         (["inner/b/b"], [0, 0, 0, 0, 0, 0, 0, 1]),
     ],
 )
-def test_is_muted(chain_mute_solo_application, booted, chain_names, expected):
+@pytest.mark.asyncio
+async def test_is_muted(chain_mute_solo_application, booted, chain_names, expected):
     if booted:
-        chain_mute_solo_application.boot()
+        await chain_mute_solo_application.boot()
     for chain_name in chain_names:
         chain = chain_mute_solo_application.primary_context[chain_name]
-        chain.mute()
+        await chain.mute()
     all_chains = list(
         chain_mute_solo_application.primary_context.depth_first(prototype=Chain)
     )
@@ -114,9 +118,10 @@ def test_is_muted(chain_mute_solo_application, booted, chain_names, expected):
     assert actual == [bool(x) for x in expected]
 
 
-def test_repeat(chain_mute_solo_application):
-    chain_mute_solo_application.boot()
-    chain_mute_solo_application.primary_context["outer/a/a"].mute()
+@pytest.mark.asyncio
+async def test_repeat(chain_mute_solo_application):
+    await chain_mute_solo_application.boot()
+    await chain_mute_solo_application.primary_context["outer/a/a"].mute()
     with chain_mute_solo_application.primary_context.provider.server.osc_protocol.capture() as transcript:
-        chain_mute_solo_application.primary_context["outer/a/a"].mute()
+        await chain_mute_solo_application.primary_context["outer/a/a"].mute()
     assert not len(transcript.sent_messages)

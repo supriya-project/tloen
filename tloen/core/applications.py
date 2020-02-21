@@ -65,15 +65,15 @@ class Application(UniqueTreeTuple):
 
     ### PUBLIC METHODS ###
 
-    def add_context(self, *, name=None):
+    async def add_context(self, *, name=None):
         with self.lock:
             if self.status == self.Status.NONREALTIME:
                 raise ValueError
             context = Context(name=name)
             self._contexts._append(context)
             if self.status == self.Status.REALTIME:
-                provider = Provider.realtime(port=find_free_port())
-                with provider.at():
+                provider = await Provider.realtime_async(port=find_free_port())
+                async with provider.at():
                     context._set(provider=provider)
             return context
 
@@ -101,7 +101,7 @@ class Application(UniqueTreeTuple):
                     track.slots._append(Slot())
         return scene
 
-    def boot(self):
+    async def boot(self):
         with self.lock:
             if self.status == self.Status.REALTIME:
                 return
@@ -110,8 +110,9 @@ class Application(UniqueTreeTuple):
             elif not self.contexts:
                 raise ValueError
             for context in self.contexts:
-                provider = Provider.realtime(port=find_free_port())
-                with provider.at():
+                provider = await Provider.realtime_async(port=find_free_port())
+                moment = provider.at()
+                async with moment:
                     context._set(provider=provider)
             time.sleep(0.1)  # wait for /done messages
             self._status = self.Status.REALTIME
@@ -121,12 +122,12 @@ class Application(UniqueTreeTuple):
         pass
 
     @classmethod
-    def new(cls, context_count=1, track_count=4, scene_count=8):
+    async def new(cls, context_count=1, track_count=4, scene_count=8):
         application = cls()
         for _ in range(context_count):
-            context = application.add_context()
+            context = await application.add_context()
             for _ in range(track_count):
-                context.add_track()
+                await context.add_track()
         for _ in range(scene_count):
             application.add_scene()
         return application
@@ -138,8 +139,8 @@ class Application(UniqueTreeTuple):
             for context in self.contexts:
                 context.perform(midi_messages, moment=moment)
 
-    def quit(self):
-        self.transport.stop()
+    async def quit(self):
+        await self.transport.stop()
         with self.lock:
             if self.status == self.Status.OFFLINE:
                 return
@@ -147,23 +148,23 @@ class Application(UniqueTreeTuple):
                 raise ValueError
             for context in self.contexts:
                 provider = context.provider
-                with provider.at():
+                async with provider.at():
                     context._set(provider=None)
                 if provider is not None:
-                    provider.quit()
+                    await provider.server.quit()
             self._status = self.Status.OFFLINE
         return self
 
-    def remove_contexts(self, *contexts: Context):
+    async def remove_contexts(self, *contexts: Context):
         with self.lock:
             if not all(context in self.contexts for context in contexts):
                 raise ValueError
             for context in contexts:
                 provider = context.provider
                 if provider is not None:
-                    with provider.at():
+                    async with provider.at():
                         self._contexts._remove(context)
-                    provider.quit()
+                    await provider.server.quit()
                 else:
                     self._contexts._remove(context)
             if not len(self):
@@ -195,7 +196,7 @@ class Application(UniqueTreeTuple):
                 for index in reversed(indices):
                     track.slots._remove(track.slots[index])
 
-    def render(self) -> Session:
+    async def render(self) -> Session:
         with self.lock:
             if self.status != self.Status.OFFLINE:
                 raise ValueError
@@ -221,13 +222,13 @@ class Application(UniqueTreeTuple):
             },
         }
 
-    def set_channel_count(self, channel_count: int):
+    async def set_channel_count(self, channel_count: int):
         with self.lock:
             assert 1 <= channel_count <= 8
             self._channel_count = int(channel_count)
             for context in self.contexts:
                 if context.provider:
-                    with context.provider.at():
+                    async with context.provider.at():
                         context._reconcile()
                 else:
                     context._reconcile()

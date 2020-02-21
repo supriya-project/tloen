@@ -1,12 +1,15 @@
+import pytest
+
 from uqbar.strings import normalize
 
 from tloen.core import Application
 
 
-def test_1():
+@pytest.mark.asyncio
+async def test_1():
     application = Application()
-    context = application.add_context()
-    track = context.add_track()
+    context = await application.add_context()
+    track = await context.add_track()
     assert str(application) == normalize(
         f"""
         <Application [OFFLINE] {hex(id(application))}>
@@ -61,11 +64,12 @@ def test_1():
     )
 
 
-def test_2():
+@pytest.mark.asyncio
+async def test_2():
     application = Application()
-    context = application.add_context()
-    track = context.add_track()
-    application.boot()
+    context = await application.add_context()
+    track = await context.add_track()
+    await application.boot()
     assert str(application) == normalize(
         f"""
         <Application [REALTIME] {hex(id(application))}>
@@ -77,7 +81,7 @@ def test_2():
             <Controllers>
             <Scenes>
             <Contexts>
-                <Context <RealtimeProvider <Server: udp://127.0.0.1:{context.provider.server.port}, 8i8o>> [{context.node_proxy.identifier}] {context.uuid}>
+                <Context <RealtimeProvider <AsyncServer: udp://127.0.0.1:{context.provider.server.port}, 8i8o>> [{context.node_proxy.identifier}] {context.uuid}>
                     <Tracks [{context.tracks.node_proxy.identifier}]>
                         <Track [{track.node_proxy.identifier}] {track.uuid}>
                             <Slots>

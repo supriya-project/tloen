@@ -265,14 +265,14 @@ class TrackObject(Allocatable):
 
     ### PUBLIC METHODS ###
 
-    def add_device(self, device_class: Type[DeviceObject], **kwargs):
-        with self.lock([self]):
+    async def add_device(self, device_class: Type[DeviceObject], **kwargs):
+        async with self.lock([self]):
             device = device_class(**kwargs)
             self.devices._append(device)
             return device
 
-    def add_send(self, target, postfader=True):
-        with self.lock([self]):
+    async def add_send(self, target, postfader=True):
+        async with self.lock([self]):
             send = Send(target)
             if postfader:
                 self.postfader_sends._append(send)
@@ -282,19 +282,19 @@ class TrackObject(Allocatable):
                 send.effective_target.send_target._dependencies.add(send)
             return send
 
-    def add_receive(self, source):
-        with self.lock([self]):
+    async def add_receive(self, source):
+        async with self.lock([self]):
             receive = Receive(source)
             self.receives._append(receive)
             if receive.effective_source is not None:
                 receive.effective_source.receive_target._dependencies.add(receive)
             return receive
 
-    def perform(self, midi_messages, moment=None):
+    async def perform(self, midi_messages, moment=None):
         self._debug_tree(
             self, "Perform", suffix=repr([type(_).__name__ for _ in midi_messages])
         )
-        with self.lock([self], seconds=moment.seconds if moment is not None else None):
+        async with self.lock([self], seconds=moment.seconds if moment is not None else None):
             for midi_message in midi_messages:
                 if isinstance(midi_message, NoteOnMessage):
                     self._active_notes.add(midi_message.pitch)
@@ -304,15 +304,15 @@ class TrackObject(Allocatable):
                 return
             self.devices[0].perform(midi_messages, moment=moment)
 
-    def remove_devices(self, *devices: DeviceObject):
-        with self.lock([self, *devices]):
+    async def remove_devices(self, *devices: DeviceObject):
+        async with self.lock([self, *devices]):
             if not all(device in self.devices for device in devices):
                 raise ValueError(devices)
             for device in devices:
                 self.devices._remove(device)
 
-    def remove_sends(self, *sends: Send):
-        with self.lock([self, *sends]):
+    async def remove_sends(self, *sends: Send):
+        async with self.lock([self, *sends]):
             if not all(
                 send in self.prefader_sends or send in self.postfader_sends
                 for send in sends
@@ -346,8 +346,8 @@ class TrackObject(Allocatable):
                     mapping.pop(key)
         return serialized
 
-    def set_channel_count(self, channel_count: Optional[int]):
-        with self.lock([self]):
+    async def set_channel_count(self, channel_count: Optional[int]):
+        async with self.lock([self]):
             if channel_count is not None:
                 assert 1 <= channel_count <= 8
                 channel_count = int(channel_count)
@@ -443,38 +443,38 @@ class UserTrackObject(TrackObject):
 
     ### PUBLIC METHODS ###
 
-    def cue(self):
-        with self.lock([self]):
+    async def cue(self):
+        async with self.lock([self]):
             pass
 
-    def delete(self):
-        with self.lock([self]):
+    async def delete(self):
+        async with self.lock([self]):
             if self.parent is None:
                 raise ValueError
             self.parent._remove(self)
 
-    def duplicate(self):
-        with self.lock([self]):
+    async def duplicate(self):
+        async with self.lock([self]):
             pass
 
-    def mute(self):
-        with self.lock([self]):
+    async def mute(self):
+        async with self.lock([self]):
             self._set_active(False)
 
     @abc.abstractmethod
-    def solo(self, exclusive=True):
+    async def solo(self, exclusive=True):
         raise NotImplementedError
 
-    def uncue(self):
-        with self.lock([self]):
+    async def uncue(self):
+        async with self.lock([self]):
             pass
 
-    def unmute(self):
-        with self.lock([self]):
+    async def unmute(self):
+        async with self.lock([self]):
             self._set_active(True)
 
     @abc.abstractmethod
-    def unsolo(self, exclusive=False):
+    async def unsolo(self, exclusive=False):
         raise NotImplementedError
 
     ### PUBLIC PROPERTIES ###
@@ -509,7 +509,6 @@ class Track(UserTrackObject):
         self._slots = Container(label="Slots")
         self._tracks = TrackContainer("input", AddAction.ADD_AFTER, label="SubTracks")
         self._mutate(slice(1, 1), [self._slots, self._tracks])
-        self.add_send(Default())
 
     ### PRIVATE METHODS ###
 
@@ -523,8 +522,8 @@ class Track(UserTrackObject):
     def _cleanup(self):
         Track._update_activation(self)
 
-    def _clip_launch_callback(self, current_moment, desired_moment, event):
-        with self.lock([self]):
+    async def _clip_launch_callback(self, current_moment, desired_moment, event):
+        async with self.lock([self]):
             self._debug_tree(
                 self,
                 "Launch/CB",
@@ -565,8 +564,8 @@ class Track(UserTrackObject):
                 event_type=self.transport.EventType.CLIP_PERFORM,
             )
 
-    def _clip_perform_callback(self, current_moment, desired_moment, event):
-        with self.lock([self]):
+    async def _clip_perform_callback(self, current_moment, desired_moment, event):
+        async with self.lock([self]):
             self._debug_tree(self, "Perform/CB", suffix=str(self._active_slot_index))
             if self._active_slot_index is None:
                 return None
@@ -591,7 +590,7 @@ class Track(UserTrackObject):
                 return None
             return note_moment.next_offset - desired_moment.offset
 
-    def _fire(self, slot_index, quantization=None):
+    async def _fire(self, slot_index, quantization=None):
         if not self.application:
             return
         self._debug_tree(self, "Firing", suffix=str(slot_index))
@@ -605,7 +604,7 @@ class Track(UserTrackObject):
             event_type=transport.EventType.CLIP_LAUNCH,
         )
         if not transport.is_running:
-            transport.start()
+            await transport.start()
 
     @classmethod
     def _recurse_activation(
@@ -678,29 +677,30 @@ class Track(UserTrackObject):
 
     ### PUBLIC METHODS ###
 
-    def add_track(self, *, name=None):
-        with self.lock([self]):
+    async def add_track(self, *, name=None):
+        async with self.lock([self]):
             track = Track(name=name)
+            await track.add_send(Default())
             self._tracks._append(track)
             return track
 
     @classmethod
-    def group(cls, tracks, *, name=None):
-        with cls.lock(tracks):
+    async def group(cls, tracks, *, name=None):
+        async with cls.lock(tracks):
             group_track = Track(name=name)
             if tracks[0].parent:
                 index = tracks[0].parent.index(tracks[0])
                 tracks[0].parent._mutate(slice(index, index), [group_track])
-                group_track.add_send(Default())
+                await group_track.add_send(Default())
             group_track.tracks._mutate(slice(None), tracks)
             return group_track
 
-    def move(self, container, position):
-        with self.lock([self, container]):
+    async def move(self, container, position):
+        async with self.lock([self, container]):
             container.tracks._mutate(slice(position, position), [self])
 
-    def remove_tracks(self, *tracks: "Track"):
-        with self.lock([self, *tracks]):
+    async def remove_tracks(self, *tracks: "Track"):
+        async with self.lock([self, *tracks]):
             if not all(track in self.tracks for track in tracks):
                 raise ValueError
             for track in tracks:
@@ -717,10 +717,10 @@ class Track(UserTrackObject):
                     mapping.pop(key)
         return serialized
 
-    def solo(self, exclusive=True):
+    async def solo(self, exclusive=True):
         from .contexts import Context
 
-        with self.lock([self]):
+        async with self.lock([self]):
             if self.is_soloed:
                 return
             parentage = [
@@ -737,18 +737,18 @@ class Track(UserTrackObject):
                 node._soloed_tracks.add(self)
             self._update_activation(self)
 
-    def ungroup(self):
-        with self.lock([self]):
+    async def ungroup(self):
+        async with self.lock([self]):
             if self.parent:
                 index = self.parent.index(self)
                 self.parent._mutate(slice(index, index + 1), self.tracks[:])
             else:
                 self.tracks._mutate(slice(None), [])
 
-    def unsolo(self, exclusive=False):
+    async def unsolo(self, exclusive=False):
         from .contexts import Context
 
-        with self.lock([self]):
+        async with self.lock([self]):
             if not self.is_soloed:
                 return
             parentage = [

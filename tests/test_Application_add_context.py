@@ -1,12 +1,15 @@
+import pytest
+
 from tloen.core import Application, Context
 
 
-def test_1():
+@pytest.mark.asyncio
+async def test_1():
     """
     Add one context
     """
     application = Application()
-    context = application.add_context()
+    context = await application.add_context()
     assert isinstance(context, Context)
     assert list(application.contexts) == [context]
     assert context.application is application
@@ -15,13 +18,14 @@ def test_1():
     assert context.provider is None
 
 
-def test_2():
+@pytest.mark.asyncio
+async def test_2():
     """
     Add two contexts
     """
     application = Application()
-    context_one = application.add_context()
-    context_two = application.add_context()
+    context_one = await application.add_context()
+    context_two = await application.add_context()
     assert list(application.contexts) == [context_one, context_two]
     assert context_one.application is application
     assert context_one.graph_order == (3, 0)
@@ -33,14 +37,15 @@ def test_2():
     assert context_two.provider is None
 
 
-def test_3():
+@pytest.mark.asyncio
+async def test_3():
     """
     Add one context, boot, add second context
     """
     application = Application()
-    context_one = application.add_context()
-    application.boot()
-    context_two = application.add_context()
+    context_one = await application.add_context()
+    await application.boot()
+    context_two = await application.add_context()
     assert list(application.contexts) == [context_one, context_two]
     assert context_one.graph_order == (3, 0)
     assert context_one.parent is application.contexts

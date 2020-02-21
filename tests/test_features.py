@@ -1,3 +1,5 @@
+import pytest
+
 from uqbar.strings import normalize
 
 
@@ -32,9 +34,10 @@ def test_dc_index_synthdef_factory(dc_index_synthdef_factory):
     )
 
 
-def test_track_mute_solo_application(track_mute_solo_application):
-    track_mute_solo_application.boot()
-    assert str(track_mute_solo_application.primary_context.query()) == normalize(
+@pytest.mark.asyncio
+async def test_track_mute_solo_application(track_mute_solo_application):
+    await track_mute_solo_application.boot()
+    assert str(await track_mute_solo_application.primary_context.query()) == normalize(
         """
         NODE TREE 1000 group (Context)
             1001 group (Tracks)
@@ -321,9 +324,10 @@ def test_track_mute_solo_application(track_mute_solo_application):
     )
 
 
-def test_channel_count_application(channel_count_application):
-    channel_count_application.boot()
-    assert str(channel_count_application.primary_context.query()) == normalize(
+@pytest.mark.asyncio
+async def test_channel_count_application(channel_count_application):
+    await channel_count_application.boot()
+    assert str(await channel_count_application.primary_context.query()) == normalize(
         """
         NODE TREE 1000 group (Context)
             1001 group (Tracks)
@@ -468,9 +472,10 @@ def test_channel_count_application(channel_count_application):
     )
 
 
-def test_chain_mute_solo_application(chain_mute_solo_application):
-    chain_mute_solo_application.boot()
-    assert str(chain_mute_solo_application.primary_context.query()) == normalize(
+@pytest.mark.asyncio
+async def test_chain_mute_solo_application(chain_mute_solo_application):
+    await chain_mute_solo_application.boot()
+    assert str(await chain_mute_solo_application.primary_context.query()) == normalize(
         """
         NODE TREE 1000 group (Context)
             1001 group (Tracks)

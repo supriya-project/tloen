@@ -1,16 +1,19 @@
+import pytest
+
 from tloen.core import Application, RackDevice
 
 
-def test_1():
+@pytest.mark.asyncio
+async def test_1():
     """
     Remove one chain
     """
     application = Application()
-    context = application.add_context()
-    track = context.add_track()
-    rack_device = track.add_device(RackDevice)
-    chain = rack_device.add_chain()
-    rack_device.remove_chains(chain)
+    context = await application.add_context()
+    track = await context.add_track()
+    rack_device = await track.add_device(RackDevice)
+    chain = await rack_device.add_chain()
+    await rack_device.remove_chains(chain)
     assert list(rack_device.chains) == []
     assert chain.application is None
     assert chain.graph_order == ()
@@ -18,17 +21,18 @@ def test_1():
     assert chain.provider is None
 
 
-def test_2():
+@pytest.mark.asyncio
+async def test_2():
     """
     Remove two chains
     """
     application = Application()
-    context = application.add_context()
-    track = context.add_track()
-    rack_device = track.add_device(RackDevice)
-    chain_one = rack_device.add_chain()
-    chain_two = rack_device.add_chain()
-    rack_device.remove_chains(chain_one, chain_two)
+    context = await application.add_context()
+    track = await context.add_track()
+    rack_device = await track.add_device(RackDevice)
+    chain_one = await rack_device.add_chain()
+    chain_two = await rack_device.add_chain()
+    await rack_device.remove_chains(chain_one, chain_two)
     assert list(rack_device.chains) == []
     assert chain_one.application is None
     assert chain_one.graph_order == ()
@@ -40,17 +44,18 @@ def test_2():
     assert chain_two.provider is None
 
 
-def test_3():
+@pytest.mark.asyncio
+async def test_3():
     """
     Remove first chain, leaving second untouched
     """
     application = Application()
-    context = application.add_context()
-    track = context.add_track()
-    rack_device = track.add_device(RackDevice)
-    chain_one = rack_device.add_chain()
-    chain_two = rack_device.add_chain()
-    rack_device.remove_chains(chain_one)
+    context = await application.add_context()
+    track = await context.add_track()
+    rack_device = await track.add_device(RackDevice)
+    chain_one = await rack_device.add_chain()
+    chain_two = await rack_device.add_chain()
+    await rack_device.remove_chains(chain_one)
     assert list(rack_device.chains) == [chain_two]
     assert chain_one.application is None
     assert chain_one.graph_order == ()
@@ -62,18 +67,19 @@ def test_3():
     assert chain_two.provider is None
 
 
-def test_4():
+@pytest.mark.asyncio
+async def test_4():
     """
     Boot, remove first chain, leaving second untouched
     """
     application = Application()
-    context = application.add_context()
-    track = context.add_track()
-    rack_device = track.add_device(RackDevice)
-    chain_one = rack_device.add_chain()
-    chain_two = rack_device.add_chain()
-    application.boot()
-    rack_device.remove_chains(chain_one)
+    context = await application.add_context()
+    track = await context.add_track()
+    rack_device = await track.add_device(RackDevice)
+    chain_one = await rack_device.add_chain()
+    chain_two = await rack_device.add_chain()
+    await application.boot()
+    await rack_device.remove_chains(chain_one)
     assert context.provider is not None
     assert list(rack_device.chains) == [chain_two]
     assert chain_one.application is None

@@ -15,14 +15,6 @@ from .tracks import UserTrackObject
 
 class Chain(UserTrackObject):
 
-    ### INITIALIZER ###
-
-    def __init__(self, *, channel_count=None, name=None, uuid=None):
-        UserTrackObject.__init__(
-            self, channel_count=channel_count, name=name, uuid=uuid
-        )
-        self.add_send(Default())
-
     ### PRIVATE METHODS ###
 
     def _cleanup(self):
@@ -79,12 +71,12 @@ class Chain(UserTrackObject):
 
     ### PUBLIC METHODS ###
 
-    def move(self, container, position):
-        with self.lock([self, container]):
+    async def move(self, container, position):
+        async with self.lock([self, container]):
             container.chains._mutate(slice(position, position), [self])
 
-    def solo(self, exclusive=True):
-        with self.lock([self]):
+    async def solo(self, exclusive=True):
+        async with self.lock([self]):
             if self.is_soloed:
                 return
             mixer = self.mixer
@@ -97,8 +89,8 @@ class Chain(UserTrackObject):
             self._is_soloed = True
             self._update_activation(self)
 
-    def unsolo(self, exclusive=False):
-        with self.lock([self]):
+    async def unsolo(self, exclusive=False):
+        async with self.lock([self]):
             if not self.is_soloed:
                 return
             mixer = self.mixer
@@ -249,9 +241,10 @@ class RackDevice(DeviceObject, Mixer):
 
     ### PUBLIC METHODS ###
 
-    def add_chain(self, channel_count=None, name=None):
-        with self.lock([self]):
+    async def add_chain(self, channel_count=None, name=None):
+        async with self.lock([self]):
             chain = Chain(channel_count=channel_count, name=name)
+            await chain.add_send(Default())
             self._chains._append(chain)
             return chain
 
@@ -261,8 +254,8 @@ class RackDevice(DeviceObject, Mixer):
             source_channel_count, target_channel_count, hard_gate=True, mix_out=True
         )
 
-    def remove_chains(self, *chains: Chain):
-        with self.lock([self, *chains]):
+    async def remove_chains(self, *chains: Chain):
+        async with self.lock([self, *chains]):
             if not all(chain in self.chains for chain in chains):
                 raise ValueError
             for chain in chains:
@@ -279,15 +272,15 @@ class RackDevice(DeviceObject, Mixer):
                     mapping.pop(key)
         return serialized
 
-    def set_channel_count(self, channel_count: Optional[int]):
-        with self.lock([self]):
+    async def set_channel_count(self, channel_count: Optional[int]):
+        async with self.lock([self]):
             if channel_count is not None:
                 assert 1 <= channel_count <= 8
                 channel_count = int(channel_count)
             self._set(channel_count=channel_count)
 
-    def ungroup(self):
-        with self.lock([self]):
+    async def ungroup(self):
+        async with self.lock([self]):
             if len(self.chains) > 1:
                 raise ValueError("Can only ungroup single chain")
             pass

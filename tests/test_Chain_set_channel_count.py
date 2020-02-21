@@ -1,11 +1,14 @@
-import time
+import pytest
+
+import asyncio
 
 from uqbar.strings import normalize
 
 from tloen.core import Action, Allocatable, Parameter
 
 
-def test_channel_count(channel_count_application):
+@pytest.mark.asyncio
+async def test_channel_count(channel_count_application):
     items = [channel_count_application]
     items.extend(
         x
@@ -23,7 +26,7 @@ def test_channel_count(channel_count_application):
         "Three": (None, 2),
         "Two": (None, 2),
     }
-    channel_count_application["Chain"].set_channel_count(4)
+    await channel_count_application["Chain"].set_channel_count(4)
     assert {
         x.name: (x.channel_count, x.effective_channel_count) for x in items[1:]
     } == {
@@ -37,41 +40,44 @@ def test_channel_count(channel_count_application):
     }
 
 
-def test_audio_buses(channel_count_application):
+@pytest.mark.asyncio
+async def test_audio_buses(channel_count_application):
     for node in channel_count_application.depth_first(prototype=Allocatable):
         for audio_bus_proxy in node.audio_bus_proxies.values():
             assert audio_bus_proxy.channel_count == node.effective_channel_count
-    channel_count_application["Chain"].set_channel_count(4)
+    await channel_count_application["Chain"].set_channel_count(4)
     for node in channel_count_application.depth_first(prototype=Allocatable):
         for audio_bus_proxy in node.audio_bus_proxies.values():
             assert audio_bus_proxy.channel_count == node.effective_channel_count
 
 
-def test_levels(channel_count_application):
-    channel_count_application.boot()
+@pytest.mark.asyncio
+async def test_levels(channel_count_application):
+    await channel_count_application.boot()
     master_levels = channel_count_application.primary_context.master_track.rms_levels
     track_levels = channel_count_application.primary_context["One"].rms_levels
-    time.sleep(0.2)
+    await asyncio.sleep(0.2)
     assert [round(x, 2) for x in track_levels["postfader"]] == [1.0, 0.0]
     assert [round(x, 2) for x in master_levels["input"]] == [1.0, 0.0]
-    channel_count_application["Chain"].set_channel_count(4)
-    time.sleep(0.2)
+    await channel_count_application["Chain"].set_channel_count(4)
+    await asyncio.sleep(0.2)
     assert [round(x, 2) for x in track_levels["postfader"]] == [0.41, 0.0]
     assert [round(x, 2) for x in master_levels["input"]] == [0.41, 0.0]
 
 
-def test_query(channel_count_application):
+@pytest.mark.asyncio
+async def test_query(channel_count_application):
     # TODO: Chain input isn't quite correct.
     #       They need a dedicated receive in their receives group
     #       to patch the rack's parent bus group to their bus group.
     #       Then the rack doesn't need an input - it delegates to the chain receives.
     context = channel_count_application["Context"]
-    channel_count_application.boot()
+    await channel_count_application.boot()
     with context.provider.server.osc_protocol.capture() as transcript:
-        context["Chain"].set_channel_count(4)
-    time.sleep(0.1)
+        await context["Chain"].set_channel_count(4)
+    await asyncio.sleep(0.1)
     assert len(transcript.sent_messages) == 1
-    after = str(context.query())
+    after = str(await context.query())
     assert after == normalize(
         """
         NODE TREE 1000 group (Context)

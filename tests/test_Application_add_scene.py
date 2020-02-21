@@ -1,13 +1,17 @@
+import pytest
+
 from tloen.core import Application, Track
 
 
-def test_1():
+@pytest.mark.asyncio
+async def test_1():
     application = Application()
-    context_one = application.add_context()
-    context_two = application.add_context()
+    context_one = await application.add_context()
+    context_two = await application.add_context()
     for context in context_one, context_two:
-        context.add_track().add_track()
-        context.add_track()
+        track = await context.add_track()
+        await track.add_track()
+        await context.add_track()
     for track in application.recurse(Track):
         assert len(application.scenes) == 0
         assert len(track.slots) == len(application.scenes)
@@ -25,11 +29,12 @@ def test_1():
         assert len(track.slots) == len(application.scenes)
 
 
-def test_2():
+@pytest.mark.asyncio
+async def test_2():
     application = Application()
     for _ in range(3):
         application.add_scene()
     assert len(application.scenes) == 3
-    context = application.add_context()
-    track = context.add_track()
+    context = await application.add_context()
+    track = await context.add_track()
     assert len(track.slots) == 3

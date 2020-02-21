@@ -9,7 +9,7 @@ def test_1():
     assert isinstance(track.send_target, Target)
     assert isinstance(track.uuid, UUID)
     assert len(track.devices) == 0
-    assert len(track.postfader_sends) == 1
+    assert len(track.postfader_sends) == 0
     assert len(track.prefader_sends) == 0
     assert len(track.tracks) == 0
     assert not track.is_cued

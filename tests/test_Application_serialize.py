@@ -1,20 +1,22 @@
+import pytest
 import yaml
 from uqbar.strings import normalize
 
 from tloen.core import Application, Arpeggiator, Instrument, RackDevice
 
 
-def test_1():
+@pytest.mark.asyncio
+async def test_1():
     app = Application()
-    context = app.add_context()
+    context = await app.add_context()
     cue_track, master_track = context.cue_track, context.master_track
-    track = context.add_track()
-    rack = track.add_device(RackDevice, channel_count=4)
-    chain = rack.add_chain()
-    chain.parameters["gain"].set_(-6.0)
-    arpeggiator = chain.add_device(Arpeggiator)
-    instrument = chain.add_device(Instrument)
-    instrument.parameters["active"].set_(False)
+    track = await context.add_track()
+    rack = await track.add_device(RackDevice, channel_count=4)
+    chain = await rack.add_chain()
+    await chain.parameters["gain"].set_(-6.0)
+    arpeggiator = await chain.add_device(Arpeggiator)
+    instrument = await chain.add_device(Instrument)
+    await instrument.parameters["active"].set_(False)
     assert normalize(yaml.dump(app.serialize())) == normalize(
         f"""
         kind: Application

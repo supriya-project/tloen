@@ -127,10 +127,10 @@ class Arpeggiator(DeviceObject):
             self.transport.cancel(self._callback_id)
         self._callback_id = None
 
-    def _transport_note_on_callback(
+    async def _transport_note_on_callback(
         self, current_moment, desired_moment, event, **kwargs
     ):
-        with self.lock([self], seconds=desired_moment.seconds):
+        async with self.lock([self], seconds=desired_moment.seconds):
             self._debug_tree(self, "Note On CB")
             delta = TempoClock.quantization_to_beats(self._quantization)
             if not len(self._pattern):
@@ -163,10 +163,10 @@ class Arpeggiator(DeviceObject):
                 self._perform_loop(desired_moment, performer, midi_messages)
         return delta, TimeUnit.BEATS
 
-    def _transport_note_off_callback(
+    async def _transport_note_off_callback(
         self, current_moment, desired_moment, event, pitch, **kwargs
     ):
-        with self.lock([self], seconds=desired_moment.seconds):
+        async with self.lock([self], seconds=desired_moment.seconds):
             self._debug_tree(self, "Note Off CB")
             if pitch not in self._output_notes:
                 return

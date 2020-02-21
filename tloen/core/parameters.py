@@ -230,10 +230,10 @@ class Parameter(Allocatable):
         if modulation is not None:
             modulation.free()
 
-    def ramp(self, from_value, to_value, total_time, *, initial_time=0, moment=None):
+    async def ramp(self, from_value, to_value, total_time, *, initial_time=0, moment=None):
         # from_ = self.spec(from_value)
         # to_ = self.spec(to_value)
-        with self.lock([self], seconds=moment.seconds if moment is not None else None):
+        async with self.lock([self], seconds=moment.seconds if moment is not None else None):
             modulation = self.node_proxies.get("modulation")
             if modulation is not None:
                 modulation.free()
@@ -251,8 +251,8 @@ class Parameter(Allocatable):
                     mapping.pop(key)
         return serialized
 
-    def set_(self, value, *, moment=None):
-        with self.lock([self], seconds=moment.seconds if moment is not None else None):
+    async def set_(self, value, *, moment=None):
+        async with self.lock([self], seconds=moment.seconds if moment is not None else None):
             self._value = self.spec(value)
             modulation = self.node_proxies.get("modulation")
             if modulation is not None:

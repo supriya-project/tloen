@@ -1,4 +1,4 @@
-import time
+import asyncio
 
 import pytest
 
@@ -18,12 +18,13 @@ from tloen.core import Application, AudioEffect, Track
         (["cba"], [0, 0, 0, 0, 1, 0, 1, 1]),
     ],
 )
-def test_levels(track_mute_solo_application, track_names, levels):
-    track_mute_solo_application.boot()
+@pytest.mark.asyncio
+async def test_levels(track_mute_solo_application, track_names, levels):
+    await track_mute_solo_application.boot()
     for track_name in track_names:
         track = track_mute_solo_application.primary_context[track_name]
-        track.solo()
-    time.sleep(0.2)
+        await track.solo()
+    await asyncio.sleep(0.2)
     assert [
         int(_)
         for _ in track_mute_solo_application.primary_context.master_track.rms_levels[
@@ -45,12 +46,13 @@ def test_levels(track_mute_solo_application, track_names, levels):
         (["cba"], ["a", "b", "ba", "bb", "ca"]),
     ],
 )
-def test_transcript(track_mute_solo_application, soloed_track_names, muted_track_names):
-    track_mute_solo_application.boot()
+@pytest.mark.asyncio
+async def test_transcript(track_mute_solo_application, soloed_track_names, muted_track_names):
+    await track_mute_solo_application.boot()
     for soloed_track_name in soloed_track_names:
         soloed_track = track_mute_solo_application.primary_context[soloed_track_name]
         with track_mute_solo_application.primary_context.provider.server.osc_protocol.capture() as transcript:
-            soloed_track.solo()
+            await soloed_track.solo()
         osc_messages = []
         for muted_track_name in muted_track_names:
             muted_track = track_mute_solo_application.primary_context[muted_track_name]
@@ -76,12 +78,13 @@ def test_transcript(track_mute_solo_application, soloed_track_names, muted_track
         (["cba"], [0, 0, 0, 0, 1, 0, 1, 1]),
     ],
 )
-def test_is_active(track_mute_solo_application, booted, track_names, expected):
+@pytest.mark.asyncio
+async def test_is_active(track_mute_solo_application, booted, track_names, expected):
     if booted:
-        track_mute_solo_application.boot()
+        await track_mute_solo_application.boot()
     for track_name in track_names:
         track = track_mute_solo_application.primary_context[track_name]
-        track.solo()
+        await track.solo()
     all_tracks = list(
         track_mute_solo_application.primary_context.depth_first(prototype=Track)
     )
@@ -103,12 +106,13 @@ def test_is_active(track_mute_solo_application, booted, track_names, expected):
         (["cba"], [0, 0, 0, 0, 0, 0, 0, 1]),
     ],
 )
-def test_is_soloed(track_mute_solo_application, booted, track_names, expected):
+@pytest.mark.asyncio
+async def test_is_soloed(track_mute_solo_application, booted, track_names, expected):
     if booted:
-        track_mute_solo_application.boot()
+        await track_mute_solo_application.boot()
     for track_name in track_names:
         track = track_mute_solo_application.primary_context[track_name]
-        track.solo()
+        await track.solo()
     all_tracks = list(
         track_mute_solo_application.primary_context.depth_first(prototype=Track)
     )
@@ -116,74 +120,80 @@ def test_is_soloed(track_mute_solo_application, booted, track_names, expected):
     assert actual == [bool(x) for x in expected]
 
 
-def test_stacked():
+@pytest.mark.asyncio
+async def test_stacked():
     application = Application()
-    application.add_context().add_track(name="a").add_track(name="b").add_track(
-        name="c"
-    )
-    application.boot()
-    application.primary_context["a"].solo()
+    context = await application.add_context()
+    track_a = await context.add_track(name="a")
+    track_b = await track_a.add_track(name="b")
+    await track_b.add_track(name="c")
+    await application.boot()
+    await application.primary_context["a"].solo()
     with application.primary_context.provider.server.osc_protocol.capture() as transcript:
-        application.primary_context["b"].solo()
-        application.primary_context["c"].solo()
+        await application.primary_context["b"].solo()
+        await application.primary_context["c"].solo()
     assert not len(transcript.sent_messages)
 
 
-def test_repeat():
+@pytest.mark.asyncio
+async def test_repeat():
     application = Application()
-    application.add_context().add_track(name="a")
-    application.boot()
-    application.primary_context["a"].solo()
+    context = await application.add_context()
+    await context.add_track(name="a")
+    await application.boot()
+    await application.primary_context["a"].solo()
     with application.primary_context.provider.server.osc_protocol.capture() as transcript:
-        application.primary_context["a"].solo()
+        await application.primary_context["a"].solo()
     assert not len(transcript.sent_messages)
 
 
-def test_move(dc_index_synthdef_factory):
+@pytest.mark.asyncio
+async def test_move(dc_index_synthdef_factory):
     application = Application()
-    context = application.add_context()
-    track_one = context.add_track(name="one")
-    track_one.add_device(
+    context = await application.add_context()
+    track_one = await context.add_track(name="one")
+    await track_one.add_device(
         AudioEffect, synthdef=dc_index_synthdef_factory, synthdef_kwargs=dict(index=0)
     )
-    application.boot()
-    time.sleep(0.2)
+    await application.boot()
+    await asyncio.sleep(0.2)
     assert context.master_track.rms_levels["input"] == (1.0, 0.0)
     track_two = Track(name="two")
-    track_two.add_device(
+    await track_two.add_device(
         AudioEffect, synthdef=dc_index_synthdef_factory, synthdef_kwargs=dict(index=1)
     )
-    track_two.solo()
-    track_two.move(context, 1)
-    time.sleep(0.2)
+    await track_two.solo()
+    await track_two.move(context, 1)
+    await asyncio.sleep(0.2)
     assert not track_one.is_active
     assert context.master_track.rms_levels["input"] == (0.0, 1.0)
-    track_one.move(track_two, 0)
-    time.sleep(0.2)
+    await track_one.move(track_two, 0)
+    await asyncio.sleep(0.2)
     assert track_one.is_active
     assert context.master_track.rms_levels["input"] == (1.0, 1.0)
-    track_one.move(context, 0)
-    time.sleep(0.2)
+    await track_one.move(context, 0)
+    await asyncio.sleep(0.2)
     assert not track_one.is_active
     assert context.master_track.rms_levels["input"] == (0.0, 1.0)
-    track_two.delete()
-    time.sleep(0.2)
+    await track_two.delete()
+    await asyncio.sleep(0.2)
     assert track_one.is_active
     assert context.master_track.rms_levels["input"] == (1.0, 0.0)
 
 
-def test_exclusivity():
+@pytest.mark.asyncio
+async def test_exclusivity():
     application = Application()
-    context = application.add_context()
-    track_a = context.add_track(name="a")
-    track_b = context.add_track(name="b")
-    track_c = context.add_track(name="c")
-    track_d = context.add_track(name="d")
-    track_a.solo()
+    context = await application.add_context()
+    track_a = await context.add_track(name="a")
+    track_b = await context.add_track(name="b")
+    track_c = await context.add_track(name="c")
+    track_d = await context.add_track(name="d")
+    await track_a.solo()
     assert [track.is_active for track in context.tracks] == [True, False, False, False]
-    track_b.solo(exclusive=False)
+    await track_b.solo(exclusive=False)
     assert [track.is_active for track in context.tracks] == [True, True, False, False]
-    track_c.solo()
+    await track_c.solo()
     assert [track.is_active for track in context.tracks] == [False, False, True, False]
-    track_d.solo(exclusive=False)
+    await track_d.solo(exclusive=False)
     assert [track.is_active for track in context.tracks] == [False, False, True, True]

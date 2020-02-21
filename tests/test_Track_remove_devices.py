@@ -1,4 +1,4 @@
-import time
+import asyncio
 
 import pytest
 from supriya.synthdefs import SynthDefFactory
@@ -18,15 +18,16 @@ def synthdef_factory():
     )
 
 
-def test_1(synthdef_factory):
+@pytest.mark.asyncio
+async def test_1(synthdef_factory):
     """
     Remove one device
     """
     application = Application()
-    context = application.add_context()
-    track = context.add_track()
-    device = track.add_device(AudioEffect, synthdef=synthdef_factory)
-    track.remove_devices(device)
+    context = await application.add_context()
+    track = await context.add_track()
+    device = await track.add_device(AudioEffect, synthdef=synthdef_factory)
+    await track.remove_devices(device)
     assert list(track.devices) == []
     assert device.application is None
     assert device.graph_order == ()
@@ -34,16 +35,17 @@ def test_1(synthdef_factory):
     assert device.provider is None
 
 
-def test_2(synthdef_factory):
+@pytest.mark.asyncio
+async def test_2(synthdef_factory):
     """
     Remove two devices
     """
     application = Application()
-    context = application.add_context()
-    track = context.add_track()
-    device_one = track.add_device(AudioEffect, synthdef=synthdef_factory)
-    device_two = track.add_device(AudioEffect, synthdef=synthdef_factory)
-    track.remove_devices(device_one, device_two)
+    context = await application.add_context()
+    track = await context.add_track()
+    device_one = await track.add_device(AudioEffect, synthdef=synthdef_factory)
+    device_two = await track.add_device(AudioEffect, synthdef=synthdef_factory)
+    await track.remove_devices(device_one, device_two)
     assert list(track.devices) == []
     assert device_one.application is None
     assert device_one.graph_order == ()
@@ -55,16 +57,17 @@ def test_2(synthdef_factory):
     assert device_two.provider is None
 
 
-def test_3(synthdef_factory):
+@pytest.mark.asyncio
+async def test_3(synthdef_factory):
     """
     Remove first device, leaving second untouched
     """
     application = Application()
-    context = application.add_context()
-    track = context.add_track()
-    device_one = track.add_device(AudioEffect, synthdef=synthdef_factory)
-    device_two = track.add_device(AudioEffect, synthdef=synthdef_factory)
-    track.remove_devices(device_one)
+    context = await application.add_context()
+    track = await context.add_track()
+    device_one = await track.add_device(AudioEffect, synthdef=synthdef_factory)
+    device_two = await track.add_device(AudioEffect, synthdef=synthdef_factory)
+    await track.remove_devices(device_one)
     assert list(track.devices) == [device_two]
     assert device_one.application is None
     assert device_one.graph_order == ()
@@ -76,19 +79,20 @@ def test_3(synthdef_factory):
     assert device_two.provider is None
 
 
-def test_4(synthdef_factory):
+@pytest.mark.asyncio
+async def test_4(synthdef_factory):
     """
     Boot, remove first device, leaving second untouched
     """
     application = Application()
-    context = application.add_context()
-    track = context.add_track()
-    device_one = track.add_device(AudioEffect, synthdef=synthdef_factory)
-    device_two = track.add_device(AudioEffect, synthdef=synthdef_factory)
-    application.boot()
+    context = await application.add_context()
+    track = await context.add_track()
+    device_one = await track.add_device(AudioEffect, synthdef=synthdef_factory)
+    device_two = await track.add_device(AudioEffect, synthdef=synthdef_factory)
+    await application.boot()
     with context.provider.server.osc_protocol.capture() as transcript:
-        track.remove_devices(device_one)
-    time.sleep(0.1)
+        await track.remove_devices(device_one)
+    await asyncio.sleep(0.1)
     assert list(track.devices) == [device_two]
     assert device_one.application is None
     assert device_one.graph_order == ()

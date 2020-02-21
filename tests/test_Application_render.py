@@ -1,13 +1,15 @@
+import pytest
 from uqbar.strings import normalize
 
 from tloen.core import Application
 
 
-def test_1():
+@pytest.mark.asyncio
+async def test_1():
     application = Application()
-    context = application.add_context()
-    context.add_track()
-    session = application.render()
+    context = await application.add_context()
+    await context.add_track()
+    session = await application.render()
     assert application.status == Application.Status.OFFLINE
     assert session.to_strings() == normalize(
         """

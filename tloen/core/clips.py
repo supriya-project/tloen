@@ -299,8 +299,8 @@ class Slot(ApplicationObject):
 
     ### PRIVATE METHODS ###
 
-    def _set_clip(self, clip):
-        with self.lock([self]):
+    async def _set_clip(self, clip):
+        async with self.lock([self]):
             if clip is self.clip:
                 return
             if self.clip is not None:
@@ -310,27 +310,27 @@ class Slot(ApplicationObject):
 
     ### PUBLIC METHODS ###
 
-    def add_clip(self, *, notes=None, is_looping=True):
+    async def add_clip(self, *, notes=None, is_looping=True):
         clip = Clip(notes=notes, is_looping=is_looping)
-        self._set_clip(clip)
+        await self._set_clip(clip)
         return clip
 
-    def duplicate_clip(self):
+    async def duplicate_clip(self):
         pass
 
-    def fire(self):
+    async def fire(self):
         if not self.application:
             return
         track = self.track
         if track is None:
             return
-        track._fire(self.parent.index(self))
+        await track._fire(self.parent.index(self))
 
-    def move_clip(self, slot):
-        slot._set_clip(self.clip)
+    async def move_clip(self, slot):
+        await slot._set_clip(self.clip)
 
-    def remove_clip(self):
-        self._set_clip(None)
+    async def remove_clip(self):
+        await self._set_clip(None)
 
     ### PUBLIC PROPERTIES ###
 
@@ -382,7 +382,7 @@ class Scene(ApplicationObject):
     def duplicate(self):
         pass
 
-    def fire(self):
+    async def fire(self):
         pass
 
     ### PUBLIC PROPERTIES ###

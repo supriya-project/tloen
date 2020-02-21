@@ -1,5 +1,6 @@
 from typing import Optional
 from uuid import UUID, uuid4
+from supriya.typing import Default
 
 from supriya.enums import AddAction
 from supriya.querytree import QueryTreeGroup
@@ -56,30 +57,31 @@ class Context(Allocatable, Mixer):
 
     ### PUBLIC METHODS ###
 
-    def add_track(self, *, name=None) -> Track:
-        with self.lock([self]):
+    async def add_track(self, *, name=None) -> Track:
+        async with self.lock([self]):
             track = Track(name=name)
+            await track.add_send(Default())
             self._tracks._append(track)
             return track
 
-    def delete(self):
-        with self.lock([self]):
+    async def delete(self):
+        async with self.lock([self]):
             if self.parent:
-                self.parent.remove_contexts(self)
+                await self.parent.remove_contexts(self)
 
-    def move(self, container: "tloen.core.Application", position: int):
-        with self.lock([self, container]):
+    async def move(self, container: "tloen.core.Application", position: int):
+        async with self.lock([self, container]):
             container._contexts._mutate(slice(position, position), [self])
 
-    def perform(self, midi_messages, moment=None):
+    async def perform(self, midi_messages, moment=None):
         self._debug_tree(
             self, "Perform", suffix=repr([type(_).__name__ for _ in midi_messages])
         )
-        with self.lock([self], seconds=moment.seconds if moment is not None else None):
+        async with self.lock([self], seconds=moment.seconds if moment is not None else None):
             for track in self.recurse(prototype=Track):
-                track.perform(midi_messages, moment=moment)
+                await track.perform(midi_messages, moment=moment)
 
-    def query(self):
+    async def query(self):
         if self.provider.server is None:
             raise ValueError
         return QueryTreeGroup(
@@ -87,15 +89,15 @@ class Context(Allocatable, Mixer):
             children=[
                 QueryTreeGroup(
                     node_id=self.tracks.node_proxy.identifier,
-                    children=[track.query() for track in self.tracks],
+                    children=[await track.query() for track in self.tracks],
                 ),
-                self.master_track.query(),
-                self.cue_track.query(),
+                await self.master_track.query(),
+                await self.cue_track.query(),
             ],
         ).annotate(self.provider.annotation_map)
 
-    def remove_tracks(self, *tracks: "tloen.core.Track"):
-        with self.lock([self, *tracks]):
+    async def remove_tracks(self, *tracks: "tloen.core.Track"):
+        async with self.lock([self, *tracks]):
             if not all(track in self.tracks for track in tracks):
                 raise ValueError
             for track in tracks:
@@ -114,8 +116,8 @@ class Context(Allocatable, Mixer):
                     mapping.pop(key)
         return serialized
 
-    def set_channel_count(self, channel_count: Optional[int]):
-        with self.lock([self]):
+    async def set_channel_count(self, channel_count: Optional[int]):
+        async with self.lock([self]):
             if channel_count is not None:
                 assert 1 <= channel_count <= 8
                 channel_count = int(channel_count)

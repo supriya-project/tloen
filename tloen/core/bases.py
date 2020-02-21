@@ -1,5 +1,5 @@
 import logging
-from contextlib import ExitStack, contextmanager
+from contextlib import AsyncExitStack, asynccontextmanager
 from types import MappingProxyType
 from typing import Any, Dict, Mapping, Optional, Set, Union
 
@@ -125,14 +125,9 @@ class ApplicationObject(UniqueTreeTuple):
     ### PUBLIC METHODS ###
 
     @classmethod
-    @contextmanager
-    def lock(cls, objects, seconds=None):
-        exit_stack = ExitStack()
-        with exit_stack:
-            for object_ in objects:
-                if object_.application is not None:
-                    exit_stack.enter_context(object_.application.lock)
-            yield
+    @asynccontextmanager
+    async def lock(cls, objects, seconds=None):
+        yield
 
     def rename(self, name):
         pass
@@ -368,22 +363,19 @@ class Allocatable(ApplicationObject):
     ### PUBLIC METHODS ###
 
     @classmethod
-    @contextmanager
-    def lock(cls, objects, seconds=None):
-        exit_stack = ExitStack()
-        with exit_stack:
+    @asynccontextmanager
+    async def lock(cls, objects, seconds=None):
+        exit_stack = AsyncExitStack()
+        async with exit_stack:
             providers = set()
             for object_ in objects:
-                if object_.application is not None:
-                    exit_stack.enter_context(object_.application.lock)
                 provider = getattr(object_, "provider", None)
                 if provider is not None and provider not in providers:
-                    exit_stack.enter_context(provider.at(seconds))
+                    await exit_stack.enter_async_context(provider.at(seconds))
                     providers.add(provider)
             yield
 
-    def query(self):
-        # TODO: Find a way to support async operations here
+    async def query(self):
         if self.provider.server is None:
             raise ValueError
         query_tree = {}
@@ -393,7 +385,7 @@ class Allocatable(ApplicationObject):
             if node_id in query_tree:
                 continue
             request = NodeQueryRequest(node_id)
-            response = request.communicate(server=self.provider.server)
+            response = await request.communicate_async(server=self.provider.server)
             if (response.next_node_id or -1) > 0:
                 stack.append(response.next_node_id)
             if (response.head_node_id or -1) > 0:

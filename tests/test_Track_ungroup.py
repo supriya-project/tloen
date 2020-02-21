@@ -1,26 +1,30 @@
+import pytest
+
 from tloen.core import Application, Track
 
 
-def test_1():
+@pytest.mark.asyncio
+async def test_1():
     track_a = Track()
     track_b = Track()
-    group_track = Track.group([track_a, track_b])
-    group_track.ungroup()
+    group_track = await Track.group([track_a, track_b])
+    await group_track.ungroup()
     assert list(group_track.tracks) == []
     assert track_a.parent is None
     assert track_b.parent is None
 
 
-def test_2():
+@pytest.mark.asyncio
+async def test_2():
     application = Application()
-    context = application.add_context()
-    track_a = context.add_track()
-    track_b = context.add_track()
-    track_c = context.add_track()
-    group_track = Track.group([track_b, track_c])
-    track_b.move(group_track, 1)
+    context = await application.add_context()
+    track_a = await context.add_track()
+    track_b = await context.add_track()
+    track_c = await context.add_track()
+    group_track = await Track.group([track_b, track_c])
+    await track_b.move(group_track, 1)
     assert list(group_track.tracks) == [track_c, track_b]
-    group_track.ungroup()
+    await group_track.ungroup()
     assert list(context.tracks) == [track_a, track_c, track_b]
     assert list(group_track.tracks) == []
     assert group_track.application is None
@@ -31,17 +35,18 @@ def test_2():
     assert track_c.parent is context.tracks
 
 
-def test_3():
+@pytest.mark.asyncio
+async def test_3():
     application = Application()
-    context = application.add_context()
-    track_a = context.add_track()
-    track_b = context.add_track()
-    track_c = context.add_track()
-    application.boot()
-    group_track = Track.group([track_b, track_c])
-    track_b.move(group_track, 1)
+    context = await application.add_context()
+    track_a = await context.add_track()
+    track_b = await context.add_track()
+    track_c = await context.add_track()
+    await application.boot()
+    group_track = await Track.group([track_b, track_c])
+    await track_b.move(group_track, 1)
     assert list(group_track.tracks) == [track_c, track_b]
-    group_track.ungroup()
+    await group_track.ungroup()
     assert list(context.tracks) == [track_a, track_c, track_b]
     assert list(group_track.tracks) == []
     assert group_track.application is None

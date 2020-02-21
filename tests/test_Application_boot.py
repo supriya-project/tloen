@@ -1,4 +1,4 @@
-import time
+import asyncio
 
 import pytest
 from supriya.provider import RealtimeProvider
@@ -7,21 +7,23 @@ from uqbar.strings import normalize
 from tloen.core import Application
 
 
-def test_error():
+@pytest.mark.asyncio
+async def test_error():
     application = Application()
     with pytest.raises(ValueError):
-        application.boot()
+        await application.boot()
 
 
-def test_boot_1():
+@pytest.mark.asyncio
+async def test_boot_1():
     application = Application()
-    context = application.add_context()
-    application.boot()
-    time.sleep(0.01)  # wait one cycle because node creation waits on synthdef loading
+    context = await application.add_context()
+    await application.boot()
+    await asyncio.sleep(0.01)  # wait one cycle because node creation waits on synthdef loading
     assert application.status == Application.Status.REALTIME
     assert isinstance(context.provider, RealtimeProvider)
     assert context.provider.server.is_running
-    assert str(context.provider.server) == normalize(
+    assert str(await context.provider.server.query()) == normalize(
         """
         NODE TREE 0 group
             1 group
@@ -70,15 +72,16 @@ def test_boot_1():
     )
 
 
-def test_boot_2():
+@pytest.mark.asyncio
+async def test_boot_2():
     application = Application()
-    context = application.add_context()
-    context.add_track()
-    group_track = context.add_track()
-    group_track.add_track()
-    application.boot()
-    time.sleep(0.01)  # wait one cycle because node creation waits on synthdef loading
-    assert str(context.provider.server) == normalize(
+    context = await application.add_context()
+    await context.add_track()
+    group_track = await context.add_track()
+    await group_track.add_track()
+    await application.boot()
+    await asyncio.sleep(0.01)  # wait one cycle because node creation waits on synthdef loading
+    assert str(await context.provider.server.query()) == normalize(
         """
         NODE TREE 0 group
             1 group
