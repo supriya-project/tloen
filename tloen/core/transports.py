@@ -1,7 +1,7 @@
 import enum
 from typing import Dict, Set, Union
 
-from supriya.clock import TempoClock
+from supriya.clock import AsyncTempoClock
 
 from .bases import ApplicationObject
 from .parameters import Action, Float, Parameter, ParameterGroup
@@ -36,23 +36,23 @@ class Transport(ApplicationObject):
                 callback=lambda client, value: client._set_tempo(value),
             )
         )
-        self._clock = TempoClock()
+        self._clock = AsyncTempoClock()
         self._dependencies: Set[ApplicationObject] = set()
         self._mutate(slice(None), [self._parameter_group])
 
     ### PRIVATE METHODS ###
 
-    def _application_perform_callback(
+    async def _application_perform_callback(
         self, current_moment, desired_moment, event, midi_message
     ):
-        self.application.perform([midi_message], moment=current_moment)
+        await self.application.perform([midi_message], moment=current_moment)
 
     def _set_tempo(self, beats_per_minute):
         self._clock.change(beats_per_minute=beats_per_minute)
 
     ### PUBLIC METHODS ###
 
-    def perform(self, midi_messages):
+    async def perform(self, midi_messages):
         if (
             self.application is None
             or self.application.status != self.application.Status.REALTIME
@@ -63,7 +63,7 @@ class Transport(ApplicationObject):
         )
         self.schedule(self._application_perform_callback, args=midi_messages)
         if not self.is_running:
-            self.start()
+            await self.start()
 
     def cue(self, *args, **kwargs):
         self._clock.cue(*args, **kwargs)
@@ -92,14 +92,14 @@ class Transport(ApplicationObject):
         async with self.lock([self]):
             for dependency in self._dependencies:
                 dependency._start()
-            self._clock.start()
+            await self._clock.start()
 
     async def stop(self):
-        self._clock.stop()
+        await self._clock.stop()
         async with self.lock([self]):
             for dependency in self._dependencies:
                 dependency._stop()
-            self.application.flush()
+            await self.application.flush()
 
     ### PUBLIC PROPERTIES ###
 

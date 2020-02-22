@@ -48,7 +48,7 @@ async def test_1(application):
     )
     async with instrument.lock(instrument, 0.0):
         with instrument.capture() as transcript:
-            instrument.perform([NoteOnMessage(pitch=57, velocity=127)])
+            await instrument.perform([NoteOnMessage(pitch=57, velocity=127)])
     await asyncio.sleep(0.01)
     assert list(transcript) == [
         instrument.CaptureEntry(

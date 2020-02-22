@@ -23,7 +23,7 @@ async def test_levels(track_mute_solo_application, track_names, levels):
     await track_mute_solo_application.boot()
     # print(track_mute_solo_application)
     # print(track_mute_solo_application.primary_context.provider.server.status)
-    await asyncio.sleep(2.0)
+    await asyncio.sleep(0.2)
     # print(track_mute_solo_application.primary_context.master_track.rms_levels)
     for track_name in track_names:
         await track_mute_solo_application.primary_context[track_name].solo()

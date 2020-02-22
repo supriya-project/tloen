@@ -9,93 +9,69 @@ Parses LilyPond-like syntax into a clip.
 
 ::
 
-    >>> parse("c1")
-    Clip(
-        notes=IntervalTree(
-            intervals=[
-                Note(start_offset=0.0, stop_offset=1.0, pitch=60, velocity=100.0),
-                ],
-            ),
-        )
+    >>> for note in parse("c1").notes:
+    ...     note
+    ...
+    Note(start_offset=0.0, stop_offset=1.0, pitch=60, velocity=100.0)
 
 ::
 
-    >>> parse("c4 d e f")
-    Clip(
-        notes=IntervalTree(
-            intervals=[
-                Note(start_offset=0.0, stop_offset=0.25, pitch=60, velocity=100.0),
-                Note(start_offset=0.25, stop_offset=0.5, pitch=62, velocity=100.0),
-                Note(start_offset=0.5, stop_offset=0.75, pitch=64, velocity=100.0),
-                Note(start_offset=0.75, stop_offset=1.0, pitch=65, velocity=100.0),
-                ],
-            ),
-        )
+    >>> for note in parse("c4 d e f").notes:
+    ...     note
+    ...
+    Note(start_offset=0.0, stop_offset=0.25, pitch=60, velocity=100.0)
+    Note(start_offset=0.25, stop_offset=0.5, pitch=62, velocity=100.0)
+    Note(start_offset=0.5, stop_offset=0.75, pitch=64, velocity=100.0)
+    Note(start_offset=0.75, stop_offset=1.0, pitch=65, velocity=100.0)
 
 ::
 
-    >>> parse("c'8 d' e' f' g' a' b' c''")
-    Clip(
-        notes=IntervalTree(
-            intervals=[
-                Note(start_offset=0.0, stop_offset=0.125, pitch=72, velocity=100.0),
-                Note(start_offset=0.125, stop_offset=0.25, pitch=74, velocity=100.0),
-                Note(start_offset=0.25, stop_offset=0.375, pitch=76, velocity=100.0),
-                Note(start_offset=0.375, stop_offset=0.5, pitch=77, velocity=100.0),
-                Note(start_offset=0.5, stop_offset=0.625, pitch=79, velocity=100.0),
-                Note(start_offset=0.625, stop_offset=0.75, pitch=81, velocity=100.0),
-                Note(start_offset=0.75, stop_offset=0.875, pitch=83, velocity=100.0),
-                Note(start_offset=0.875, stop_offset=1.0, pitch=84, velocity=100.0),
-                ],
-            ),
-        )
+    >>> for note in parse("c'8 d' e' f' g' a' b' c''").notes:
+    ...     note
+    ...
+    Note(start_offset=0.0, stop_offset=0.125, pitch=72, velocity=100.0)
+    Note(start_offset=0.125, stop_offset=0.25, pitch=74, velocity=100.0)
+    Note(start_offset=0.25, stop_offset=0.375, pitch=76, velocity=100.0)
+    Note(start_offset=0.375, stop_offset=0.5, pitch=77, velocity=100.0)
+    Note(start_offset=0.5, stop_offset=0.625, pitch=79, velocity=100.0)
+    Note(start_offset=0.625, stop_offset=0.75, pitch=81, velocity=100.0)
+    Note(start_offset=0.75, stop_offset=0.875, pitch=83, velocity=100.0)
+    Note(start_offset=0.875, stop_offset=1.0, pitch=84, velocity=100.0)
 
 ::
 
-    >>> parse("c4. d8 e4 ~8 f")
-    Clip(
-        notes=IntervalTree(
-            intervals=[
-                Note(start_offset=0.0, stop_offset=0.375, pitch=60, velocity=100.0),
-                Note(start_offset=0.375, stop_offset=0.5, pitch=62, velocity=100.0),
-                Note(start_offset=0.5, stop_offset=0.875, pitch=64, velocity=100.0),
-                Note(start_offset=0.875, stop_offset=1.0, pitch=65, velocity=100.0),
-                ],
-            ),
-        )
+    >>> for note in parse("c4. d8 e4 ~8 f").notes:
+    ...     note
+    ...
+    Note(start_offset=0.0, stop_offset=0.375, pitch=60, velocity=100.0)
+    Note(start_offset=0.375, stop_offset=0.5, pitch=62, velocity=100.0)
+    Note(start_offset=0.5, stop_offset=0.875, pitch=64, velocity=100.0)
+    Note(start_offset=0.875, stop_offset=1.0, pitch=65, velocity=100.0)
 
 ::
 
-    >>> parse("{ { <c fs>4 r8 q } ~8 q4 } ~8")
-    Clip(
-        notes=IntervalTree(
-            intervals=[
-                Note(start_offset=0.0, stop_offset=0.25, pitch=60, velocity=100.0),
-                Note(start_offset=0.0, stop_offset=0.25, pitch=66, velocity=100.0),
-                Note(start_offset=0.375, stop_offset=0.625, pitch=60, velocity=100.0),
-                Note(start_offset=0.375, stop_offset=0.625, pitch=66, velocity=100.0),
-                Note(start_offset=0.625, stop_offset=1.0, pitch=60, velocity=100.0),
-                Note(start_offset=0.625, stop_offset=1.0, pitch=66, velocity=100.0),
-                ],
-            ),
-        )
+    >>> for note in parse("{ { <c fs>4 r8 q } ~8 q4 } ~8").notes:
+    ...     note
+    ...
+    Note(start_offset=0.0, stop_offset=0.25, pitch=60, velocity=100.0)
+    Note(start_offset=0.0, stop_offset=0.25, pitch=66, velocity=100.0)
+    Note(start_offset=0.375, stop_offset=0.625, pitch=60, velocity=100.0)
+    Note(start_offset=0.375, stop_offset=0.625, pitch=66, velocity=100.0)
+    Note(start_offset=0.625, stop_offset=1.0, pitch=60, velocity=100.0)
+    Note(start_offset=0.625, stop_offset=1.0, pitch=66, velocity=100.0)
 
 ::
 
-    >>> parse("2/3 { c d e } 4/5 { ~8 g8 a b c' } ")
-    Clip(
-        notes=IntervalTree(
-            intervals=[
-                Note(start_offset=0.0, stop_offset=0.16666666666666666, pitch=60, velocity=100.0),
-                Note(start_offset=0.16666666666666666, stop_offset=0.3333333333333333, pitch=62, velocity=100.0),
-                Note(start_offset=0.3333333333333333, stop_offset=0.6, pitch=64, velocity=100.0),
-                Note(start_offset=0.6, stop_offset=0.7, pitch=67, velocity=100.0),
-                Note(start_offset=0.7, stop_offset=0.8, pitch=69, velocity=100.0),
-                Note(start_offset=0.8, stop_offset=0.9, pitch=71, velocity=100.0),
-                Note(start_offset=0.9, stop_offset=1.0, pitch=72, velocity=100.0),
-                ],
-            ),
-        )
+    >>> for note in parse("2/3 { c d e } 4/5 { ~8 g8 a b c' } ").notes:
+    ...     note
+    ...
+    Note(start_offset=0.0, stop_offset=0.16666666666666666, pitch=60, velocity=100.0)
+    Note(start_offset=0.16666666666666666, stop_offset=0.3333333333333333, pitch=62, velocity=100.0)
+    Note(start_offset=0.3333333333333333, stop_offset=0.6, pitch=64, velocity=100.0)
+    Note(start_offset=0.6, stop_offset=0.7, pitch=67, velocity=100.0)
+    Note(start_offset=0.7, stop_offset=0.8, pitch=69, velocity=100.0)
+    Note(start_offset=0.8, stop_offset=0.9, pitch=71, velocity=100.0)
+    Note(start_offset=0.9, stop_offset=1.0, pitch=72, velocity=100.0)
 
 """
 

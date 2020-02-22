@@ -118,7 +118,7 @@ class Application(UniqueTreeTuple):
             self._status = self.Status.REALTIME
         return self
 
-    def flush(self):
+    async def flush(self):
         pass
 
     @classmethod
@@ -132,12 +132,11 @@ class Application(UniqueTreeTuple):
             application.add_scene()
         return application
 
-    def perform(self, midi_messages, moment=None):
-        with self.lock:
-            if self.status != self.Status.REALTIME:
-                return
-            for context in self.contexts:
-                context.perform(midi_messages, moment=moment)
+    async def perform(self, midi_messages, moment=None):
+        if self.status != self.Status.REALTIME:
+            return
+        for context in self.contexts:
+            await context.perform(midi_messages, moment=moment)
 
     async def quit(self):
         await self.transport.stop()

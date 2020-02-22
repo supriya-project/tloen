@@ -302,7 +302,7 @@ class TrackObject(Allocatable):
                     self._active_notes.remove(midi_message.pitch)
             if not self.devices:
                 return
-            self.devices[0].perform(midi_messages, moment=moment)
+            await self.devices[0].perform(midi_messages, moment=moment)
 
     async def remove_devices(self, *devices: DeviceObject):
         async with self.lock([self, *devices]):
@@ -523,72 +523,70 @@ class Track(UserTrackObject):
         Track._update_activation(self)
 
     async def _clip_launch_callback(self, current_moment, desired_moment, event):
-        async with self.lock([self]):
-            self._debug_tree(
-                self,
-                "Launch/CB",
-                suffix="{} {}".format(self._pending_slot_index, desired_moment.offset),
+        self._debug_tree(
+            self,
+            "Launch/CB",
+            suffix="{} {}".format(self._pending_slot_index, desired_moment.offset),
+        )
+        self._clip_launch_event_id = None
+        # if a clip is active, perform note offs
+        if self._active_slot_index is not None:
+            self.slots[self._active_slot_index].clip._is_playing = False
+            midi_messages = [
+                NoteOffMessage(pitch=pitch) for pitch in self._active_notes
+            ]
+            if midi_messages:
+                await self.perform(midi_messages, moment=desired_moment)
+        # if pending clip is null-ish, null out variables
+        if (
+            self._pending_slot_index is None
+            or (
+                self._pending_slot_index is not None
+                and not (0 <= self._pending_slot_index < len(self.slots))
             )
-            self._clip_launch_event_id = None
-            # if a clip is active, perform note offs
-            if self._active_slot_index is not None:
-                self.slots[self._active_slot_index].clip._is_playing = False
-                midi_messages = [
-                    NoteOffMessage(pitch=pitch) for pitch in self._active_notes
-                ]
-                if midi_messages:
-                    self.perform(midi_messages, moment=desired_moment)
-            # if pending clip is null-ish, null out variables
-            if (
-                self._pending_slot_index is None
-                or (
-                    self._pending_slot_index is not None
-                    and not (0 <= self._pending_slot_index < len(self.slots))
-                )
-                or self.slots[self._pending_slot_index].clip is None
-            ):
-                self._active_slot_start_delta = None
-                self._active_slot_index = None
-                self._pending_slot_index = None
-                self._debug_tree(self, "Launch/CB", suffix="Bailing")
-                return
-            # set variables to new clip
-            self._active_slot_index = self._pending_slot_index
-            self._active_slot_start_delta = desired_moment.offset
-            self.slots[self._active_slot_index].clip._is_playing = True
-            # schedule perform callback
-            self.transport._clock.cancel(self._clip_launch_event_id)
-            self._clip_perform_event_id = self.transport._clock.schedule(
-                self._clip_perform_callback,
-                schedule_at=desired_moment.offset,
-                event_type=self.transport.EventType.CLIP_PERFORM,
-            )
+            or self.slots[self._pending_slot_index].clip is None
+        ):
+            self._active_slot_start_delta = None
+            self._active_slot_index = None
+            self._pending_slot_index = None
+            self._debug_tree(self, "Launch/CB", suffix="Bailing")
+            return
+        # set variables to new clip
+        self._active_slot_index = self._pending_slot_index
+        self._active_slot_start_delta = desired_moment.offset
+        self.slots[self._active_slot_index].clip._is_playing = True
+        # schedule perform callback
+        self.transport._clock.cancel(self._clip_launch_event_id)
+        self._clip_perform_event_id = self.transport._clock.schedule(
+            self._clip_perform_callback,
+            schedule_at=desired_moment.offset,
+            event_type=self.transport.EventType.CLIP_PERFORM,
+        )
 
     async def _clip_perform_callback(self, current_moment, desired_moment, event):
-        async with self.lock([self]):
-            self._debug_tree(self, "Perform/CB", suffix=str(self._active_slot_index))
-            if self._active_slot_index is None:
-                return None
-            clip = self.slots[self._active_slot_index].clip
-            note_moment = clip.at(
-                desired_moment.offset, start_delta=self._active_slot_start_delta
-            )
-            active_notes = sorted(self._active_notes)
-            midi_messages = []
-            for midi_message in note_moment.note_off_messages:
-                midi_messages.append(midi_message)
-                if midi_message.pitch in active_notes:
-                    active_notes.remove(midi_message.pitch)
-            overlap_pitches = set(_.pitch for _ in note_moment.overlap_notes or [])
-            for active_note in active_notes:
-                if active_note not in overlap_pitches:
-                    midi_messages.append(NoteOffMessage(pitch=active_note))
-            midi_messages.extend(note_moment.note_on_messages)
-            if midi_messages:
-                self.perform(midi_messages, desired_moment)
-            if note_moment.next_offset is None:
-                return None
-            return note_moment.next_offset - desired_moment.offset
+        self._debug_tree(self, "Perform/CB", suffix=str(self._active_slot_index))
+        if self._active_slot_index is None:
+            return None
+        clip = self.slots[self._active_slot_index].clip
+        note_moment = clip.at(
+            desired_moment.offset, start_delta=self._active_slot_start_delta
+        )
+        active_notes = sorted(self._active_notes)
+        midi_messages = []
+        for midi_message in note_moment.note_off_messages:
+            midi_messages.append(midi_message)
+            if midi_message.pitch in active_notes:
+                active_notes.remove(midi_message.pitch)
+        overlap_pitches = set(_.pitch for _ in note_moment.overlap_notes or [])
+        for active_note in active_notes:
+            if active_note not in overlap_pitches:
+                midi_messages.append(NoteOffMessage(pitch=active_note))
+        midi_messages.extend(note_moment.note_on_messages)
+        if midi_messages:
+            await self.perform(midi_messages, desired_moment)
+        if note_moment.next_offset is None:
+            return None
+        return note_moment.next_offset - desired_moment.offset
 
     async def _fire(self, slot_index, quantization=None):
         if not self.application:

@@ -6,12 +6,14 @@ from supriya.ugens import DC, Linen
 from tloen.core import Application, AudioEffect, RackDevice
 
 
+"""
 @pytest.fixture(autouse=True)
 def logger(caplog):
     import logging
 
     caplog.set_level(logging.DEBUG, logger="supriya.osc")
     caplog.set_level(logging.DEBUG, logger="supriya.server")
+"""
 
 
 @pytest.fixture
