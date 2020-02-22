@@ -4,7 +4,13 @@ import pytest
 from supriya.synthdefs import SynthDefCompiler, SynthDefFactory
 from uqbar.strings import normalize
 
-from tloen.core import Application, AudioEffect, DeviceIn, DeviceOut, Instrument
+from tloen.core import (
+    Application,
+    AudioEffect,
+    DeviceIn,
+    DeviceOut,
+    Instrument,
+)
 
 
 @pytest.fixture
@@ -89,7 +95,17 @@ async def test_AudioEffect_3(synthdef_factory):
         ["/g_new", 1046, 1, 1044],
         ["/s_new", synthdef.anonymous_name, 1047, 0, 1046, "out", 28.0],
         ["/s_new", "mixer/patch[replace]/2x2", 1048, 0, 1044, "in_", 18.0, "out", 28.0],
-        ["/s_new", "mixer/patch[hard,mix]/2x2", 1049, 1, 1044, "in_", 28.0, "out", 18.0],
+        [
+            "/s_new",
+            "mixer/patch[hard,mix]/2x2",
+            1049,
+            1,
+            1044,
+            "in_",
+            28.0,
+            "out",
+            18.0,
+        ],
     ]
     assert message.to_list() == [
         None,
@@ -135,8 +151,28 @@ async def test_AudioEffect_4(synthdef_factory):
             ["/g_new", 1051, 0, 1050],
             ["/g_new", 1052, 1, 1050],
             ["/s_new", synthdef.anonymous_name, 1053, 0, 1052, "out", 30.0],
-            ["/s_new", "mixer/patch[replace]/2x2", 1054, 0, 1050, "in_", 18.0, "out", 30.0],
-            ["/s_new", "mixer/patch[hard,mix]/2x2", 1055, 1, 1050, "in_", 30.0, "out", 18.0],
+            [
+                "/s_new",
+                "mixer/patch[replace]/2x2",
+                1054,
+                0,
+                1050,
+                "in_",
+                18.0,
+                "out",
+                30.0,
+            ],
+            [
+                "/s_new",
+                "mixer/patch[hard,mix]/2x2",
+                1055,
+                1,
+                1050,
+                "in_",
+                30.0,
+                "out",
+                18.0,
+            ],
         ],
     ]
     await asyncio.sleep(0.1)

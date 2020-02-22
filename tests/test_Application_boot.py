@@ -19,7 +19,9 @@ async def test_boot_1():
     application = Application()
     context = await application.add_context()
     await application.boot()
-    await asyncio.sleep(0.01)  # wait one cycle because node creation waits on synthdef loading
+    await asyncio.sleep(
+        0.01
+    )  # wait one cycle because node creation waits on synthdef loading
     assert application.status == Application.Status.REALTIME
     assert isinstance(context.provider, RealtimeProvider)
     assert context.provider.server.is_running
@@ -80,7 +82,9 @@ async def test_boot_2():
     group_track = await context.add_track()
     await group_track.add_track()
     await application.boot()
-    await asyncio.sleep(0.01)  # wait one cycle because node creation waits on synthdef loading
+    await asyncio.sleep(
+        0.01
+    )  # wait one cycle because node creation waits on synthdef loading
     assert str(await context.provider.server.query()) == normalize(
         """
         NODE TREE 0 group

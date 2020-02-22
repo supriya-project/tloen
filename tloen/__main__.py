@@ -1,11 +1,9 @@
 import asyncio
 
-from . import core
-from . import tui
+from . import core, tui
 
 
 class Harness:
-
     def __init__(self, loop):
         self.exit_future = loop.create_future()
         self.command_queue = asyncio.Queue()
@@ -21,6 +19,7 @@ class Harness:
             await command.execute(self)
 
 
-loop = asyncio.get_event_loop()
-harness = Harness(loop)
-loop.run_until_complete(harness.run())
+if __name__ == "__main__":
+    loop = asyncio.get_event_loop()
+    harness = Harness(loop)
+    loop.run_until_complete(harness.run())

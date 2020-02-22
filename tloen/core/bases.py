@@ -3,7 +3,7 @@ from contextlib import AsyncExitStack, asynccontextmanager
 from types import MappingProxyType
 from typing import Any, Dict, Mapping, Optional, Set, Union
 
-from supriya.commands import NodeQueryRequest, FailResponse
+from supriya.commands import FailResponse, NodeQueryRequest
 from supriya.enums import AddAction
 from supriya.provider import (
     BusGroupProxy,
@@ -55,9 +55,17 @@ class ApplicationObject(UniqueTreeTuple):
 
     def _applicate(self, new_application):
         self._debug_tree(self, "Applicating", suffix=hex(id(new_application)))
+        if not hasattr(self, "uuid"):
+            return
+        if self.uuid in new_application._registry:
+            raise RuntimeError
+        new_application._registry[self.uuid] = self
 
     def _deapplicate(self, old_application):
         self._debug_tree(self, "Deapplicating", suffix=repr(None))
+        if not hasattr(self, "uuid"):
+            return
+        old_application._registry.pop(self.uuid)
 
     @classmethod
     def _debug_tree(cls, node, prefix, suffix=None):

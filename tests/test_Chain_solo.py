@@ -47,7 +47,9 @@ async def test_levels(chain_mute_solo_application, chain_names, levels):
     ],
 )
 @pytest.mark.asyncio
-async def test_transcript(chain_mute_solo_application, soloed_chain_names, muted_chain_names):
+async def test_transcript(
+    chain_mute_solo_application, soloed_chain_names, muted_chain_names
+):
     await chain_mute_solo_application.boot()
     for soloed_chain_name in soloed_chain_names:
         soloed_chain = chain_mute_solo_application.primary_context[soloed_chain_name]

@@ -1,11 +1,11 @@
+import asyncio
 import enum
-import time
+from uuid import UUID
 from collections import deque
-from threading import RLock
-from typing import Deque, Optional, Tuple
+from types import MappingProxyType
+from typing import Deque, Dict, Mapping, Optional, Tuple
 
 from supriya.nonrealtime import Session
-from supriya.osc import find_free_port
 from supriya.provider import Provider
 from uqbar.containers import UniqueTreeTuple
 
@@ -32,8 +32,8 @@ class Application(UniqueTreeTuple):
     def __init__(self, channel_count=2):
         # non-tree objects
         self._channel_count = int(channel_count)
-        self._lock = RLock()
         self._status = self.Status.OFFLINE
+        self._registry: Dict[UUID, "tloen.core.ApplicationObject"] = {}
         # tree objects
         self._contexts = Container(label="Contexts")
         self._controllers = Container(label="Controllers")
@@ -66,56 +66,45 @@ class Application(UniqueTreeTuple):
     ### PUBLIC METHODS ###
 
     async def add_context(self, *, name=None):
-        with self.lock:
-            if self.status == self.Status.NONREALTIME:
-                raise ValueError
-            context = Context(name=name)
-            self._contexts._append(context)
-            if self.status == self.Status.REALTIME:
-                provider = await Provider.realtime_async(port=find_free_port())
-                async with provider.at():
-                    context._set(provider=provider)
-            return context
+        if self.status == self.Status.NONREALTIME:
+            raise ValueError
+        context = Context(name=name)
+        self._contexts._append(context)
+        if self.status == self.Status.REALTIME:
+            await context._boot()
+        return context
 
     def add_controller(self, *, name=None) -> Controller:
-        with self.lock:
-            controller = Controller(name=name)
-            self._controllers._append(controller)
+        controller = Controller(name=name)
+        self._controllers._append(controller)
         return controller
 
     def add_scene(self, *, name=None) -> Scene:
         from .clips import Slot
         from .tracks import Track
 
-        with self.lock:
-            scene = Scene(name=name)
-            self._scenes._append(scene)
-            tracks: Deque[Track] = deque()
-            for context in self.contexts:
-                tracks.extend(context.tracks)
-            while tracks:
-                track = tracks.pop()
-                if track.tracks:
-                    tracks.extend(track.tracks)
-                while len(track.slots) < len(self.scenes):
-                    track.slots._append(Slot())
+        scene = Scene(name=name)
+        self._scenes._append(scene)
+        tracks: Deque[Track] = deque()
+        for context in self.contexts:
+            tracks.extend(context.tracks)
+        while tracks:
+            track = tracks.pop()
+            if track.tracks:
+                tracks.extend(track.tracks)
+            while len(track.slots) < len(self.scenes):
+                track.slots._append(Slot())
         return scene
 
     async def boot(self):
-        with self.lock:
-            if self.status == self.Status.REALTIME:
-                return
-            elif self.status == self.Status.NONREALTIME:
-                raise ValueError
-            elif not self.contexts:
-                raise ValueError
-            for context in self.contexts:
-                provider = await Provider.realtime_async(port=find_free_port())
-                moment = provider.at()
-                async with moment:
-                    context._set(provider=provider)
-            time.sleep(0.1)  # wait for /done messages
-            self._status = self.Status.REALTIME
+        if self.status == self.Status.REALTIME:
+            return
+        elif self.status == self.Status.NONREALTIME:
+            raise ValueError
+        elif not self.contexts:
+            raise ValueError
+        await asyncio.gather(*(context._boot() for context in self.contexts))
+        self._status = self.Status.REALTIME
         return self
 
     async def flush(self):
@@ -140,76 +129,71 @@ class Application(UniqueTreeTuple):
 
     async def quit(self):
         await self.transport.stop()
-        with self.lock:
-            if self.status == self.Status.OFFLINE:
-                return
-            elif self.status == self.Status.NONREALTIME:
-                raise ValueError
-            for context in self.contexts:
-                provider = context.provider
-                async with provider.at():
-                    context._set(provider=None)
-                if provider is not None:
-                    await provider.server.quit()
-            self._status = self.Status.OFFLINE
+        if self.status == self.Status.OFFLINE:
+            return
+        elif self.status == self.Status.NONREALTIME:
+            raise ValueError
+        for context in self.contexts:
+            provider = context.provider
+            async with provider.at():
+                context._set(provider=None)
+            if provider is not None:
+                await provider.server.quit()
+        self._status = self.Status.OFFLINE
         return self
 
     async def remove_contexts(self, *contexts: Context):
-        with self.lock:
-            if not all(context in self.contexts for context in contexts):
-                raise ValueError
-            for context in contexts:
-                provider = context.provider
-                if provider is not None:
-                    async with provider.at():
-                        self._contexts._remove(context)
-                    await provider.server.quit()
-                else:
+        if not all(context in self.contexts for context in contexts):
+            raise ValueError
+        for context in contexts:
+            provider = context.provider
+            if provider is not None:
+                async with provider.at():
                     self._contexts._remove(context)
-            if not len(self):
-                self._status = self.Status.OFFLINE
+                await provider.server.quit()
+            else:
+                self._contexts._remove(context)
+        if not len(self):
+            self._status = self.Status.OFFLINE
 
     def remove_controllers(self, *controllers: Controller):
-        with self.lock:
-            if not all(controller in self.controllers for controller in controllers):
-                raise ValueError
-            for controller in controllers:
-                self._controllers._remove(controller)
+        if not all(controller in self.controllers for controller in controllers):
+            raise ValueError
+        for controller in controllers:
+            self._controllers._remove(controller)
 
     def remove_scenes(self, *scenes: Scene):
         from .tracks import Track
 
-        with self.lock:
-            if not all(scene in self.scenes for scene in scenes):
-                raise ValueError
-            indices = sorted(self.scenes.index(scene) for scene in scenes)
-            for scene in scenes:
-                self.scenes._remove(scene)
-            tracks: Deque[Track] = deque()
-            for context in self.contexts:
-                tracks.extend(context.tracks)
-            while tracks:
-                track = tracks.pop()
-                if track.tracks:
-                    tracks.extend(track.tracks)
-                for index in reversed(indices):
-                    track.slots._remove(track.slots[index])
+        if not all(scene in self.scenes for scene in scenes):
+            raise ValueError
+        indices = sorted(self.scenes.index(scene) for scene in scenes)
+        for scene in scenes:
+            self.scenes._remove(scene)
+        tracks: Deque[Track] = deque()
+        for context in self.contexts:
+            tracks.extend(context.tracks)
+        while tracks:
+            track = tracks.pop()
+            if track.tracks:
+                tracks.extend(track.tracks)
+            for index in reversed(indices):
+                track.slots._remove(track.slots[index])
 
     async def render(self) -> Session:
-        with self.lock:
-            if self.status != self.Status.OFFLINE:
-                raise ValueError
-            self._status == self.Status.NONREALTIME
-            provider = Provider.nonrealtime()
-            with provider.at():
-                for context in self.contexts:
-                    context._set(provider=provider)
-            # Magic happens here
-            with provider.at(provider.session.duration or 10):
-                for context in self.contexts:
-                    context._set(provider=None)
-            self._status = self.Status.OFFLINE
-            return provider.session
+        if self.status != self.Status.OFFLINE:
+            raise ValueError
+        self._status == self.Status.NONREALTIME
+        provider = Provider.nonrealtime()
+        with provider.at():
+            for context in self.contexts:
+                context._set(provider=provider)
+        # Magic happens here
+        with provider.at(provider.session.duration or 10):
+            for context in self.contexts:
+                context._set(provider=None)
+        self._status = self.Status.OFFLINE
+        return provider.session
 
     def serialize(self):
         return {
@@ -222,15 +206,14 @@ class Application(UniqueTreeTuple):
         }
 
     async def set_channel_count(self, channel_count: int):
-        with self.lock:
-            assert 1 <= channel_count <= 8
-            self._channel_count = int(channel_count)
-            for context in self.contexts:
-                if context.provider:
-                    async with context.provider.at():
-                        context._reconcile()
-                else:
+        assert 1 <= channel_count <= 8
+        self._channel_count = int(channel_count)
+        for context in self.contexts:
+            if context.provider:
+                async with context.provider.at():
                     context._reconcile()
+            else:
+                context._reconcile()
 
     ### PUBLIC PROPERTIES ###
 
@@ -247,10 +230,6 @@ class Application(UniqueTreeTuple):
         return self._controllers
 
     @property
-    def lock(self) -> RLock:
-        return self._lock
-
-    @property
     def parent(self) -> None:
         return None
 
@@ -259,6 +238,10 @@ class Application(UniqueTreeTuple):
         if not self.contexts:
             return None
         return self.contexts[0]
+
+    @property
+    def registry(self) -> Mapping[UUID, "tloen.core.ApplicationObject"]:
+        return MappingProxyType(self._registry)
 
     @property
     def scenes(self):

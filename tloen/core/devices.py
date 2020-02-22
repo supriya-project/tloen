@@ -323,7 +323,9 @@ class DeviceObject(Allocatable):
             container.devices._mutate(slice(position, position), [self])
 
     async def perform(self, midi_messages, moment=None):
-        async with self.lock([self], seconds=moment.seconds if moment is not None else None):
+        async with self.lock(
+            [self], seconds=moment.seconds if moment is not None else None
+        ):
             return self._perform_loop(moment, self._perform, midi_messages)
 
     def serialize(self):

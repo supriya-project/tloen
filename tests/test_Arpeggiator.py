@@ -1,5 +1,5 @@
-import logging
 import asyncio
+import logging
 
 import pytest
 from supriya.assets.synthdefs import default

@@ -1,6 +1,7 @@
 import asyncio
 
 import pytest
+from supriya.typing import Default
 
 from tloen.core import Application, AudioEffect, Track
 
@@ -50,7 +51,9 @@ async def test_levels(track_mute_solo_application, track_names, levels):
     ],
 )
 @pytest.mark.asyncio
-async def test_transcript(track_mute_solo_application, soloed_track_names, muted_track_names):
+async def test_transcript(
+    track_mute_solo_application, soloed_track_names, muted_track_names
+):
     await track_mute_solo_application.boot()
     for soloed_track_name in soloed_track_names:
         soloed_track = track_mute_solo_application.primary_context[soloed_track_name]
@@ -162,6 +165,7 @@ async def test_move(dc_index_synthdef_factory):
     await asyncio.sleep(0.2)
     assert context.master_track.rms_levels["input"] == (1.0, 0.0)
     track_two = Track(name="two")
+    await track_two.add_send(Default())
     await track_two.add_device(
         AudioEffect, synthdef=dc_index_synthdef_factory, synthdef_kwargs=dict(index=1)
     )

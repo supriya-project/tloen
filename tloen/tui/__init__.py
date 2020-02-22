@@ -3,7 +3,6 @@ from prompt_toolkit.key_binding import KeyBindings
 
 from .. import commands
 
-
 key_bindings = KeyBindings()
 
 
@@ -23,9 +22,6 @@ def _(event):
 
 
 def create_application(command_queue):
-    application = Application(
-        full_screen=True,
-        key_bindings=key_bindings,
-    )
+    application = Application(full_screen=True, key_bindings=key_bindings,)
     application.command_queue = command_queue
     return application

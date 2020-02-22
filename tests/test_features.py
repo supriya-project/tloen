@@ -1,5 +1,4 @@
 import pytest
-
 from uqbar.strings import normalize
 
 

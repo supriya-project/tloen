@@ -1,6 +1,6 @@
 import asyncio
-import pytest
 
+import pytest
 from uqbar.strings import normalize
 
 from tloen.core import Action, Allocatable, Parameter

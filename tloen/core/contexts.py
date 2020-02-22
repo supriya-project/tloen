@@ -1,9 +1,11 @@
 from typing import Optional
 from uuid import UUID, uuid4
-from supriya.typing import Default
 
 from supriya.enums import AddAction
+from supriya.osc import find_free_port
+from supriya.provider import Provider
 from supriya.querytree import QueryTreeGroup
+from supriya.typing import Default
 
 import tloen.core  # noqa
 
@@ -52,6 +54,11 @@ class Context(Allocatable, Mixer):
             target_node=target_node, add_action=add_action, name=self.label
         )
 
+    async def _boot(self):
+        provider = await Provider.realtime_async(port=find_free_port())
+        async with provider.at(wait=True):
+            self._set(provider=provider)
+
     def _cleanup(self):
         Track._update_activation(self)
 
@@ -77,7 +84,9 @@ class Context(Allocatable, Mixer):
         self._debug_tree(
             self, "Perform", suffix=repr([type(_).__name__ for _ in midi_messages])
         )
-        async with self.lock([self], seconds=moment.seconds if moment is not None else None):
+        async with self.lock(
+            [self], seconds=moment.seconds if moment is not None else None
+        ):
             for track in self.recurse(prototype=Track):
                 await track.perform(midi_messages, moment=moment)
 

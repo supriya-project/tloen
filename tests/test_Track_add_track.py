@@ -71,7 +71,17 @@ async def test_3():
         None,
         [
             ["/g_new", 1059, 1, 1008],
-            ["/s_new", "mixer/patch[fb,gain]/2x2", 1060, 1, 1059, "in_", 32.0, "out", 34.0],
+            [
+                "/s_new",
+                "mixer/patch[fb,gain]/2x2",
+                1060,
+                1,
+                1059,
+                "in_",
+                32.0,
+                "out",
+                34.0,
+            ],
             ["/s_new", "mixer/levels/2", 1061, 1, 1059, "out", 34.0],
             ["/s_new", "mixer/levels/2", 1062, 1, 1059, "out", 34.0],
             [
@@ -96,7 +106,17 @@ async def test_3():
             ["/g_new", 1070, 3, 1061],
             ["/g_new", 1071, 2, 1063],
             ["/g_new", 1072, 3, 1063],
-            ["/s_new", "mixer/patch[gain]/2x2", 1073, 0, 1072, "in_", 34.0, "out", 18.0],
+            [
+                "/s_new",
+                "mixer/patch[gain]/2x2",
+                1073,
+                0,
+                1072,
+                "in_",
+                34.0,
+                "out",
+                18.0,
+            ],
             ["/c_set", 7, 0.0, 8, 0.0],
         ],
     ]

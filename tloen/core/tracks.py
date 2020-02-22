@@ -294,7 +294,9 @@ class TrackObject(Allocatable):
         self._debug_tree(
             self, "Perform", suffix=repr([type(_).__name__ for _ in midi_messages])
         )
-        async with self.lock([self], seconds=moment.seconds if moment is not None else None):
+        async with self.lock(
+            [self], seconds=moment.seconds if moment is not None else None
+        ):
             for midi_message in midi_messages:
                 if isinstance(midi_message, NoteOnMessage):
                     self._active_notes.add(midi_message.pitch)
