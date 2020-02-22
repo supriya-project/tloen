@@ -1,6 +1,6 @@
 import pytest
 
-from tloen.core import Application, Context
+from tloen.domain import Application, Context
 
 
 @pytest.mark.asyncio

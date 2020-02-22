@@ -3,7 +3,7 @@ import time
 import pytest
 from supriya.realtime import BusGroup, Server, Synth
 
-from tloen.core.sends import Send
+from tloen.domain.sends import Send
 
 
 @pytest.fixture

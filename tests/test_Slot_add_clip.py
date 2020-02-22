@@ -1,6 +1,6 @@
 import pytest
 
-from tloen.core import Application, Clip
+from tloen.domain import Application, Clip
 
 
 @pytest.mark.asyncio

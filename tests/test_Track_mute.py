@@ -2,7 +2,7 @@ import asyncio
 
 import pytest
 
-from tloen.core import Application, AudioEffect, Track
+from tloen.domain import Application, AudioEffect, Track
 
 
 @pytest.mark.parametrize(

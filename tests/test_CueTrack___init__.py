@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from tloen.core import CueTrack, Target
+from tloen.domain import CueTrack, Target
 
 
 def test_1():

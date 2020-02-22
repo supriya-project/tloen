@@ -1,7 +1,7 @@
 import pytest
 from uqbar.strings import normalize
 
-from tloen.core import Application
+from tloen.domain import Application
 
 
 @pytest.mark.asyncio

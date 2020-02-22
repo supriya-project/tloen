@@ -3,7 +3,7 @@ from typing import Callable, Generator, Optional, Sequence, Tuple
 from supriya.enums import AddAction, CalculationRate
 from supriya.typing import Default
 
-import tloen.core  # noqa
+import tloen.domain  # noqa
 
 from .bases import Allocatable, AllocatableContainer, Mixer
 from .devices import DeviceObject

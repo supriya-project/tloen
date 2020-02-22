@@ -3,6 +3,7 @@ from typing import Dict, Set, Union
 
 from supriya.clock import AsyncTempoClock
 
+from .. import events
 from .bases import ApplicationObject
 from .parameters import Action, Float, Parameter, ParameterGroup
 
@@ -39,6 +40,7 @@ class Transport(ApplicationObject):
         self._clock = AsyncTempoClock()
         self._dependencies: Set[ApplicationObject] = set()
         self._mutate(slice(None), [self._parameter_group])
+        self._tick_event_id = None
 
     ### PRIVATE METHODS ###
 
@@ -49,6 +51,14 @@ class Transport(ApplicationObject):
 
     def _set_tempo(self, beats_per_minute):
         self._clock.change(beats_per_minute=beats_per_minute)
+
+    def _tick_callback(self, current_moment, desired_moment, event):
+        self.application.pubsub.publish(events.TransportTicked(
+            desired_moment.measure_offset,
+            desired_moment.time_signature[0],
+            desired_moment.time_signature[1],
+        ))
+        return (desired_moment.time_signature[0] / desired_moment.time_signature[1]) / 4
 
     ### PUBLIC METHODS ###
 
@@ -90,9 +100,11 @@ class Transport(ApplicationObject):
 
     async def start(self):
         async with self.lock([self]):
+            self._tick_event_id = self.cue(self._tick_callback)
             for dependency in self._dependencies:
                 dependency._start()
             await self._clock.start()
+        self.application.pubsub.publish(events.TransportStarted())
 
     async def stop(self):
         await self._clock.stop()
@@ -100,8 +112,14 @@ class Transport(ApplicationObject):
             for dependency in self._dependencies:
                 dependency._stop()
             await self.application.flush()
+            self.cancel(self._tick_event_id)
+        self.application.pubsub.publish(events.TransportStopped())
 
     ### PUBLIC PROPERTIES ###
+
+    @property
+    def clock(self):
+        return self._clock
 
     @property
     def is_running(self):

@@ -3,7 +3,7 @@ import asyncio
 import pytest
 from supriya.synthdefs import SynthDefFactory
 
-from tloen.core import Application, AudioEffect
+from tloen.domain import Application, AudioEffect
 
 
 @pytest.fixture

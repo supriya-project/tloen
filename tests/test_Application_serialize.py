@@ -2,7 +2,7 @@ import pytest
 import yaml
 from uqbar.strings import normalize
 
-from tloen.core import Application, Arpeggiator, Instrument, RackDevice
+from tloen.domain import Application, Arpeggiator, Instrument, RackDevice
 
 
 @pytest.mark.asyncio

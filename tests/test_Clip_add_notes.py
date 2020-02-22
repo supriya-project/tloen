@@ -1,4 +1,4 @@
-from tloen.core import Clip, Note
+from tloen.domain import Clip, Note
 
 
 def test_1():

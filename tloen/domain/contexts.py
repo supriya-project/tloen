@@ -7,7 +7,7 @@ from supriya.provider import Provider
 from supriya.querytree import QueryTreeGroup
 from supriya.typing import Default
 
-import tloen.core  # noqa
+import tloen.domain  # noqa
 
 from .bases import Allocatable, Mixer
 from .sends import DirectOut
@@ -76,7 +76,7 @@ class Context(Allocatable, Mixer):
             if self.parent:
                 await self.parent.remove_contexts(self)
 
-    async def move(self, container: "tloen.core.Application", position: int):
+    async def move(self, container: "tloen.domain.Application", position: int):
         async with self.lock([self, container]):
             container._contexts._mutate(slice(position, position), [self])
 
@@ -105,7 +105,7 @@ class Context(Allocatable, Mixer):
             ],
         ).annotate(self.provider.annotation_map)
 
-    async def remove_tracks(self, *tracks: "tloen.core.Track"):
+    async def remove_tracks(self, *tracks: "tloen.domain.Track"):
         async with self.lock([self, *tracks]):
             if not all(track in self.tracks for track in tracks):
                 raise ValueError

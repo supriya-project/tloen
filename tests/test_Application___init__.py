@@ -1,4 +1,4 @@
-from tloen.core import Application
+from tloen.domain import Application
 
 
 def test_1():

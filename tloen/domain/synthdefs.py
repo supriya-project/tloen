@@ -222,7 +222,7 @@ def build_peak_rms_synthdef(channel_count):
 
     ::
 
-        >>> from tloen.core import synthdefs
+        >>> from tloen.domain import synthdefs
         >>> synthdef = synthdefs.build_peak_rms_synthdef(channel_count=2)
         >>> print(synthdef)
         synthdef:

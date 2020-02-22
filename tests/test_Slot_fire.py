@@ -4,14 +4,14 @@ import logging
 import pytest
 from supriya.clock import Moment
 
-from tloen.core import Application, Instrument, Note
-from tloen.core.midi import NoteOffMessage, NoteOnMessage
+from tloen.domain import Application, Instrument, Note
+from tloen.domain.midi import NoteOffMessage, NoteOnMessage
 
 
 @pytest.fixture(autouse=True)
 def logger(caplog):
     caplog.set_level(logging.DEBUG, logger="supriya.clock")
-    caplog.set_level(logging.DEBUG, logger="tloen.core")
+    caplog.set_level(logging.DEBUG, logger="tloen.domain")
 
 
 @pytest.fixture

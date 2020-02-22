@@ -9,8 +9,9 @@ from supriya.nonrealtime import Session
 from supriya.provider import Provider
 from uqbar.containers import UniqueTreeTuple
 
-import tloen.core  # noqa
+import tloen.domain  # noqa
 
+from ..pubsub import PubSub
 from .bases import Container
 from .clips import Scene
 from .contexts import Context
@@ -29,11 +30,12 @@ class Application(UniqueTreeTuple):
 
     ### INITIALIZER ###
 
-    def __init__(self, channel_count=2):
+    def __init__(self, channel_count=2, pubsub=None):
         # non-tree objects
         self._channel_count = int(channel_count)
+        self._pubsub = pubsub or PubSub()
         self._status = self.Status.OFFLINE
-        self._registry: Dict[UUID, "tloen.core.ApplicationObject"] = {}
+        self._registry: Dict[UUID, "tloen.domain.ApplicationObject"] = {}
         # tree objects
         self._contexts = Container(label="Contexts")
         self._controllers = Container(label="Controllers")
@@ -111,8 +113,8 @@ class Application(UniqueTreeTuple):
         pass
 
     @classmethod
-    async def new(cls, context_count=1, track_count=4, scene_count=8):
-        application = cls()
+    async def new(cls, context_count=1, track_count=4, scene_count=8, **kwargs):
+        application = cls(**kwargs)
         for _ in range(context_count):
             context = await application.add_context()
             for _ in range(track_count):
@@ -240,7 +242,7 @@ class Application(UniqueTreeTuple):
         return self.contexts[0]
 
     @property
-    def registry(self) -> Mapping[UUID, "tloen.core.ApplicationObject"]:
+    def registry(self) -> Mapping[UUID, "tloen.domain.ApplicationObject"]:
         return MappingProxyType(self._registry)
 
     @property

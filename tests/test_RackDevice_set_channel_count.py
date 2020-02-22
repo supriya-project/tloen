@@ -3,7 +3,7 @@ import asyncio
 import pytest
 from uqbar.strings import normalize
 
-from tloen.core import Action, Allocatable, Parameter
+from tloen.domain import Action, Allocatable, Parameter
 
 
 @pytest.mark.asyncio

@@ -17,9 +17,9 @@ from supriya.querytree import QueryTreeGroup, QueryTreeSynth
 from supriya.typing import Missing
 from uqbar.containers import UniqueTreeTuple
 
-import tloen.core  # noqa
+import tloen.domain  # noqa
 
-logger = logging.getLogger("tloen.core")
+logger = logging.getLogger("tloen.domain")
 
 
 class ApplicationObject(UniqueTreeTuple):
@@ -27,7 +27,7 @@ class ApplicationObject(UniqueTreeTuple):
     ### INITIALIZER ###
 
     def __init__(self, *, name=None):
-        self._application: Optional["tloen.core.Application"] = None
+        self._application: Optional["tloen.domain.Application"] = None
         UniqueTreeTuple.__init__(self, name=name)
         self._cached_state = self._get_state()
 
@@ -113,7 +113,7 @@ class ApplicationObject(UniqueTreeTuple):
 
     def _set(
         self,
-        application: Optional[Union[Missing, "tloen.core.Application"]] = Missing(),
+        application: Optional[Union[Missing, "tloen.domain.Application"]] = Missing(),
         **kwargs,
     ):
         if not isinstance(application, Missing):
@@ -160,7 +160,7 @@ class ApplicationObject(UniqueTreeTuple):
     ### PUBLIC PROPERTIES ###
 
     @property
-    def application(self) -> Optional["tloen.core.Application"]:
+    def application(self) -> Optional["tloen.domain.Application"]:
         return self._application
 
     @property
@@ -168,7 +168,7 @@ class ApplicationObject(UniqueTreeTuple):
         return MappingProxyType(self._cached_state)
 
     @property
-    def context(self) -> Optional["tloen.core.Context"]:
+    def context(self) -> Optional["tloen.domain.Context"]:
         from .contexts import Context
 
         for parent in self.parentage:
@@ -322,7 +322,7 @@ class Allocatable(ApplicationObject):
 
     def _set(
         self,
-        application: Optional[Union[Missing, "tloen.core.Application"]] = Missing(),
+        application: Optional[Union[Missing, "tloen.domain.Application"]] = Missing(),
         channel_count: Optional[Union[Missing, int]] = Missing(),
         provider: Optional[Union[Missing, Provider]] = Missing(),
         target_node: Optional[NodeProxy] = None,

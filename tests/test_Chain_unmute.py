@@ -2,7 +2,7 @@ import asyncio
 
 import pytest
 
-from tloen.core import Application, AudioEffect, RackDevice
+from tloen.domain import Application, AudioEffect, RackDevice
 
 
 @pytest.mark.asyncio

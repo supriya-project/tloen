@@ -4,7 +4,7 @@ import pytest
 from supriya.synthdefs import SynthDefCompiler, SynthDefFactory
 from uqbar.strings import normalize
 
-from tloen.core import (
+from tloen.domain import (
     Application,
     AudioEffect,
     DeviceIn,

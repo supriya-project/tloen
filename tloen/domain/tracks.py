@@ -6,7 +6,7 @@ from uuid import UUID, uuid4
 from supriya.enums import AddAction, CalculationRate
 from supriya.typing import Default
 
-import tloen.core  # noqa
+import tloen.domain  # noqa
 
 from .bases import Allocatable, AllocatableContainer, Container, Mixer
 from .clips import Slot
@@ -795,8 +795,8 @@ class TrackContainer(AllocatableContainer):
         return items
 
     @property
-    def mixer(self) -> Optional["tloen.core.Context"]:
+    def mixer(self) -> Optional["tloen.domain.Context"]:
         for parent in self.parentage:
-            if isinstance(parent, tloen.core.Context):
+            if isinstance(parent, tloen.domain.Context):
                 return parent
         return None

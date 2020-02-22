@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from tloen.core import Target, Track
+from tloen.domain import Target, Track
 
 
 def test_1():

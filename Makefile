@@ -17,10 +17,10 @@ build:
 
 clean:
 	find . -name '*.pyc' | xargs rm
+	find . -name '__pycache__' | xargs rm -Rif
 	rm -Rif *.egg-info/
 	rm -Rif .*cache/
 	rm -Rif .tox/
-	rm -Rif __pycache__
 	rm -Rif build/
 	rm -Rif dist/
 	rm -Rif htmlcov/

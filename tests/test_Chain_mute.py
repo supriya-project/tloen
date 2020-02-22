@@ -2,7 +2,7 @@ import asyncio
 
 import pytest
 
-from tloen.core import Chain
+from tloen.domain import Chain
 
 
 @pytest.mark.parametrize(

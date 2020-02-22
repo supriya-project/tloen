@@ -1,6 +1,6 @@
 import pytest
 
-from tloen.core import Application, Chain, RackDevice
+from tloen.domain import Application, Chain, RackDevice
 
 
 @pytest.mark.asyncio

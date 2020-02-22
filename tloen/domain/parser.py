@@ -5,7 +5,7 @@ Parses LilyPond-like syntax into a clip.
 
 ::
 
-    >>> from tloen.core.parser import parse
+    >>> from tloen.domain.parser import parse
 
 ::
 
