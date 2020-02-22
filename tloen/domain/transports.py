@@ -53,11 +53,13 @@ class Transport(ApplicationObject):
         self._clock.change(beats_per_minute=beats_per_minute)
 
     def _tick_callback(self, current_moment, desired_moment, event):
-        self.application.pubsub.publish(events.TransportTicked(
-            desired_moment.measure_offset,
-            desired_moment.time_signature[0],
-            desired_moment.time_signature[1],
-        ))
+        self.application.pubsub.publish(
+            events.TransportTicked(
+                desired_moment.measure_offset,
+                desired_moment.time_signature[0],
+                desired_moment.time_signature[1],
+            )
+        )
         return (desired_moment.time_signature[0] / desired_moment.time_signature[1]) / 4
 
     ### PUBLIC METHODS ###

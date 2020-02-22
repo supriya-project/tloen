@@ -2,12 +2,10 @@ from typing import Callable, Dict, List, Type
 
 from .events import Event
 
-
 subscriptions = {}
 
 
 class PubSub:
-
     def __init__(self):
         self.subscriptions: Dict[Type[Event], List[Callable[Event]]] = {}
 

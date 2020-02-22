@@ -2,7 +2,6 @@ from prompt_toolkit.key_binding import KeyBindings
 
 from .. import events
 
-
 key_bindings = KeyBindings()
 
 

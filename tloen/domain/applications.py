@@ -1,9 +1,9 @@
 import asyncio
 import enum
-from uuid import UUID
 from collections import deque
 from types import MappingProxyType
 from typing import Deque, Dict, Mapping, Optional, Tuple
+from uuid import UUID
 
 from supriya.nonrealtime import Session
 from supriya.provider import Provider

@@ -1,11 +1,11 @@
 import asyncio
-from uuid import UUID
 from typing import Any, Dict
+from uuid import UUID
+
 from monome import SerialOsc
 
 
 class Application:
-
     def __init__(self, command_queue: asyncio.Queue):
         self.command_queue = command_queue
         self.registry: Dict[UUID, Any] = {}
