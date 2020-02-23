@@ -1,6 +1,7 @@
 import asyncio
 
 from . import domain, gridui, pubsub, textui
+from .events import ApplicationStatusRefreshed
 
 
 class Harness:
@@ -10,7 +11,7 @@ class Harness:
         self.exit_future = loop.create_future()
         self.pubsub = pubsub.PubSub()
         self.command_queue = asyncio.Queue()
-        self.domain_application = None
+        self.domain_application = domain.Application()
         self.gridui_application = gridui.Application(
             command_queue=self.command_queue, pubsub=self.pubsub
         )
@@ -33,8 +34,9 @@ class Harness:
 
     async def periodic_update(self):
         while not self.exit_future.done():
-            if self.domain_application is not None:
-                self.domain_application.serialize()
+            if self.domain_application.status == domain.Application.Status.REALTIME:
+                status = self.domain_application.primary_context.provider.server.status
+                self.pubsub.publish(ApplicationStatusRefreshed(status))
             await asyncio.sleep(self.update_period)
 
     async def exit(self):

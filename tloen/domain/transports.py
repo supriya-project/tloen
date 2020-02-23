@@ -53,16 +53,16 @@ class Transport(ApplicationObject):
         self._clock.change(beats_per_minute=beats_per_minute)
 
     def _tick_callback(self, current_moment, desired_moment, event):
-        self.application.pubsub.publish(
-            events.TransportTicked(
-                desired_moment.measure_offset,
-                desired_moment.time_signature[0],
-                desired_moment.time_signature[1],
-            )
-        )
+        self.application.pubsub.publish(events.TransportTicked(desired_moment))
         return (desired_moment.time_signature[0] / desired_moment.time_signature[1]) / 4
 
     ### PUBLIC METHODS ###
+
+    def cue(self, *args, **kwargs):
+        self._clock.cue(*args, **kwargs)
+
+    def cancel(self, *args, **kwargs):
+        self._clock.cancel(*args, **kwargs)
 
     async def perform(self, midi_messages):
         if (
@@ -76,9 +76,6 @@ class Transport(ApplicationObject):
         self.schedule(self._application_perform_callback, args=midi_messages)
         if not self.is_running:
             await self.start()
-
-    def cue(self, *args, **kwargs):
-        self._clock.cue(*args, **kwargs)
 
     def schedule(self, *args, **kwargs):
         self._clock.schedule(*args, **kwargs)
@@ -106,7 +103,7 @@ class Transport(ApplicationObject):
             for dependency in self._dependencies:
                 dependency._start()
             await self._clock.start()
-        self.application.pubsub.publish(events.TransportStarted())
+        self.application.pubsub.publish(events.TransportStarted(self.clock.state))
 
     async def stop(self):
         await self._clock.stop()

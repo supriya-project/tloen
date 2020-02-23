@@ -11,6 +11,13 @@ from uqbar.containers import UniqueTreeTuple
 
 import tloen.domain  # noqa
 
+from ..events import (
+    ApplicationBooted,
+    ApplicationBooting,
+    ApplicationQuit,
+    ApplicationQuitting,
+    ApplicationStatusRefreshed,
+)
 from ..pubsub import PubSub
 from .bases import Container
 from .clips import Scene
@@ -104,8 +111,15 @@ class Application(UniqueTreeTuple):
         elif self.status == self.Status.NONREALTIME:
             raise ValueError
         elif not self.contexts:
-            raise ValueError
+            self.status == self.Status.REALTIME
+        self.pubsub.publish(ApplicationBooting())
         await asyncio.gather(*(context._boot() for context in self.contexts))
+        self.pubsub.publish(ApplicationBooted(
+            self.primary_context.provider.server.port,
+        ))
+        self.pubsub.publish(ApplicationStatusRefreshed(
+            self.primary_context.provider.server.status,
+        ))
         self._status = self.Status.REALTIME
         return self
 
@@ -130,18 +144,20 @@ class Application(UniqueTreeTuple):
             await context.perform(midi_messages, moment=moment)
 
     async def quit(self):
-        await self.transport.stop()
         if self.status == self.Status.OFFLINE:
             return
         elif self.status == self.Status.NONREALTIME:
             raise ValueError
+        self._status = self.Status.OFFLINE
+        self.pubsub.publish(ApplicationQuitting())
+        await self.transport.stop()
         for context in self.contexts:
             provider = context.provider
             async with provider.at():
                 context._set(provider=None)
             if provider is not None:
                 await provider.server.quit()
-        self._status = self.Status.OFFLINE
+        self.pubsub.publish(ApplicationQuit())
         return self
 
     async def remove_contexts(self, *contexts: Context):
@@ -240,6 +256,10 @@ class Application(UniqueTreeTuple):
         if not self.contexts:
             return None
         return self.contexts[0]
+
+    @property
+    def pubsub(self):
+        return self._pubsub
 
     @property
     def registry(self) -> Mapping[UUID, "tloen.domain.ApplicationObject"]:
