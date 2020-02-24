@@ -52,19 +52,21 @@ class StatusWidget:
             padding=1,
             padding_char="|",
         )
-        self.container = widgets.Frame(widgets.Box(split))
+        self.container = widgets.Frame(
+            widgets.Box(split), height=3, title="server status",
+        )
 
     @singledispatchmethod
     def handle_event(self, event):
         ...
 
-    @handle_event.register(ApplicationBooted)
+    @handle_event.register
     def _handle_application_booted(self, event: ApplicationBooted):
         self.text["status"] = "booted "
         self.text["port"] = str(event.port)
         application.get_app()._redraw()
 
-    @handle_event.register(ApplicationBooting)
+    @handle_event.register
     def _handle_application_booting(self, event: ApplicationBooting):
         self.text["status"] = "booting"
         application.get_app().invalidate()

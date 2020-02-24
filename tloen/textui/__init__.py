@@ -4,11 +4,12 @@ from uuid import UUID
 
 from prompt_toolkit import Application as PtkApplication
 from prompt_toolkit.key_binding import KeyBindings
-from prompt_toolkit.layout import Layout
+from prompt_toolkit.layout import Layout, HSplit
 
 from .. import events
 from ..pubsub import PubSub
 from .status import StatusWidget
+from .transport import TransportWidget
 
 key_bindings = KeyBindings()
 
@@ -31,12 +32,21 @@ def _exit_to_terminal(event):
     event.app.command_queue.put_nowait(command)
 
 
-@key_bindings.add("space")
-def _start_transport(event):
-    if not event.domain_application.transport.is_running:
-        command = events.StartTransport()
-    else:
-        command = events.StopTransport()
+@key_bindings.add("c-space")
+def _toggle_transport(event):
+    command = events.ToggleTransport()
+    event.app.command_queue.put_nowait(command)
+
+
+@key_bindings.add("c-u")
+def _nudge_transport_tempo_up(event):
+    command = events.NudgeTransportTempoUp()
+    event.app.command_queue.put_nowait(command)
+
+
+@key_bindings.add("c-d")
+def _nudge_transport_tempo_down(event):
+    command = events.NudgeTransportTempoDown()
     event.app.command_queue.put_nowait(command)
 
 
@@ -46,10 +56,11 @@ class Application(PtkApplication):
         self.pubsub = pubsub or PubSub()
         self.registry: Dict[UUID, Any] = {}
         status_widget = StatusWidget(pubsub=self.pubsub)
+        transport_widget = TransportWidget(pubsub=self.pubsub)
         PtkApplication.__init__(
             self,
-            full_screen=True,
+            full_screen=False,
             key_bindings=key_bindings,
-            layout=Layout(container=status_widget,),
+            layout=Layout(container=HSplit([transport_widget, status_widget])),
             **kwargs,
         )

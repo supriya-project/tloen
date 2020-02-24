@@ -54,7 +54,7 @@ class Transport(ApplicationObject):
 
     def _tick_callback(self, current_moment, desired_moment, event):
         self.application.pubsub.publish(events.TransportTicked(desired_moment))
-        return (desired_moment.time_signature[0] / desired_moment.time_signature[1]) / 4
+        return 1 / desired_moment.time_signature[1] / 4
 
     ### PUBLIC METHODS ###
 
@@ -103,7 +103,7 @@ class Transport(ApplicationObject):
             for dependency in self._dependencies:
                 dependency._start()
             await self._clock.start()
-        self.application.pubsub.publish(events.TransportStarted(self.clock.state))
+        self.application.pubsub.publish(events.TransportStarted())
 
     async def stop(self):
         await self._clock.stop()
