@@ -59,8 +59,9 @@ class Application(PtkApplication):
         transport_widget = TransportWidget(pubsub=self.pubsub)
         PtkApplication.__init__(
             self,
-            full_screen=False,
+            full_screen=True,
             key_bindings=key_bindings,
+            min_redraw_interval=0.05,
             layout=Layout(container=HSplit([transport_widget, status_widget])),
             **kwargs,
         )

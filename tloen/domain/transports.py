@@ -58,11 +58,11 @@ class Transport(ApplicationObject):
 
     ### PUBLIC METHODS ###
 
-    def cue(self, *args, **kwargs):
-        self._clock.cue(*args, **kwargs)
+    async def cue(self, *args, **kwargs):
+        return await self._clock.cue(*args, **kwargs)
 
-    def cancel(self, *args, **kwargs):
-        self._clock.cancel(*args, **kwargs)
+    async def cancel(self, *args, **kwargs):
+        return await self._clock.cancel(*args, **kwargs)
 
     async def perform(self, midi_messages):
         if (
@@ -77,8 +77,8 @@ class Transport(ApplicationObject):
         if not self.is_running:
             await self.start()
 
-    def schedule(self, *args, **kwargs):
-        self._clock.schedule(*args, **kwargs)
+    async def schedule(self, *args, **kwargs):
+        return await self._clock.schedule(*args, **kwargs)
 
     def serialize(self):
         return {
@@ -99,7 +99,7 @@ class Transport(ApplicationObject):
 
     async def start(self):
         async with self.lock([self]):
-            self._tick_event_id = self.cue(self._tick_callback)
+            self._tick_event_id = await self.cue(self._tick_callback)
             for dependency in self._dependencies:
                 dependency._start()
             await self._clock.start()
@@ -111,7 +111,7 @@ class Transport(ApplicationObject):
             for dependency in self._dependencies:
                 dependency._stop()
             await self.application.flush()
-            self.cancel(self._tick_event_id)
+            await self.cancel(self._tick_event_id)
         self.application.pubsub.publish(events.TransportStopped())
 
     ### PUBLIC PROPERTIES ###

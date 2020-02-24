@@ -24,6 +24,7 @@ install_requires = [
     "pymonome >= 0.9.0",
     "python-rtmidi",
     "supriya",
+    "urwid >= 2.1.0",
     "wavefile",
 ]
 

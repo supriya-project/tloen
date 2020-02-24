@@ -1,4 +1,7 @@
-from functools import singledispatchmethod
+try:
+    from functools import singledispatchmethod
+except ImportError:
+    from singledispatchmethod import singledispatchmethod
 
 from prompt_toolkit import layout, widgets, application
 
@@ -25,22 +28,21 @@ class TransportWidget:
             "time_signature": " 4 /  4",
             "tick": "1.1.1",
         }
-        split = layout.VSplit(
-            [
-                widgets.Box(layout.Window(control), padding_left=1, padding_right=1)
-                for control in
-                [
-                    layout.FormattedTextControl(lambda: self.text["status"].ljust(8)),
-                    layout.FormattedTextControl(lambda: self.text["tempo"]),
-                    layout.FormattedTextControl(lambda: self.text["time_signature"]),
-                    layout.FormattedTextControl(lambda: self.text["tick"].rjust(8)),
-                ]
-            ],
-            padding=1,
-            padding_char="|",
-        )
         self.container = widgets.Frame(
-            widgets.Box(split), height=3, title="transport",
+            layout.Window(
+                layout.FormattedTextControl(
+                    lambda: " | ".join([
+                        self.text["status"],
+                        self.text["tempo"],
+                        self.text["time_signature"],
+                        self.text["tick"],
+                    ])
+                ),
+                height=1,
+                ignore_content_height=True,
+            ),
+            height=3,
+            title="transport",
         )
 
     @singledispatchmethod

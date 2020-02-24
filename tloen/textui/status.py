@@ -1,4 +1,7 @@
-from functools import singledispatchmethod
+try:
+    from functools import singledispatchmethod
+except ImportError:
+    from singledispatchmethod import singledispatchmethod
 
 from prompt_toolkit import layout, widgets, application
 
@@ -26,34 +29,33 @@ class StatusWidget:
         self.text_defaults = {
             "cpu": "cpu:   0.00% /   0.00%",
             "groups": "g: ....",
-            "port": ".....",
+            "port": ".....".ljust(5),
             "sample_rate": "sr: ...... /   0.000%",
-            "status": "offline",
+            "status": "offline".ljust(8),
             "synthdefs": "d: ....",
             "synths": "s: ....",
             "ugens": "u: .....",
         }
         self.text = self.text_defaults.copy()
-        split = layout.VSplit(
-            [
-                widgets.Box(layout.Window(control), padding_left=1, padding_right=1)
-                for control in
-                [
-                    layout.FormattedTextControl(lambda: self.text["status"].ljust(8)),
-                    layout.FormattedTextControl(lambda: self.text["port"].ljust(5)),
-                    layout.FormattedTextControl(lambda: self.text["cpu"]),
-                    layout.FormattedTextControl(lambda: self.text["sample_rate"]),
-                    layout.FormattedTextControl(lambda: self.text["ugens"]),
-                    layout.FormattedTextControl(lambda: self.text["groups"]),
-                    layout.FormattedTextControl(lambda: self.text["synths"]),
-                    layout.FormattedTextControl(lambda: self.text["synthdefs"]),
-                ]
-            ],
-            padding=1,
-            padding_char="|",
-        )
         self.container = widgets.Frame(
-            widgets.Box(split), height=3, title="server status",
+            layout.Window(
+                layout.FormattedTextControl(
+                    lambda: " | ".join([
+                        self.text["status"],
+                        self.text["port"],
+                        self.text["cpu"],
+                        self.text["sample_rate"],
+                        self.text["groups"],
+                        self.text["synths"],
+                        self.text["synthdefs"],
+                        self.text["ugens"],
+                    ]),
+                ),
+                height=1,
+                ignore_content_height=True,
+            ),
+            height=3,
+            title="server status",
         )
 
     @singledispatchmethod
@@ -62,13 +64,13 @@ class StatusWidget:
 
     @handle_event.register
     def _handle_application_booted(self, event: ApplicationBooted):
-        self.text["status"] = "booted "
-        self.text["port"] = str(event.port)
-        application.get_app()._redraw()
+        self.text["status"] = "booted".ljust(8)
+        self.text["port"] = str(event.port).ljust(5)
+        application.get_app().invalidate()
 
     @handle_event.register
     def _handle_application_booting(self, event: ApplicationBooting):
-        self.text["status"] = "booting"
+        self.text["status"] = "booting".ljust(8)
         application.get_app().invalidate()
 
     @handle_event.register
@@ -78,7 +80,7 @@ class StatusWidget:
 
     @handle_event.register
     def _handle_application_quitting(self, event: ApplicationQuitting):
-        self.text["status"] = "quitting"
+        self.text["status"] = "quitting".ljust(8)
         application.get_app().invalidate()
 
     @handle_event.register
