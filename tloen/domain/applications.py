@@ -114,12 +114,12 @@ class Application(UniqueTreeTuple):
             self.status == self.Status.REALTIME
         self.pubsub.publish(ApplicationBooting())
         await asyncio.gather(*(context._boot() for context in self.contexts))
-        self.pubsub.publish(ApplicationBooted(
-            self.primary_context.provider.server.port,
-        ))
-        self.pubsub.publish(ApplicationStatusRefreshed(
-            self.primary_context.provider.server.status,
-        ))
+        self.pubsub.publish(
+            ApplicationBooted(self.primary_context.provider.server.port,)
+        )
+        self.pubsub.publish(
+            ApplicationStatusRefreshed(self.primary_context.provider.server.status,)
+        )
         self._status = self.Status.REALTIME
         return self
 

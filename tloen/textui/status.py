@@ -1,9 +1,6 @@
-try:
-    from functools import singledispatchmethod
-except ImportError:
-    from singledispatchmethod import singledispatchmethod
+from functools import singledispatchmethod
 
-from prompt_toolkit import layout, widgets, application
+import urwid
 
 from ..events import (
     ApplicationBooted,
@@ -15,7 +12,7 @@ from ..events import (
 from ..pubsub import PubSub
 
 
-class StatusWidget:
+class StatusWidget(urwid.WidgetWrap):
     def __init__(self, pubsub=None):
         self.pubsub = pubsub or PubSub()
         self.pubsub.subscribe(
@@ -37,26 +34,34 @@ class StatusWidget:
             "ugens": "u: .....",
         }
         self.text = self.text_defaults.copy()
-        self.container = widgets.Frame(
-            layout.Window(
-                layout.FormattedTextControl(
-                    lambda: " | ".join([
-                        self.text["status"],
-                        self.text["port"],
-                        self.text["cpu"],
-                        self.text["sample_rate"],
-                        self.text["groups"],
-                        self.text["synths"],
-                        self.text["synthdefs"],
-                        self.text["ugens"],
-                    ]),
-                ),
-                height=1,
-                ignore_content_height=True,
+        self.text_widget = urwid.Text(self.build_text())
+        self._w = urwid.LineBox(
+            urwid.Padding(
+                self.text_widget,
+                left=1,
+                right=1,
+                width="pack",
             ),
-            height=3,
             title="server status",
+            title_align="right",
         )
+
+    def build_text(self):
+        return " | ".join(
+            [
+                self.text["status"],
+                self.text["port"],
+                self.text["cpu"],
+                self.text["sample_rate"],
+                self.text["groups"],
+                self.text["synths"],
+                self.text["synthdefs"],
+                self.text["ugens"],
+            ]
+        )
+
+    def update_text(self):
+        self.text_widget.set_text(self.build_text())
 
     @singledispatchmethod
     def handle_event(self, event):
@@ -66,22 +71,22 @@ class StatusWidget:
     def _handle_application_booted(self, event: ApplicationBooted):
         self.text["status"] = "booted".ljust(8)
         self.text["port"] = str(event.port).ljust(5)
-        application.get_app().invalidate()
+        self.update_text()
 
     @handle_event.register
     def _handle_application_booting(self, event: ApplicationBooting):
         self.text["status"] = "booting".ljust(8)
-        application.get_app().invalidate()
+        self.update_text()
 
     @handle_event.register
     def _handle_application_quit(self, event: ApplicationQuit):
         self.text.update(self.text_defaults)
-        application.get_app().invalidate()
+        self.update_text()
 
     @handle_event.register
     def _handle_application_quitting(self, event: ApplicationQuitting):
         self.text["status"] = "quitting".ljust(8)
-        application.get_app().invalidate()
+        self.update_text()
 
     @handle_event.register
     def _handle_application_status_refreshed(self, event: ApplicationStatusRefreshed):
@@ -97,7 +102,4 @@ class StatusWidget:
             int(event.status.target_sample_rate),
             (event.status.actual_sample_rate / event.status.target_sample_rate) * 100,
         )
-        application.get_app().invalidate()
-
-    def __pt_container__(self):
-        return self.container
+        self.update_text()

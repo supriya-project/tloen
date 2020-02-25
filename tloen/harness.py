@@ -1,4 +1,5 @@
 import asyncio
+import signal
 
 from . import domain, gridui, pubsub, textui
 from .events import ApplicationStatusRefreshed
@@ -21,10 +22,15 @@ class Harness:
         self.update_period = 0.1
 
     async def run(self):
+        def handler(*args):
+            return True
+
         self.domain_application = await domain.Application.new(
             context_count=1, track_count=4, scene_count=8, pubsub=self.pubsub
         )
         loop = asyncio.get_running_loop()
+        loop.add_signal_handler(signal.SIGINT, handler)
+        loop.add_signal_handler(signal.SIGTSTP, handler)
         loop.create_task(self.gridui_application.run_async())
         loop.create_task(self.textui_application.run_async())
         loop.create_task(self.periodic_update())

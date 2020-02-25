@@ -24,7 +24,6 @@ class SetTransportTempo(Command):
 
 @dataclasses.dataclass
 class NudgeTransportTempoUp(Command):
-
     async def execute(self, harness):
         transport = harness.domain_application.transport
         new_tempo = min(transport.clock.beats_per_minute + 1.0, 1000.0)
@@ -33,7 +32,6 @@ class NudgeTransportTempoUp(Command):
 
 @dataclasses.dataclass
 class NudgeTransportTempoDown(Command):
-
     async def execute(self, harness):
         transport = harness.domain_application.transport
         new_tempo = max(transport.clock.beats_per_minute - 1.0, 1.0)
