@@ -125,6 +125,19 @@ class Context(Allocatable, Mixer):
                     mapping.pop(key)
         return serialized
 
+    @classmethod
+    def deserialize(cls, data):
+        context = cls(
+            channel_count=data["spec"].get("channel_count"),
+            name=data["meta"].get("name"),
+            uuid=UUID(data["meta"]["uuid"]),
+        )
+        # recreate master track
+        # recreate cue track
+        for track_data in data["spec"].get("tracks", []):
+            context.tracks._append(Track.deserialize(track_data))
+        return context
+
     async def set_channel_count(self, channel_count: Optional[int]):
         async with self.lock([self]):
             if channel_count is not None:

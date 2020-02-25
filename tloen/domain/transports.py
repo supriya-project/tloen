@@ -5,7 +5,7 @@ from supriya.clock import AsyncTempoClock
 
 from .. import events
 from .bases import ApplicationObject
-from .parameters import Action, Float, Parameter, ParameterGroup
+from .parameters import Action, Parameter, ParameterGroup
 
 
 class Transport(ApplicationObject):
@@ -28,15 +28,6 @@ class Transport(ApplicationObject):
         ApplicationObject.__init__(self)
         self._parameter_group = ParameterGroup()
         self._parameters: Dict[str, Union[Action, Parameter]] = {}
-        self._add_parameter(Action("start", lambda client: client.start()))
-        self._add_parameter(Action("stop", lambda client: client.stop()))
-        self._add_parameter(
-            Parameter(
-                "tempo",
-                Float(default=120, minimum=1, maximum=1000),
-                callback=lambda client, value: client._set_tempo(value),
-            )
-        )
         self._clock = AsyncTempoClock()
         self._dependencies: Set[ApplicationObject] = set()
         self._mutate(slice(None), [self._parameter_group])
@@ -48,9 +39,6 @@ class Transport(ApplicationObject):
         self, current_moment, desired_moment, event, midi_message
     ):
         await self.application.perform([midi_message], moment=current_moment)
-
-    def _set_tempo(self, beats_per_minute):
-        self._clock.change(beats_per_minute=beats_per_minute)
 
     def _tick_callback(self, current_moment, desired_moment, event):
         self.application.pubsub.publish(events.TransportTicked(desired_moment))
@@ -85,17 +73,20 @@ class Transport(ApplicationObject):
             "kind": type(self).__name__,
             "spec": {
                 "tempo": self._clock.beats_per_minute,
-                "time_signature": "{}/{}".format(*self._clock.time_signature),
+                "time_signature": list(self._clock.time_signature),
             },
         }
 
+    @classmethod
+    async def deserialize(cls, data, transport_object):
+        await transport_object.set_tempo(data["spec"]["tempo"])
+        await transport_object.set_time_signature(*data["spec"]["time_signature"])
+
     async def set_tempo(self, beats_per_minute: float):
-        async with self.lock([self]):
-            self._set_tempo(beats_per_minute)
+        await self._clock.change(beats_per_minute=beats_per_minute)
 
     async def set_time_signature(self, numerator, denominator):
-        async with self.lock([self]):
-            self._clock.change(time_signature=[numerator, denominator])
+        await self._clock.change(time_signature=[numerator, denominator])
 
     async def start(self):
         async with self.lock([self]):

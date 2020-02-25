@@ -223,6 +223,16 @@ class Application(UniqueTreeTuple):
             },
         }
 
+    @classmethod
+    async def deserialize(cls, data):
+        application = cls(channel_count=data["spec"]["channel_count"])
+        await application.transport.deserialize(
+            data["spec"]["transport"], application.transport,
+        )
+        for context_data in data["spec"]["contexts"]:
+            application.contexts._append(Context.deserialize(context_data))
+        return application
+
     async def set_channel_count(self, channel_count: int):
         assert 1 <= channel_count <= 8
         self._channel_count = int(channel_count)

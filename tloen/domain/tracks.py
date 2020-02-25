@@ -717,6 +717,17 @@ class Track(UserTrackObject):
                     mapping.pop(key)
         return serialized
 
+    @classmethod
+    def deserialize(cls, data):
+        track = cls(
+            channel_count=data["spec"].get("channel_count"),
+            name=data["meta"].get("name"),
+            uuid=UUID(data["meta"]["uuid"]),
+        )
+        for track_data in data["spec"].get("tracks", []):
+            track.tracks._append(cls.deserialize(track_data))
+        return track
+
     async def solo(self, exclusive=True):
         from .contexts import Context
 
