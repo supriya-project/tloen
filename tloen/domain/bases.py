@@ -86,9 +86,11 @@ class ApplicationObject(UniqueTreeTuple):
             new_parameter = Parameter.deserialize(parameter_data)
             old_parameter = self.parameters.get(new_parameter.name)
             if old_parameter is not None:
-                new_parameter._is_builtin = old_parameter.is_builtin
-                self._parameter_group._replace(old_parameter, new_parameter)
-            self._parameters[new_parameter.name] = new_parameter
+                old_parameter._value = new_parameter.value
+                old_parameter._uuid = new_parameter.uuid
+            else:
+                self._parameter_group._append(new_parameter)
+                self._parameters[new_parameter.name] = new_parameter
 
     def _get_state(self):
         index = None

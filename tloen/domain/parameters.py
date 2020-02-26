@@ -263,6 +263,7 @@ class Parameter(Allocatable):
             has_bus=data["spec"].get("bussed"),
             spec=Float(),
         )
+        parameter._value = data["spec"]["value"]
         return parameter
 
     async def set_(self, value, *, moment=None):
