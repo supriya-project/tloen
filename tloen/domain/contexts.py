@@ -132,8 +132,12 @@ class Context(Allocatable, Mixer):
             name=data["meta"].get("name"),
             uuid=UUID(data["meta"]["uuid"]),
         )
-        # recreate master track
-        # recreate cue track
+        master_track = MasterTrack.deserialize(data["spec"]["master_track"])
+        cue_track = CueTrack.deserialize(data["spec"]["cue_track"])
+        context._replace(context.master_track, master_track)
+        context._replace(context.cue_track, cue_track)
+        context._master_track = master_track
+        context._cue_track = cue_track
         for track_data in data["spec"].get("tracks", []):
             context.tracks._append(Track.deserialize(track_data))
         return context

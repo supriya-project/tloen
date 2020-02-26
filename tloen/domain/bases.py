@@ -79,6 +79,17 @@ class ApplicationObject(UniqueTreeTuple):
         ]
         logger.debug("".join(parts))
 
+    def _deserialize_parameters(self, parameters_data):
+        from tloen.domain.parameters import Parameter
+
+        for parameter_data in parameters_data:
+            new_parameter = Parameter.deserialize(parameter_data)
+            old_parameter = self.parameters.get(new_parameter.name)
+            if old_parameter is not None:
+                new_parameter._is_builtin = old_parameter.is_builtin
+                self._parameter_group._replace(old_parameter, new_parameter)
+            self._parameters[new_parameter.name] = new_parameter
+
     def _get_state(self):
         index = None
         if self.parent:
@@ -110,6 +121,10 @@ class ApplicationObject(UniqueTreeTuple):
     def _remove(self, node):
         index = self.index(node)
         self._mutate(slice(index, index + 1), [])
+
+    def _replace(self, old_node, new_node):
+        index = self.index(old_node)
+        self._mutate(slice(index, index + 1), [new_node])
 
     def _set(
         self,

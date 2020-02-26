@@ -421,10 +421,22 @@ class CueTrack(TrackObject):
             is_builtin=True,
         )
 
+    @classmethod
+    def deserialize(cls, data):
+        track = cls(uuid=UUID(data["meta"]["uuid"]))
+        track._deserialize_parameters(data["spec"]["parameters"])
+        return track
+
 
 class MasterTrack(TrackObject):
     def __init__(self, *, uuid=None):
         TrackObject.__init__(self, uuid=uuid)
+
+    @classmethod
+    def deserialize(cls, data):
+        track = cls(uuid=UUID(data["meta"]["uuid"]))
+        track._deserialize_parameters(data["spec"]["parameters"])
+        return track
 
 
 class UserTrackObject(TrackObject):
@@ -454,6 +466,16 @@ class UserTrackObject(TrackObject):
             if self.parent is None:
                 raise ValueError
             self.parent._remove(self)
+
+    @classmethod
+    def deserialize(cls, data):
+        track = cls(
+            channel_count=data["spec"].get("channel_count"),
+            name=data["meta"].get("name"),
+            uuid=UUID(data["meta"]["uuid"]),
+        )
+        track._deserialize_parameters(data["spec"]["parameters"])
+        return track
 
     async def duplicate(self):
         async with self.lock([self]):
@@ -719,11 +741,7 @@ class Track(UserTrackObject):
 
     @classmethod
     def deserialize(cls, data):
-        track = cls(
-            channel_count=data["spec"].get("channel_count"),
-            name=data["meta"].get("name"),
-            uuid=UUID(data["meta"]["uuid"]),
-        )
+        track = super().deserialize(data)
         for track_data in data["spec"].get("tracks", []):
             track.tracks._append(cls.deserialize(track_data))
         return track

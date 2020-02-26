@@ -255,6 +255,16 @@ class Parameter(Allocatable):
                     mapping.pop(key)
         return serialized
 
+    @classmethod
+    def deserialize(cls, data):
+        parameter = cls(
+            name=data["meta"].get("name"),
+            uuid=UUID(data["meta"]["uuid"]),
+            has_bus=data["spec"].get("bussed"),
+            spec=Float(),
+        )
+        return parameter
+
     async def set_(self, value, *, moment=None):
         async with self.lock(
             [self], seconds=moment.seconds if moment is not None else None
