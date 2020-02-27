@@ -1,5 +1,4 @@
 import dataclasses
-import threading
 from collections import deque
 from typing import Optional, Tuple
 from uuid import uuid4
@@ -97,7 +96,6 @@ class Clip(ClipObject):
         self._is_looping = is_looping
         self._is_playing = False
         self._interval_tree = IntervalTree()
-        self._lock = threading.RLock()
         self.add_notes(notes or [])
 
     ### SPECIAL METHODS ###
@@ -267,10 +265,6 @@ class Clip(ClipObject):
     @property
     def is_playing(self):
         return self._is_playing
-
-    @property
-    def lock(self):
-        return self._lock
 
     @property
     def notes(self):

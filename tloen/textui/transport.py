@@ -20,12 +20,7 @@ class TransportWidget(urwid.WidgetWrap):
         }
         self.text_widget = urwid.Text(self.build_text())
         self._w = urwid.LineBox(
-            urwid.Padding(
-                self.text_widget,
-                left=1,
-                right=1,
-                width="pack",
-            ),
+            urwid.Padding(self.text_widget, left=1, right=1, width="pack",),
             title="transport",
             title_align="left",
         )

@@ -1,11 +1,11 @@
 import enum
-from typing import Dict, Set, Union
+from typing import Dict, Set
 
 from supriya.clock import AsyncTempoClock
 
 from .. import events
 from .bases import ApplicationObject
-from .parameters import Action, Parameter, ParameterGroup
+from .parameters import Parameter, ParameterGroup
 
 
 class Transport(ApplicationObject):
@@ -27,7 +27,7 @@ class Transport(ApplicationObject):
     def __init__(self):
         ApplicationObject.__init__(self)
         self._parameter_group = ParameterGroup()
-        self._parameters: Dict[str, Union[Action, Parameter]] = {}
+        self._parameters: Dict[str, Parameter] = {}
         self._clock = AsyncTempoClock()
         self._dependencies: Set[ApplicationObject] = set()
         self._mutate(slice(None), [self._parameter_group])

@@ -4,6 +4,7 @@ from supriya import conversions
 from supriya.assets.synthdefs import default
 from supriya.provider import SynthProxy
 from supriya.synthdefs import SynthDef, SynthDefFactory
+from supriya.ugens import PlayBuf
 
 from .devices import AllocatableDevice
 
@@ -15,18 +16,24 @@ class Instrument(AllocatableDevice):
     def __init__(
         self,
         *,
-        synthdef: Union[SynthDef, SynthDefFactory] = None,
         name=None,
         parameter_map=None,
         parameters=None,
+        synthdef: Union[SynthDef, SynthDefFactory] = None,
         synthdef_kwargs=None,
         uuid=None,
     ):
         # TODO: Polyphony Limit
         # TODO: Polyphony Mode
-        AllocatableDevice.__init__(self, name=name, uuid=uuid)
-        self._synthdef = synthdef or default
-        self._synthdef_kwargs = dict(synthdef_kwargs or {})
+        AllocatableDevice.__init__(
+            self,
+            name=name,
+            parameters=parameters,
+            parameter_map=parameter_map,
+            synthdef=synthdef,
+            synthdef_kwargs=synthdef_kwargs,
+            uuid=uuid,
+        )
         self._notes_to_synths: Dict[float, SynthProxy] = {}
 
     ### PRIVATE METHODS ###
@@ -56,12 +63,38 @@ class Instrument(AllocatableDevice):
         )
         return []
 
-    ### PUBLIC PROPERTIES ###
 
-    @property
-    def synthdef(self) -> Union[SynthDef, SynthDefFactory]:
-        return self._synthdef
+class BasicSynth:
+    def __init__(self, name=None, uuid=None):
+        Instrument.__init__(
+            name=name, uuid=uuid, synthdef=self.build_synthdef(),
+        )
 
-    @property
-    def synthdef_kwargs(self):
-        return self._synthdef_kwargs
+    def build_synthdef(self):
+        return default
+
+
+class BasicSampler:
+    def __init__(self, name=None, uuid=None):
+        Instrument.__init__(
+            name=name,
+            uuid=uuid,
+            synthdef=self.build_synthdef(),
+            parameters={"buffer_id": None},
+            parameter_map={"buffer_id": "buffer_id"},
+        )
+
+    def build_synthdef(self):
+        def signal_block(builder, source, state):
+            return PlayBuf.ar(
+                buffer_id=builder["buffer_id"], channel_count=2, done_action=2,
+            )
+
+        factory = (
+            SynthDefFactory()
+            .with_gate(attack_time=0, release_time=0.01)
+            .with_output(leveled=True)
+            .with_parameter("buffer_id", 0, "scalar")
+            .with_signal_block(signal_block)
+        )
+        return factory

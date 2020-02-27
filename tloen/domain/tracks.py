@@ -12,7 +12,7 @@ from .bases import Allocatable, AllocatableContainer, Container, Mixer
 from .clips import Slot
 from .devices import DeviceObject
 from .midi import NoteOffMessage, NoteOnMessage
-from .parameters import Action, Boolean, Float, Parameter, ParameterGroup
+from .parameters import Boolean, Float, Parameter, ParameterGroup
 from .sends import Receive, Send, Target
 from .synthdefs import build_patch_synthdef, build_peak_rms_synthdef
 
@@ -24,7 +24,7 @@ class TrackObject(Allocatable):
     def __init__(self, *, channel_count=None, name=None, uuid=None):
         Allocatable.__init__(self, channel_count=channel_count, name=name)
         self._parameter_group = ParameterGroup()
-        self._parameters: Dict[str, Union[Action, Parameter]] = {}
+        self._parameters: Dict[str, Parameter] = {}
         self._add_parameter(
             Parameter(
                 "active",
@@ -375,7 +375,7 @@ class TrackObject(Allocatable):
         return None
 
     @property
-    def parameters(self) -> Mapping[str, Union[Action, Parameter]]:
+    def parameters(self) -> Mapping[str, Parameter]:
         return MappingProxyType(self._parameters)
 
     @property

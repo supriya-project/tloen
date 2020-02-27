@@ -30,7 +30,6 @@ class Application:
             valign="top",
             top=1,
             bottom=1,
-
         )
         self.handlers = {
             "ctrl q": events.QuitApplication(),

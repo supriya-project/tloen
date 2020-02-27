@@ -17,10 +17,11 @@ from uuid import UUID, uuid4
 
 from supriya.clock import Moment
 from supriya.enums import AddAction, CalculationRate
+from supriya.synthdefs import SynthDef, SynthDefFactory
 
 from .bases import Allocatable
 from .midi import MidiMessage, NoteOffMessage, NoteOnMessage
-from .parameters import Action, Boolean, Parameter, ParameterGroup
+from .parameters import Boolean, Parameter, ParameterGroup
 from .sends import Patch
 from .synthdefs import build_patch_synthdef
 
@@ -191,10 +192,10 @@ class DeviceObject(Allocatable):
 
     ### INITIALIZER ###
 
-    def __init__(self, *, channel_count=None, name=None, uuid=None):
+    def __init__(self, *, channel_count=None, name=None, parameters=None, uuid=None):
         Allocatable.__init__(self, channel_count=channel_count, name=name)
         self._parameter_group = ParameterGroup()
-        self._parameters: Dict[str, Union[Action, Parameter]] = {}
+        self._parameters: Dict[str, Parameter] = parameters or {}
         self._add_parameter(
             Parameter(
                 "active",
@@ -371,10 +372,23 @@ class AllocatableDevice(DeviceObject):
 
     ### INITIALIZER ###
 
-    def __init__(self, *, name=None, uuid=None):
-        DeviceObject.__init__(self, name=name, uuid=uuid)
+    def __init__(
+        self,
+        *,
+        buffer_map=None,
+        name=None,
+        parameter_map=None,
+        parameters=None,
+        synthdef: Union[SynthDef, SynthDefFactory] = None,
+        synthdef_kwargs=None,
+        uuid=None,
+    ):
+        DeviceObject.__init__(self, name=name, parameters=parameters, uuid=uuid)
         self._device_in = DeviceIn()
         self._device_out = DeviceOut()
+        self._parameter_map = parameter_map or {}
+        self._synthdef = synthdef
+        self._synthdef_kwargs = dict(synthdef_kwargs or {})
         self._mutate(slice(None), [self._device_in, self._device_out])
 
     ### PRIVATE METHODS ###
@@ -421,3 +435,11 @@ class AllocatableDevice(DeviceObject):
     @property
     def device_out(self):
         return self._device_out
+
+    @property
+    def synthdef(self) -> Union[SynthDef, SynthDefFactory]:
+        return self._synthdef
+
+    @property
+    def synthdef_kwargs(self):
+        return self._synthdef_kwargs

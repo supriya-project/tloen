@@ -1,5 +1,7 @@
+from typing import Callable, Optional
 from uuid import UUID, uuid4
 
+from supriya.clock import Moment
 from supriya.enums import AddAction, DoneAction
 from supriya.synthdefs import SynthDefBuilder
 from supriya.ugens import Line, Out
@@ -8,7 +10,15 @@ from .bases import Allocatable, AllocatableContainer, ApplicationObject
 
 
 class ParameterSpec:
-    pass
+    def __init__(self, default):
+        self._default = default
+
+    def __call__(self, value):
+        return ...
+
+    @property
+    def default(self):
+        return self._default
 
 
 class Boolean(ParameterSpec):
@@ -16,7 +26,7 @@ class Boolean(ParameterSpec):
     ### INITIALIZER ###
 
     def __init__(self, default=True):
-        self.default = bool(default)
+        ParameterSpec.__init__(self, bool(default))
 
     ### SPECIAL METHODS ###
 
@@ -35,7 +45,7 @@ class Float(ParameterSpec):
         self, default: float = 0.0, minimum: float = 0.0, maximum: float = 1.0
     ):
         self.minimum, self.maximum = sorted(float(_) for _ in [minimum, maximum])
-        self.default = self(default)
+        ParameterSpec.__init__(self, self(default))
 
     ### SPECIAL METHODS ###
 
@@ -62,7 +72,7 @@ class Integer(ParameterSpec):
 
     def __init__(self, default: int = 0, minimum: int = 0, maximum: int = 1):
         self.minimum, self.maximum = sorted(int(_) for _ in [minimum, maximum])
-        self.default = self(default)
+        ParameterSpec.__init__(self, self(default))
 
     ### SPECIAL METHODS ###
 
@@ -83,57 +93,15 @@ class Integer(ParameterSpec):
         }
 
 
-class Action(ApplicationObject):
+class Null(ParameterSpec):
+    def __init__(self):
+        ParameterSpec.__init__(self, None)
 
-    ### INITIALIZER ###
+    def __call__(self, value):
+        return None
 
-    def __init__(self, name, callback=None):
-        if not name:
-            raise ValueError(name)
-        ApplicationObject.__init__(self, name=name)
-        if callback is not None and not callable(callback):
-            raise ValueError(callback)
-        self._callback = callback
-        self._client = None
-
-    ### SPECIAL METHODS ###
-
-    def __call__(self):
-        if self.application is None:
-            return
-        self.callback(self.client)
-
-    def __str__(self):
-        obj_name = type(self).__name__
-        return "\n".join(
-            [
-                f'<{obj_name} "{self.name}">',
-                *(f"    {line}" for child in self for line in str(child).splitlines()),
-            ]
-        )
-
-    ### PRIVATE METHODS ###
-
-    def _applicate(self, new_application):
-        Allocatable._applicate(self, new_application)
-        self._client = self.parent.parent
-
-    def _deapplicate(self, old_application):
-        Allocatable._deapplicate(self, old_application)
-        self._client = None
-
-    def _preallocate(self, provider, client):
-        pass
-
-    ### PUBLIC PROPERTIES ###
-
-    @property
-    def callback(self):
-        return self._callback
-
-    @property
-    def client(self) -> ApplicationObject:
-        return self._client
+    def serialize(self):
+        return {"type": type(self).__name__.lower()}
 
 
 class Parameter(Allocatable):
@@ -330,3 +298,246 @@ class ParameterGroup(AllocatableContainer):
             self._node_proxies["node"] = provider.add_group(
                 target_node=target_node, add_action=self.add_action, name=self.label
             )
+
+
+class ParameterObject(ApplicationObject):
+    def __init__(self, uuid: UUID = None):
+        self._client: Optional[ApplicationObject] = None
+        self._uuid = uuid or uuid4()
+
+    ### PRIVATE METHODS ###
+
+    def _applicate(self, new_application):
+        Allocatable._applicate(self, new_application)
+        self._client = self.parent.parent
+
+    def _deapplicate(self, old_application):
+        Allocatable._deapplicate(self, old_application)
+        self._client = None
+
+    ### PUBLIC PROPERTIES ###
+
+    @property
+    def client(self) -> Optional[ApplicationObject]:
+        return self._client
+
+    @property
+    def uuid(self) -> UUID:
+        return self._uuid
+
+
+class BusParameter(Allocatable, ParameterObject):
+
+    ### INITIALIZER ###
+
+    def __init__(self, name: str, spec: ParameterSpec, *, uuid: UUID = None):
+        ParameterObject.__init__(self, uuid=uuid)
+        Allocatable.__init__(self, name=name)
+        self._spec = spec
+        self._value = self.spec.default
+
+    ### SPECIAL METHODS ###
+
+    def __str__(self):
+        bus_proxy_id = int(self.bus_proxy) if self.bus_proxy is not None else "?"
+        node_proxy_id = int(self.node_proxy) if self.node_proxy is not None else "?"
+        obj_name = type(self).__name__
+        return "\n".join(
+            [
+                f'<{obj_name} "{self.name}" ({self.value}) [{node_proxy_id}] [{bus_proxy_id}] {self.uuid}>',
+                *(f"    {line}" for child in self for line in str(child).splitlines()),
+            ]
+        )
+
+    ### PRIVATE METHODS ###
+
+    def _allocate(self, provider, target_node, add_action):
+        Allocatable._allocate(self, provider, target_node, add_action)
+        self._node_proxies["node"] = provider.add_group(
+            target_node=target_node, add_action=add_action, name=self.label
+        )
+
+    @classmethod
+    def _build_ramp_synthdef(cls):
+        with SynthDefBuilder(
+            out=(0.0, "scalar"),
+            start_value=(0.0, "scalar"),
+            stop_value=(1.0, "scalar"),
+            total_time=(1.0, "scalar"),
+            initial_time=(0.0, "scalar"),
+        ) as builder:
+            line = Line.kr(
+                start=builder["initial_time"] / builder["total_time"],
+                stop=1.0,
+                duration=builder["total_time"] - builder["initial_time"],
+                done_action=DoneAction.NOTHING,
+            )
+            Out.kr(
+                bus=builder["out"],
+                source=line.scale(
+                    0.0, 1.0, builder["start_value"], builder["stop_value"]
+                ),
+            )
+        return builder.build("mixer/ramp")
+
+    def _preallocate(self, provider, client):
+        self._debug_tree(self, "Pre-Allocating", suffix=f"{hex(id(provider))}")
+        if not self.has_bus:
+            return
+        self._control_bus_proxies["bus"] = provider.add_bus("control")
+        self._control_bus_proxies["bus"].set_(self.spec.default)
+
+    ### PUBLIC METHODS ###
+
+    def serialize(self):
+        serialized = super().serialize()
+        serialized["spec"].update(
+            channel_count=None, spec=self.spec.serialize(), value=self.value,
+        )
+        for mapping in [serialized["meta"], serialized.get("spec", {}), serialized]:
+            for key in tuple(mapping):
+                if mapping[key] is None:
+                    mapping.pop(key)
+        return serialized
+
+    async def set_(self, value, *, moment: Moment = None):
+        async with self.lock(
+            [self], seconds=moment.seconds if moment is not None else None
+        ):
+            if self.application is None:
+                return
+            self._value = self.spec(value)
+            if self.bus_proxy is not None:
+                self.bus_proxy.set_(self._value)
+
+    ### PUBLIC PROPERTIES ###
+
+    @property
+    def bus_proxy(self):
+        return self._control_bus_proxies.get("bus")
+
+    @property
+    def spec(self) -> ParameterSpec:
+        return self._spec
+
+    @property
+    def value(self):
+        return self._value
+
+
+class BufferParameter(Allocatable, ParameterObject):
+
+    ### INITIALIZER ###
+
+    def __init__(self, name: str, *, path: str = None, uuid: UUID = None):
+        ParameterObject.__init__(self, uuid=uuid)
+        Allocatable.__init__(self, name=name)
+        self._path = path
+
+    ### SPECIAL METHODS ###
+
+    def __str__(self):
+        buffer_proxy_id = (
+            int(self.buffer_proxy) if self.buffer_proxy is not None else "?"
+        )
+        obj_name = type(self).__name__
+        return "\n".join(
+            [
+                f'<{obj_name} "{self.name}" ({self.path}) [{buffer_proxy_id}] {self.uuid}>',
+                *(f"    {line}" for child in self for line in str(child).splitlines()),
+            ]
+        )
+
+    ### PRIVATE METHODS ###
+
+    def _allocate(self, provider, target_node, add_action):
+        Allocatable._allocate(self, provider, target_node, add_action)
+
+    ### PUBLIC METHODS ###
+
+    def serialize(self):
+        serialized = super().serialize()
+        serialized["spec"].update(
+            channel_count=None, path=self.path,
+        )
+        for mapping in [serialized["meta"], serialized.get("spec", {}), serialized]:
+            for key in tuple(mapping):
+                if mapping[key] is None:
+                    mapping.pop(key)
+        return serialized
+
+    async def set_(self, path, *, moment: Moment = None):
+        async with self.lock(
+            [self], seconds=moment.seconds if moment is not None else None
+        ):
+            if self.application is None:
+                return
+            if path == self.path:
+                return
+            self._path = path
+
+    ### PUBLIC PROPERTIES ###
+
+    @property
+    def buffer_proxy(self):
+        return self._buffer_proxy
+
+    @property
+    def path(self):
+        return self.path
+
+
+class CallbackParameter(ParameterObject):
+
+    ### INITIALIZER ###
+
+    def __init__(
+        self, name: str, spec: ParameterSpec, callback: Callable, *, uuid: UUID = None
+    ):
+        ParameterObject.__init__(self, uuid=uuid)
+        ApplicationObject.__init__(self, name=name)
+        self._callback = callback
+        self._spec = spec
+        self._value = self.spec.default
+
+    ### SPECIAL METHODS ###
+
+    def __str__(self):
+        obj_name = type(self).__name__
+        return "\n".join([f'<{obj_name} "{self.name}" ({self.value}) {self.uuid}>'])
+
+    ### PUBLIC METHODS ###
+
+    def serialize(self):
+        serialized = super().serialize()
+        serialized["spec"].update(
+            spec=self.spec.serialize(), value=self.value,
+        )
+        for mapping in [serialized["meta"], serialized.get("spec", {}), serialized]:
+            for key in tuple(mapping):
+                if mapping[key] is None:
+                    mapping.pop(key)
+        return serialized
+
+    async def set_(self, value, *, moment: Moment = None):
+        async with self.lock(
+            [self], seconds=moment.seconds if moment is not None else None
+        ):
+            if self.application is None:
+                return
+            self._value = self.spec(value)
+            self.callback(self._value)
+
+    ### PUBLIC PROPERTIES ###
+
+    @property
+    def callback(self) -> Callable:
+        return self.callback
+
+    @property
+    def spec(self) -> ParameterSpec:
+        return self._spec
+
+    @property
+    def value(self):
+        return self._value
