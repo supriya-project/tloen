@@ -96,7 +96,7 @@ class Clip(ClipObject):
         self._is_looping = is_looping
         self._is_playing = False
         self._interval_tree = IntervalTree()
-        self.add_notes(notes or [])
+        self._add_notes(notes or [])
 
     ### SPECIAL METHODS ###
 
@@ -111,18 +111,16 @@ class Clip(ClipObject):
 
     ### PRIVATE METHODS ###
 
-    def _notify(self):
+    async def _notify(self):
         if self.application is not None and self.is_playing:
             track = self.parent.parent.parent
-            self.transport._clock.reschedule(
+            await self.transport.reschedule(
                 track._clip_perform_event_id,
                 schedule_at=self.transport._clock.get_current_time(),
                 time_unit=TimeUnit.SECONDS,
             )
 
-    ### PUBLIC METHODS ###
-
-    def add_notes(self, notes):
+    def _add_notes(self, notes):
         def validate_new_notes(new_notes):
             validated_new_notes = [new_notes.popleft()]
             while new_notes:
@@ -196,53 +194,58 @@ class Clip(ClipObject):
             to_add.extend(validated_new_notes)
             to_add.extend(truncated_old_notes)
             to_remove.extend(invalidated_old_notes)
-        with self.lock:
-            self.remove_notes(to_remove)
-            self._interval_tree.update(to_add)
-            self._notify()
+        self._remove_notes(to_remove)
+        self._interval_tree.update(to_add)
+
+    def _remove_notes(self, notes):
+        self._debug_tree(self, "Editing")
+        for note in notes:
+            self._interval_tree.remove(note)
+
+    ### PUBLIC METHODS ###
+
+    async def add_notes(self, notes):
+        self._add_notes(notes)
+        await self._notify()
 
     def at(self, offset, start_delta=0.0, force_stop=False):
         start_notes, stop_notes, overlap_notes = [], [], []
         local_offset = loop_local_offset = offset - start_delta
         count = 0
-        with self.lock:
-            if self.is_looping and local_offset >= 0.0:
-                count, loop_local_offset = divmod(local_offset, self.clip_stop)
-            moment = self._interval_tree.get_moment_at(loop_local_offset)
-            start_notes = moment.start_intervals
-            stop_notes = moment.stop_intervals
-            overlap_notes = moment.overlap_intervals
-            if count and not loop_local_offset:  # at a non-zero loop boundary
-                moment_two = self._interval_tree.get_moment_at(self.duration)
-                stop_notes.extend(moment_two.overlap_intervals)
-                stop_notes.extend(moment_two.stop_intervals)
-            next_offset = self._interval_tree.get_offset_after(loop_local_offset)
-            if next_offset is None and self.is_looping:
-                next_offset = self.duration
-            if next_offset is not None:
-                if self.is_looping:
-                    next_offset = min([next_offset, self.duration])
-                next_offset += start_delta + (count * self.duration)
-            if force_stop:
-                start_notes[:] = []
-                stop_notes.extend(overlap_notes)
-                overlap_notes[:] = []
-                next_offset = None
-            return NoteMoment(
-                offset=offset,
-                local_offset=loop_local_offset,
-                next_offset=next_offset,
-                start_notes=start_notes or None,
-                stop_notes=stop_notes or None,
-                overlap_notes=overlap_notes or None,
-            )
+        if self.is_looping and local_offset >= 0.0:
+            count, loop_local_offset = divmod(local_offset, self.clip_stop)
+        moment = self._interval_tree.get_moment_at(loop_local_offset)
+        start_notes = moment.start_intervals
+        stop_notes = moment.stop_intervals
+        overlap_notes = moment.overlap_intervals
+        if count and not loop_local_offset:  # at a non-zero loop boundary
+            moment_two = self._interval_tree.get_moment_at(self.duration)
+            stop_notes.extend(moment_two.overlap_intervals)
+            stop_notes.extend(moment_two.stop_intervals)
+        next_offset = self._interval_tree.get_offset_after(loop_local_offset)
+        if next_offset is None and self.is_looping:
+            next_offset = self.duration
+        if next_offset is not None:
+            if self.is_looping:
+                next_offset = min([next_offset, self.duration])
+            next_offset += start_delta + (count * self.duration)
+        if force_stop:
+            start_notes[:] = []
+            stop_notes.extend(overlap_notes)
+            overlap_notes[:] = []
+            next_offset = None
+        return NoteMoment(
+            offset=offset,
+            local_offset=loop_local_offset,
+            next_offset=next_offset,
+            start_notes=start_notes or None,
+            stop_notes=stop_notes or None,
+            overlap_notes=overlap_notes or None,
+        )
 
-    def remove_notes(self, notes):
-        self._debug_tree(self, "Editing")
-        with self.lock:
-            for note in notes:
-                self._interval_tree.remove(note)
-            self._notify()
+    async def remove_notes(self, notes):
+        self._remove_notes(notes)
+        await self._notify()
 
     ### PUBLIC PROPERTIES ###
 
@@ -268,8 +271,7 @@ class Clip(ClipObject):
 
     @property
     def notes(self):
-        with self.lock:
-            return sorted(self._interval_tree)
+        return sorted(self._interval_tree)
 
 
 class Slot(ApplicationObject):

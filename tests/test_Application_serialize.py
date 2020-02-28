@@ -188,6 +188,8 @@ async def test_1():
             kind: Transport
             spec:
               tempo: 120.0
-              time_signature: 4/4
+              time_signature:
+              - 4
+              - 4
         """
     )

@@ -111,20 +111,20 @@ class Arpeggiator(DeviceObject):
             raise ValueError(self._pattern_style)
         return tuple(pattern_pairs)
 
-    def _start(self):
+    async def _start(self):
         self._debug_tree(self, "Starting")
         if self._callback_id is not None:
             return
-        self._callback_id = self.transport.cue(
+        self._callback_id = await self.transport.cue(
             self._transport_note_on_callback,
             event_type=self.transport.EventType.MIDI_PERFORM,
             quantization=self._quantization,
         )
 
-    def _stop(self):
+    async def _stop(self):
         self._debug_tree(self, "Stopping")
         if self._callback_id is not None:
-            self.transport.cancel(self._callback_id)
+            await self.transport.cancel(self._callback_id)
         self._callback_id = None
 
     async def _transport_note_on_callback(
@@ -153,7 +153,7 @@ class Arpeggiator(DeviceObject):
             midi_messages.append(NoteOnMessage(pitch=pitch, velocity=velocity))
             for message in midi_messages:
                 self._update_captures(moment=desired_moment, message=message, label="O")
-            self.transport.schedule(
+            await self.transport.schedule(
                 self._transport_note_off_callback,
                 schedule_at=desired_moment.offset + (delta * self._duration_scale),
                 args=(pitch,),

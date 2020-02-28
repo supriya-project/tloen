@@ -14,7 +14,6 @@ async def test_1():
         <Application [OFFLINE] {hex(id(application))}>
             <Transport>
                 <Parameters [?]>
-                    <Parameter "tempo" 120.0 [-] [-] {application.transport.parameters["tempo"].uuid}>
             <Controllers>
             <Scenes>
             <Contexts>
@@ -72,7 +71,6 @@ async def test_2():
         <Application [REALTIME] {hex(id(application))}>
             <Transport>
                 <Parameters [?]>
-                    <Parameter "tempo" 120.0 [-] [-] {application.transport.parameters["tempo"].uuid}>
             <Controllers>
             <Scenes>
             <Contexts>

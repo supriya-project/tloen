@@ -580,8 +580,8 @@ class Track(UserTrackObject):
         self._active_slot_start_delta = desired_moment.offset
         self.slots[self._active_slot_index].clip._is_playing = True
         # schedule perform callback
-        self.transport._clock.cancel(self._clip_launch_event_id)
-        self._clip_perform_event_id = self.transport._clock.schedule(
+        await self.transport.cancel(self._clip_launch_event_id)
+        self._clip_perform_event_id = await self.transport.schedule(
             self._clip_perform_callback,
             schedule_at=desired_moment.offset,
             event_type=self.transport.EventType.CLIP_PERFORM,
@@ -618,8 +618,8 @@ class Track(UserTrackObject):
         self._debug_tree(self, "Firing", suffix=str(slot_index))
         self._pending_slot_index = slot_index
         transport = self.transport
-        transport._clock.cancel(self._clip_launch_event_id)
-        self._clip_launch_event_id = transport.cue(
+        await transport.cancel(self._clip_launch_event_id)
+        self._clip_launch_event_id = await transport.cue(
             self._clip_launch_callback,
             # TODO: Get default quantization from transport itself
             quantization=quantization or "1M",

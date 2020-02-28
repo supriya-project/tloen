@@ -1,11 +1,17 @@
 import asyncio
 import logging
+from unittest import mock
 
 import pytest
 from supriya.clock import Moment
 
 from tloen.domain import Application, Instrument, Note
 from tloen.domain.midi import NoteOffMessage, NoteOnMessage
+
+
+class AsyncMock(mock.MagicMock):
+    async def __call__(self, *args, **kwargs):
+        return super(AsyncMock, self).__call__(*args, **kwargs)
 
 
 @pytest.fixture(autouse=True)
@@ -37,12 +43,15 @@ async def test_1(mocker, application):
     """
     Fire non-empty slot, then fire empty-slot
     """
-    time_mock = mocker.patch.object(application.transport._clock, "get_current_time")
-    time_mock.return_value = 0.0
+    # mocker.patch("asyncio.sleep", new_callable=AsyncMock)
+    # time_mock = mocker.patch.object(application.transport._clock, "get_current_time")
+    # time_mock.return_value = 0.0
     with application.contexts[0].tracks[0].devices[0].capture() as transcript:
         await application.contexts[0].tracks[0].slots[0].fire()
-        await asyncio.sleep(0.01)
+    logging.getLogger("tloen.domain").info("A")
+    await asyncio.sleep(0)
     assert application.transport.is_running
+    logging.getLogger("tloen.domain").info("B")
     assert list(transcript) == [
         Instrument.CaptureEntry(
             moment=Moment(
@@ -57,9 +66,11 @@ async def test_1(mocker, application):
             message=NoteOnMessage(pitch=60, velocity=100.0),
         )
     ]
+    logging.getLogger("tloen.domain").info("C")
+    await asyncio.sleep(0)
     with application.contexts[0].tracks[0].devices[0].capture() as transcript:
         await application.contexts[0].tracks[0].slots[1].fire()
-        await asyncio.sleep(0.01)
+    await asyncio.sleep(0)
     assert list(transcript) == [
         Instrument.CaptureEntry(
             moment=Moment(
