@@ -13,7 +13,14 @@ from .bases import Allocatable, AllocatableContainer, Container, Mixer
 from .clips import Slot
 from .devices import DeviceObject
 from .midi import NoteOffMessage, NoteOnMessage
-from .parameters import Boolean, Float, Parameter, ParameterGroup
+from .parameters import (
+    Boolean,
+    BusParameter,
+    CallbackParameter,
+    Float,
+    ParameterGroup,
+    ParameterObject,
+)
 from .sends import Receive, Send, Target
 from .synthdefs import build_patch_synthdef, build_peak_rms_synthdef
 
@@ -27,20 +34,21 @@ class TrackObject(Allocatable):
     def __init__(self, *, channel_count=None, name=None, uuid=None):
         Allocatable.__init__(self, channel_count=channel_count, name=name)
         self._parameter_group = ParameterGroup()
-        self._parameters: Dict[str, Parameter] = {}
+        self._parameters: Dict[str, ParameterObject] = {}
         self._add_parameter(
-            Parameter(
-                "active",
-                Boolean(),
+            CallbackParameter(
                 callback=lambda client, value: client._set_active(value),
+                is_builtin=True,
+                name="active",
+                spec=Boolean(),
             ),
-            is_builtin=True,
         )
         self._add_parameter(
-            Parameter(
-                "gain", Float(minimum=-96, maximum=6.0, default=0.0), has_bus=True
+            BusParameter(
+                is_builtin=True,
+                name="gain",
+                spec=Float(minimum=-96, maximum=6.0, default=0.0),
             ),
-            is_builtin=True,
         )
         self._uuid = uuid or uuid4()
         self._peak_levels = {}
@@ -378,7 +386,7 @@ class TrackObject(Allocatable):
         return None
 
     @property
-    def parameters(self) -> Mapping[str, Parameter]:
+    def parameters(self) -> Mapping[str, ParameterObject]:
         return MappingProxyType(self._parameters)
 
     @property
@@ -418,10 +426,11 @@ class CueTrack(TrackObject):
     def __init__(self, *, uuid=None):
         TrackObject.__init__(self, channel_count=2, uuid=uuid)
         self._add_parameter(
-            Parameter(
-                "mix", Float(minimum=0.0, maximum=1.0, default=0.0), has_bus=True
+            BusParameter(
+                is_builtin=True,
+                name="mix",
+                spec=Float(minimum=0.0, maximum=1.0, default=0.0),
             ),
-            is_builtin=True,
         )
 
     @classmethod
@@ -452,10 +461,11 @@ class UserTrackObject(TrackObject):
         self._is_muted = False
         self._is_soloed = False
         self._add_parameter(
-            Parameter(
-                "panning", Float(minimum=-1.0, maximum=1.0, default=0), has_bus=True
+            BusParameter(
+                is_builtin=True,
+                name="panning",
+                spec=Float(minimum=-1.0, maximum=1.0, default=0),
             ),
-            is_builtin=True,
         )
 
     ### PUBLIC METHODS ###

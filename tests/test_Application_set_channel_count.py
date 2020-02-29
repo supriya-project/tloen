@@ -3,7 +3,7 @@ import asyncio
 import pytest
 from uqbar.strings import normalize
 
-from tloen.domain import Allocatable, Parameter
+from tloen.domain import Allocatable, ParameterObject
 
 
 @pytest.mark.asyncio
@@ -12,7 +12,7 @@ async def test_channel_count(channel_count_application):
     items.extend(
         x
         for x in channel_count_application.depth_first()
-        if not isinstance(x, Parameter) and x.name
+        if not isinstance(x, ParameterObject) and x.name
     )
     assert {
         x.name: (x.channel_count, x.effective_channel_count) for x in items[1:]

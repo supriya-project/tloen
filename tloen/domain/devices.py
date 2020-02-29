@@ -21,7 +21,12 @@ from supriya.synthdefs import SynthDef, SynthDefFactory
 
 from .bases import Allocatable
 from .midi import MidiMessage, NoteOffMessage, NoteOnMessage
-from .parameters import Boolean, Parameter, ParameterGroup
+from .parameters import (
+    Boolean,
+    CallbackParameter,
+    ParameterGroup,
+    ParameterObject,
+)
 from .sends import Patch
 from .synthdefs import build_patch_synthdef
 
@@ -195,14 +200,14 @@ class DeviceObject(Allocatable):
     def __init__(self, *, channel_count=None, name=None, parameters=None, uuid=None):
         Allocatable.__init__(self, channel_count=channel_count, name=name)
         self._parameter_group = ParameterGroup()
-        self._parameters: Dict[str, Parameter] = parameters or {}
+        self._parameters: Dict[str, ParameterObject] = parameters or {}
         self._add_parameter(
-            Parameter(
-                "active",
-                Boolean(),
+            CallbackParameter(
                 callback=lambda client, value: client._set_active(value),
+                is_builtin=True,
+                name="active",
+                spec=Boolean(),
             ),
-            is_builtin=True,
         )
         self._uuid = uuid or uuid4()
         self._captures: Set[DeviceObject.Capture] = set()

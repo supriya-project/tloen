@@ -111,7 +111,7 @@ class Application(UniqueTreeTuple):
         elif self.status == self.Status.NONREALTIME:
             raise ValueError
         elif not self.contexts:
-            self.status == self.Status.REALTIME
+            raise RuntimeError("No contexts to boot")
         self.pubsub.publish(ApplicationBooting())
         await asyncio.gather(*(context._boot() for context in self.contexts))
         self.pubsub.publish(

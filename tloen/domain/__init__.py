@@ -13,7 +13,15 @@ from .controllers import Controller
 from .devices import DeviceIn, DeviceObject, DeviceOut
 from .instruments import Instrument
 from .midieffects import Arpeggiator, Chord
-from .parameters import Boolean, Float, Integer, Parameter
+from .parameters import (
+    Boolean,
+    BufferParameter,
+    BusParameter,
+    CallbackParameter,
+    Float,
+    Integer,
+    ParameterObject,
+)
 from .sends import DirectIn, DirectOut, Patch, Send, SendObject, Target
 from .tracks import (
     CueTrack,
@@ -33,6 +41,9 @@ __all__ = [
     "Arpeggiator",
     "AudioEffect",
     "Boolean",
+    "BufferParameter",
+    "BusParameter",
+    "CallbackParameter",
     "Chain",
     "ChainContainer",
     "Chord",
@@ -53,7 +64,7 @@ __all__ = [
     "MasterTrack",
     "Note",
     "NoteMoment",
-    "Parameter",
+    "ParameterObject",
     "Patch",
     "RackDevice",
     "Scene",

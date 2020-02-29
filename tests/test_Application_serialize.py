@@ -34,19 +34,19 @@ async def test_1():
                 spec:
                   channel_count: 2
                   parameters:
-                  - kind: Parameter
+                  - kind: CallbackParameter
                     meta:
                       name: active
                       uuid: {cue_track.parameters["active"].uuid}
                     spec:
                       value: true
-                  - kind: Parameter
+                  - kind: BusParameter
                     meta:
                       name: gain
                       uuid: {cue_track.parameters["gain"].uuid}
                     spec:
                       value: 0.0
-                  - kind: Parameter
+                  - kind: BusParameter
                     meta:
                       name: mix
                       uuid: {cue_track.parameters["mix"].uuid}
@@ -66,13 +66,13 @@ async def test_1():
                   uuid: {master_track.uuid}
                 spec:
                   parameters:
-                  - kind: Parameter
+                  - kind: CallbackParameter
                     meta:
                       name: active
                       uuid: {master_track.parameters["active"].uuid}
                     spec:
                       value: true
-                  - kind: Parameter
+                  - kind: BusParameter
                     meta:
                       name: gain
                       uuid: {master_track.parameters["gain"].uuid}
@@ -107,7 +107,7 @@ async def test_1():
                               uuid: {arpeggiator.uuid}
                             spec:
                               parameters:
-                              - kind: Parameter
+                              - kind: CallbackParameter
                                 meta:
                                   name: active
                                   uuid: {arpeggiator.parameters["active"].uuid}
@@ -118,26 +118,26 @@ async def test_1():
                               uuid: {instrument.uuid}
                             spec:
                               parameters:
-                              - kind: Parameter
+                              - kind: CallbackParameter
                                 meta:
                                   name: active
                                   uuid: {instrument.parameters["active"].uuid}
                                 spec:
                                   value: false
                           parameters:
-                          - kind: Parameter
+                          - kind: CallbackParameter
                             meta:
                               name: active
                               uuid: {chain.parameters["active"].uuid}
                             spec:
                               value: true
-                          - kind: Parameter
+                          - kind: BusParameter
                             meta:
                               name: gain
                               uuid: {chain.parameters["gain"].uuid}
                             spec:
                               value: -6.0
-                          - kind: Parameter
+                          - kind: BusParameter
                             meta:
                               name: panning
                               uuid: {chain.parameters["panning"].uuid}
@@ -152,26 +152,26 @@ async def test_1():
                               target: default
                       channel_count: 4
                       parameters:
-                      - kind: Parameter
+                      - kind: CallbackParameter
                         meta:
                           name: active
                           uuid: {rack.parameters["active"].uuid}
                         spec:
                           value: true
                   parameters:
-                  - kind: Parameter
+                  - kind: CallbackParameter
                     meta:
                       name: active
                       uuid: {track.parameters["active"].uuid}
                     spec:
                       value: true
-                  - kind: Parameter
+                  - kind: BusParameter
                     meta:
                       name: gain
                       uuid: {track.parameters["gain"].uuid}
                     spec:
                       value: 0.0
-                  - kind: Parameter
+                  - kind: BusParameter
                     meta:
                       name: panning
                       uuid: {track.parameters["panning"].uuid}

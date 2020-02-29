@@ -10,7 +10,7 @@ from tloen.domain import Application
 @pytest.mark.asyncio
 async def test_error():
     application = Application()
-    with pytest.raises(ValueError):
+    with pytest.raises(RuntimeError):
         await application.boot()
 
 

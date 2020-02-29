@@ -23,9 +23,9 @@ async def test_1():
                             <Slots>
                             <SubTracks [?]>
                             <Parameters [?]>
-                                <Parameter "active" True [-] [-] {context.tracks[0].parameters["active"].uuid}>
-                                <Parameter "gain" 0.0 [?] [?] {context.tracks[0].parameters["gain"].uuid}>
-                                <Parameter "panning" 0.0 [?] [?] {context.tracks[0].parameters["panning"].uuid}>
+                                <CallbackParameter "active" (True) {context.tracks[0].parameters["active"].uuid}>
+                                <BusParameter "gain" (0.0) [?] [?] {context.tracks[0].parameters["gain"].uuid}>
+                                <BusParameter "panning" (0.0) [?] [?] {context.tracks[0].parameters["panning"].uuid}>
                             <SendTarget (0)>
                             <Receives [?]>
                             <Devices [?]>
@@ -35,8 +35,8 @@ async def test_1():
                             <ReceiveTarget (0)>
                     <MasterTrack [?] {context.master_track.uuid}>
                         <Parameters [?]>
-                            <Parameter "active" True [-] [-] {context.master_track.parameters["active"].uuid}>
-                            <Parameter "gain" 0.0 [?] [?] {context.master_track.parameters["gain"].uuid}>
+                            <CallbackParameter "active" (True) {context.master_track.parameters["active"].uuid}>
+                            <BusParameter "gain" (0.0) [?] [?] {context.master_track.parameters["gain"].uuid}>
                         <SendTarget (1)>
                         <Receives [?]>
                         <Devices [?]>
@@ -46,9 +46,9 @@ async def test_1():
                         <ReceiveTarget (0)>
                     <CueTrack [?] {context.cue_track.uuid}>
                         <Parameters [?]>
-                            <Parameter "active" True [-] [-] {context.cue_track.parameters["active"].uuid}>
-                            <Parameter "gain" 0.0 [?] [?] {context.cue_track.parameters["gain"].uuid}>
-                            <Parameter "mix" 0.0 [?] [?] {context.cue_track.parameters["mix"].uuid}>
+                            <CallbackParameter "active" (True) {context.cue_track.parameters["active"].uuid}>
+                            <BusParameter "gain" (0.0) [?] [?] {context.cue_track.parameters["gain"].uuid}>
+                            <BusParameter "mix" (0.0) [?] [?] {context.cue_track.parameters["mix"].uuid}>
                         <SendTarget (0)>
                         <Receives [?]>
                         <Devices [?]>
@@ -80,9 +80,9 @@ async def test_2():
                             <Slots>
                             <SubTracks [{track.tracks.node_proxy.identifier}]>
                             <Parameters [1009]>
-                                <Parameter "active" True [-] [-] {context.tracks[0].parameters["active"].uuid}>
-                                <Parameter "gain" 0.0 [1010] [0] {context.tracks[0].parameters["gain"].uuid}>
-                                <Parameter "panning" 0.0 [1011] [1] {context.tracks[0].parameters["panning"].uuid}>
+                                <CallbackParameter "active" (True) {context.tracks[0].parameters["active"].uuid}>
+                                <BusParameter "gain" (0.0) [1010] [0] {context.tracks[0].parameters["gain"].uuid}>
+                                <BusParameter "panning" (0.0) [1011] [1] {context.tracks[0].parameters["panning"].uuid}>
                             <SendTarget (0)>
                             <Receives [{track.receives.node_proxy.identifier}]>
                             <Devices [{track.devices.node_proxy.identifier}]>
@@ -92,8 +92,8 @@ async def test_2():
                             <ReceiveTarget (0)>
                     <MasterTrack [{context.master_track.node_proxy.identifier}] {context.master_track.uuid}>
                         <Parameters [1022]>
-                            <Parameter "active" True [-] [-] {context.master_track.parameters["active"].uuid}>
-                            <Parameter "gain" 0.0 [1023] [2] {context.master_track.parameters["gain"].uuid}>
+                            <CallbackParameter "active" (True) {context.master_track.parameters["active"].uuid}>
+                            <BusParameter "gain" (0.0) [1023] [2] {context.master_track.parameters["gain"].uuid}>
                         <SendTarget (1)>
                         <Receives [{context.master_track.receives.node_proxy.identifier}]>
                         <Devices [{context.master_track.devices.node_proxy.identifier}]>
@@ -103,9 +103,9 @@ async def test_2():
                         <ReceiveTarget (0)>
                     <CueTrack [{context.cue_track.node_proxy.identifier}] {context.cue_track.uuid}>
                         <Parameters [1036]>
-                            <Parameter "active" True [-] [-] {context.cue_track.parameters["active"].uuid}>
-                            <Parameter "gain" 0.0 [1037] [3] {context.cue_track.parameters["gain"].uuid}>
-                            <Parameter "mix" 0.0 [1038] [4] {context.cue_track.parameters["mix"].uuid}>
+                            <CallbackParameter "active" (True) {context.cue_track.parameters["active"].uuid}>
+                            <BusParameter "gain" (0.0) [1037] [3] {context.cue_track.parameters["gain"].uuid}>
+                            <BusParameter "mix" (0.0) [1038] [4] {context.cue_track.parameters["mix"].uuid}>
                         <SendTarget (0)>
                         <Receives [{context.cue_track.receives.node_proxy.identifier}]>
                         <Devices [{context.cue_track.devices.node_proxy.identifier}]>

@@ -43,10 +43,9 @@ class ApplicationObject(UniqueTreeTuple):
 
     ### PRIVATE METHODS ###
 
-    def _add_parameter(self, parameter, is_builtin=False):
+    def _add_parameter(self, parameter):
         if parameter.name in self._parameters:
             raise ValueError(f'Parameter {parameter["name"]} already added')
-        parameter._is_builtin = is_builtin
         self._parameters[parameter.name] = parameter
         self._parameter_group._append(parameter)
 
@@ -80,10 +79,10 @@ class ApplicationObject(UniqueTreeTuple):
         logger.debug("".join(parts))
 
     def _deserialize_parameters(self, parameters_data):
-        from tloen.domain.parameters import Parameter
+        from tloen.domain.parameters import ParameterObject
 
         for parameter_data in parameters_data:
-            new_parameter = Parameter.deserialize(parameter_data)
+            new_parameter = ParameterObject.deserialize(parameter_data)
             old_parameter = self.parameters.get(new_parameter.name)
             if old_parameter is not None:
                 old_parameter._value = new_parameter.value

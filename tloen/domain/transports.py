@@ -6,7 +6,7 @@ from supriya.clock import AsyncTempoClock
 
 from .. import events
 from .bases import ApplicationObject
-from .parameters import Parameter, ParameterGroup
+from .parameters import ParameterGroup, ParameterObject
 
 
 class Transport(ApplicationObject):
@@ -28,7 +28,7 @@ class Transport(ApplicationObject):
     def __init__(self):
         ApplicationObject.__init__(self)
         self._parameter_group = ParameterGroup()
-        self._parameters: Dict[str, Parameter] = {}
+        self._parameters: Dict[str, ParameterObject] = {}
         self._clock = AsyncTempoClock()
         self._dependencies: Set[ApplicationObject] = set()
         self._mutate(slice(None), [self._parameter_group])
