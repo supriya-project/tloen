@@ -1,6 +1,6 @@
 import asyncio
 import enum
-from typing import Dict, Set
+from typing import Dict, Optional, Set, Tuple
 
 from supriya.clock import AsyncTempoClock
 
@@ -47,10 +47,10 @@ class Transport(ApplicationObject):
 
     ### PUBLIC METHODS ###
 
-    async def cue(self, *args, **kwargs):
+    async def cue(self, *args, **kwargs) -> int:
         return await self._clock.cue(*args, **kwargs)
 
-    async def cancel(self, *args, **kwargs):
+    async def cancel(self, *args, **kwargs) -> Optional[Tuple]:
         return await self._clock.cancel(*args, **kwargs)
 
     async def perform(self, midi_messages):
@@ -66,7 +66,10 @@ class Transport(ApplicationObject):
         if not self.is_running:
             await self.start()
 
-    async def schedule(self, *args, **kwargs):
+    async def reschedule(self, *args, **kwargs) -> Optional[int]:
+        return await self._clock.reschedule(*args, **kwargs)
+
+    async def schedule(self, *args, **kwargs) -> int:
         return await self._clock.schedule(*args, **kwargs)
 
     def serialize(self):

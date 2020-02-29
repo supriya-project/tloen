@@ -1,4 +1,5 @@
 import abc
+import logging
 from types import MappingProxyType
 from typing import Dict, Mapping, Optional, Set, Type, Union
 from uuid import UUID, uuid4
@@ -15,6 +16,8 @@ from .midi import NoteOffMessage, NoteOnMessage
 from .parameters import Boolean, Float, Parameter, ParameterGroup
 from .sends import Receive, Send, Target
 from .synthdefs import build_patch_synthdef, build_peak_rms_synthdef
+
+logger = logging.getLogger("tloen.domain")
 
 
 class TrackObject(Allocatable):
@@ -580,7 +583,8 @@ class Track(UserTrackObject):
         self._active_slot_start_delta = desired_moment.offset
         self.slots[self._active_slot_index].clip._is_playing = True
         # schedule perform callback
-        await self.transport.cancel(self._clip_launch_event_id)
+        if self._clip_perform_event_id is not None:
+            await self.transport.cancel(self._clip_perform_event_id)
         self._clip_perform_event_id = await self.transport.schedule(
             self._clip_perform_callback,
             schedule_at=desired_moment.offset,

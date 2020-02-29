@@ -2,21 +2,31 @@ import asyncio
 import logging
 
 import pytest
-from supriya.clock import Moment
+from supriya.clock import AsyncTempoClock, Moment
 
 from tloen.domain import Application, Instrument, Note
 from tloen.domain.midi import NoteOffMessage, NoteOnMessage
 
+logger = logging.getLogger("tloen.test")
+
 
 @pytest.fixture(autouse=True)
-def logger(caplog):
+def capture_logs(caplog):
     caplog.set_level(logging.DEBUG, logger="supriya.clock")
-    caplog.set_level(logging.DEBUG, logger="tloen.domain")
+    caplog.set_level(logging.DEBUG, logger="tloen")
 
 
 @pytest.fixture
-async def application():
-    application = await Application.new(1, 1, 1)
+async def application(mocker, monkeypatch):
+    async def wait_for_event(self, sleep_time):
+        await asyncio.sleep(0)
+        await self._event.wait()
+
+    monkeypatch.setattr(AsyncTempoClock, "_wait_for_event", wait_for_event)
+    mock_time = mocker.patch.object(AsyncTempoClock, "get_current_time")
+    mock_time.return_value = 0.0
+
+    application = await Application.new(1, 2, 2)
     await application.boot()
     track = application.contexts[0].tracks[0]
     await track.add_device(Instrument)
@@ -25,18 +35,23 @@ async def application():
     await application.quit()
 
 
+async def set_time(new_time, transport):
+    logger.info(f"Setting transport time to {new_time}")
+    transport._clock.get_current_time.return_value = new_time
+    transport._clock._event.set()
+    await asyncio.sleep(0.01)
+
+
 @pytest.mark.asyncio
 async def test_1(mocker, application):
     """
     Delete a note.
     """
-    time_mock = mocker.patch.object(application.transport._clock, "get_current_time")
-    time_mock.return_value = 0.0
     track = application.contexts[0].tracks[0]
     await track.slots[0].clip.add_notes([Note(0, 1, pitch=60)])
     with track.devices[0].capture() as transcript:
         await track.slots[0].fire()
-        await asyncio.sleep(0.01)
+        await set_time(0, application.transport)
     assert list(transcript) == [
         Instrument.CaptureEntry(
             moment=Moment(
@@ -52,12 +67,11 @@ async def test_1(mocker, application):
         )
     ]
     with track.devices[0].capture() as transcript:
-        time_mock.return_value = 0.5
-        await asyncio.sleep(0.01)
+        await set_time(0.5, application.transport)
     assert list(transcript) == []
     with track.devices[0].capture() as transcript:
         await track.slots[0].clip.remove_notes(track.slots[0].clip.notes)
-        await asyncio.sleep(0.1)
+        await asyncio.sleep(0)
     assert list(transcript) == [
         Instrument.CaptureEntry(
             moment=Moment(
@@ -79,20 +93,17 @@ async def test_2(mocker, application):
     """
     Add a note.
     """
-    time_mock = mocker.patch.object(application.transport._clock, "get_current_time")
-    time_mock.return_value = 0.0
     track = application.contexts[0].tracks[0]
     with track.devices[0].capture() as transcript:
         await track.slots[0].fire()
-        await asyncio.sleep(0.01)
+        await set_time(0, application.transport)
         assert list(transcript) == []
     with track.devices[0].capture() as transcript:
         await track.slots[0].clip.add_notes([Note(0.75, 1, pitch=60)])
-        await asyncio.sleep(0.01)
+        await set_time(0, application.transport)
         assert list(transcript) == []
     with track.devices[0].capture() as transcript:
-        time_mock.return_value = 2.0
-        await asyncio.sleep(0.01)
+        await set_time(2.0, application.transport)
         assert list(transcript) == [
             Instrument.CaptureEntry(
                 moment=Moment(
