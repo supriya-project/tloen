@@ -15,6 +15,16 @@ from .tracks import UserTrackObject
 
 class Chain(UserTrackObject):
 
+    def __init__(self, *, channel_count=None, name=None, transfer=None, uuid=None):
+        UserTrackObject.__init__(
+            self,
+            channel_count=channel_count,
+            name=name,
+            uuid=uuid,
+        )
+        # how external notes are filtered / transformed into internal notes
+        self._transfer = transfer
+
     ### PRIVATE METHODS ###
 
     def _cleanup(self):
@@ -118,6 +128,10 @@ class Chain(UserTrackObject):
             if hasattr(parent, "chains"):
                 return parent
         return None
+
+    @property
+    def transfer(self):
+        return self._transfer
 
 
 class ChainContainer(AllocatableContainer):

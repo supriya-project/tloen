@@ -2,7 +2,7 @@ import pytest
 import yaml
 from uqbar.strings import normalize
 
-from tloen.domain import Application, Arpeggiator, Instrument, RackDevice
+from tloen.domain import Application, Arpeggiator, Instrument, RackDevice, BasicSampler
 
 
 @pytest.mark.asyncio
@@ -10,13 +10,19 @@ async def test_1():
     app = Application()
     context = await app.add_context()
     cue_track, master_track = context.cue_track, context.master_track
-    track = await context.add_track()
-    rack = await track.add_device(RackDevice, channel_count=4)
+    track_one = await context.add_track(name="One")
+    track_two = await context.add_track(name="Two")
+    await track_one.add_send(track_two)
+    await track_one.solo(exclusive=False)
+    await track_two.add_send(track_one)
+    await track_two.solo(exclusive=False)
+    rack = await track_one.add_device(RackDevice, channel_count=4)
     chain = await rack.add_chain()
     await chain.parameters["gain"].set_(-6.0)
     arpeggiator = await chain.add_device(Arpeggiator)
-    instrument = await chain.add_device(Instrument)
-    await instrument.parameters["active"].set_(False)
+    sampler = await chain.add_device(BasicSampler)
+    await sampler.parameters["active"].set_(False)
+    await sampler.parameters["buffer_id"].set_("tloen:samples/808/bd-long-03.wav")
     assert normalize(yaml.dump(app.serialize())) == normalize(
         f"""
         kind: Application
@@ -89,7 +95,8 @@ async def test_1():
               tracks:
               - kind: Track
                 meta:
-                  uuid: {track.uuid}
+                  name: One
+                  uuid: {track_one.uuid}
                 spec:
                   devices:
                   - kind: RackDevice
@@ -113,15 +120,21 @@ async def test_1():
                                   uuid: {arpeggiator.parameters["active"].uuid}
                                 spec:
                                   value: true
-                          - kind: Instrument
+                          - kind: BasicSampler
                             meta:
-                              uuid: {instrument.uuid}
+                              uuid: {sampler.uuid}
                             spec:
                               parameters:
+                              - kind: BufferParameter
+                                meta:
+                                  name: buffer_id
+                                  uuid: {sampler.parameters["buffer_id"].uuid}
+                                spec:
+                                  path: tloen:samples/808/bd-long-03.wav
                               - kind: CallbackParameter
                                 meta:
                                   name: active
-                                  uuid: {instrument.parameters["active"].uuid}
+                                  uuid: {sampler.parameters["active"].uuid}
                                 spec:
                                   value: false
                           parameters:
@@ -162,28 +175,71 @@ async def test_1():
                   - kind: CallbackParameter
                     meta:
                       name: active
-                      uuid: {track.parameters["active"].uuid}
+                      uuid: {track_one.parameters["active"].uuid}
                     spec:
                       value: true
                   - kind: BusParameter
                     meta:
                       name: gain
-                      uuid: {track.parameters["gain"].uuid}
+                      uuid: {track_one.parameters["gain"].uuid}
                     spec:
                       value: 0.0
                   - kind: BusParameter
                     meta:
                       name: panning
-                      uuid: {track.parameters["panning"].uuid}
+                      uuid: {track_one.parameters["panning"].uuid}
                     spec:
                       value: 0.0
                   sends:
                   - kind: Send
                     meta:
-                      uuid: {track.postfader_sends[0].uuid}
+                      uuid: {track_one.postfader_sends[0].uuid}
                     spec:
                       position: postfader
                       target: default
+                  - kind: Send
+                    meta:
+                      uuid: {track_one.postfader_sends[1].uuid}
+                    spec:
+                      position: postfader
+                      target: {track_two.uuid}
+              - kind: Track
+                meta:
+                  name: Two
+                  uuid: {track_two.uuid}
+                spec:
+                  parameters:
+                  - kind: CallbackParameter
+                    meta:
+                      name: active
+                      uuid: {track_two.parameters["active"].uuid}
+                    spec:
+                      value: true
+                  - kind: BusParameter
+                    meta:
+                      name: gain
+                      uuid: {track_two.parameters["gain"].uuid}
+                    spec:
+                      value: 0.0
+                  - kind: BusParameter
+                    meta:
+                      name: panning
+                      uuid: {track_two.parameters["panning"].uuid}
+                    spec:
+                      value: 0.0
+                  sends:
+                  - kind: Send
+                    meta:
+                      uuid: {track_two.postfader_sends[0].uuid}
+                    spec:
+                      position: postfader
+                      target: default
+                  - kind: Send
+                    meta:
+                      uuid: {track_two.postfader_sends[1].uuid}
+                    spec:
+                      position: postfader
+                      target: {track_one.uuid}
           transport:
             kind: Transport
             spec:

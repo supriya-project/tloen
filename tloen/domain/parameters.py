@@ -143,6 +143,7 @@ class BufferParameter(Allocatable, ParameterObject):
         self,
         name: str,
         *,
+        channel_count: Optional[int] = None,
         path: str = None,
         is_builtin: bool = False,
         uuid: UUID = None,
@@ -150,6 +151,7 @@ class BufferParameter(Allocatable, ParameterObject):
         ParameterObject.__init__(self, is_builtin=is_builtin, uuid=uuid)
         Allocatable.__init__(self, name=name)
         self._path = path
+        self._channel_count = channel_count
 
     ### SPECIAL METHODS ###
 
@@ -175,7 +177,7 @@ class BufferParameter(Allocatable, ParameterObject):
 
     def _allocate_buffer(self, provider):
         self._buffer_proxies["buffer_"] = provider.add_buffer(
-            channel_count=1, file_path=locate(self.path),
+            channel_count=self.channel_count, file_path=locate(self.path),
         )
 
     def _preallocate(self, provider, client):
@@ -204,6 +206,8 @@ class BufferParameter(Allocatable, ParameterObject):
             if path == self.path:
                 return
             self._path = path
+            if self.provider is None:
+                return
             # Deallocate old buffer after allocating new buffer
             # TODO: Deallocation should be aware of what notes are using the buffer
             old_buffer = self.buffer_proxy
@@ -215,7 +219,11 @@ class BufferParameter(Allocatable, ParameterObject):
 
     @property
     def buffer_proxy(self):
-        return self._buffer_proxies.get("buffer")
+        return self._buffer_proxies.get("buffer_")
+
+    @property
+    def channel_count(self):
+        return self._channel_count
 
     @property
     def path(self):

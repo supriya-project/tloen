@@ -57,10 +57,11 @@ class Instrument(AllocatableDevice):
         self._input_notes.add(midi_message.pitch)
         self._notes_to_synths[pitch] = self.node_proxies["body"].add_synth(
             synthdef=self.synthdef,
-            **self.synthdef_kwargs,
+            out=self._audio_bus_proxies["output"],
+            # TODO: Handle these via a note-to-args map
             frequency=conversions.midi_note_number_to_frequency(pitch),
             amplitude=conversions.midi_velocity_to_amplitude(midi_message.velocity),
-            out=self._audio_bus_proxies["output"],
+            **self.synthdef_kwargs,
         )
         return []
 
@@ -86,16 +87,40 @@ class BasicSampler(Instrument):
             parameter_map={"buffer_id": "buffer_id"},
         )
 
+    def _handle_note_on(self, moment, midi_message):
+        if self.parameters["buffer_id"].buffer_proxy is None:
+            return []
+        pitch = midi_message.pitch
+        if pitch in self._input_notes:
+            self._handle_note_off(moment, midi_message)
+        self._input_notes.add(midi_message.pitch)
+        self._notes_to_synths[pitch] = self.node_proxies["body"].add_synth(
+            synthdef=self.synthdef.build(channel_count=2),
+            out=self._audio_bus_proxies["output"],
+            amplitude=conversions.midi_velocity_to_amplitude(midi_message.velocity),
+            buffer_id=self.parameters["buffer_id"].buffer_proxy,
+            **self.synthdef_kwargs,
+        )
+        return []
+
+    def _handle_note_off(self, moment, midi_message):
+        return []
+
     def build_synthdef(self):
         def signal_block(builder, source, state):
-            return PlayBuf.ar(
-                buffer_id=builder["buffer_id"], channel_count=2, done_action=2,
-            )
+            # TODO: Sampler should be aware of the shape of the sample
+            #       In order to handle up- / down-mixing
+            player = PlayBuf.ar(
+                buffer_id=builder["buffer_id"], channel_count=1, done_action=2,
+            ) * builder["amplitude"]
+            return [player] * state["channel_count"]
 
         factory = (
             SynthDefFactory()
+            .with_channel_count(2)
             .with_gate(attack_time=0, release_time=0.01)
-            .with_output(leveled=True)
+            .with_output()
+            .with_parameter("amplitude", 1, "control")
             .with_parameter("buffer_id", 0, "scalar")
             .with_signal_block(signal_block)
         )
