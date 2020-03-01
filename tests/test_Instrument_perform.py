@@ -20,7 +20,6 @@ async def application():
 
 @pytest.mark.asyncio
 async def test_1(application):
-    await application.boot()
     track = application.primary_context["Track"]
     instrument = await track.add_device(Instrument, synthdef=default)
     await asyncio.sleep(0.01)

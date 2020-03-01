@@ -7,6 +7,7 @@ from supriya.synthdefs import SynthDef, SynthDefFactory
 from supriya.ugens import PlayBuf
 
 from .devices import AllocatableDevice
+from .parameters import BufferParameter
 
 
 class Instrument(AllocatableDevice):
@@ -64,23 +65,24 @@ class Instrument(AllocatableDevice):
         return []
 
 
-class BasicSynth:
-    def __init__(self, name=None, uuid=None):
+class BasicSynth(Instrument):
+    def __init__(self, *, name=None, uuid=None):
         Instrument.__init__(
-            name=name, uuid=uuid, synthdef=self.build_synthdef(),
+            self, name=name, uuid=uuid, synthdef=self.build_synthdef(),
         )
 
     def build_synthdef(self):
         return default
 
 
-class BasicSampler:
-    def __init__(self, name=None, uuid=None):
+class BasicSampler(Instrument):
+    def __init__(self, *, name=None, uuid=None):
         Instrument.__init__(
+            self,
             name=name,
             uuid=uuid,
             synthdef=self.build_synthdef(),
-            parameters={"buffer_id": None},
+            parameters={"buffer_id": BufferParameter(name="buffer_id")},
             parameter_map={"buffer_id": "buffer_id"},
         )
 

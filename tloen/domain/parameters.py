@@ -5,6 +5,7 @@ from supriya.clock import Moment
 from supriya.enums import AddAction, DoneAction
 from supriya.synthdefs import SynthDefBuilder
 from supriya.ugens import Line, Out
+from supriya.utils import locate
 
 from .bases import Allocatable, AllocatableContainer, ApplicationObject
 
@@ -134,6 +135,93 @@ class ParameterObject(ApplicationObject):
         return self._uuid
 
 
+class BufferParameter(Allocatable, ParameterObject):
+
+    ### INITIALIZER ###
+
+    def __init__(
+        self,
+        name: str,
+        *,
+        path: str = None,
+        is_builtin: bool = False,
+        uuid: UUID = None,
+    ):
+        ParameterObject.__init__(self, is_builtin=is_builtin, uuid=uuid)
+        Allocatable.__init__(self, name=name)
+        self._path = path
+
+    ### SPECIAL METHODS ###
+
+    def __float__(self):
+        return float(self.bus_proxy)
+
+    def __int__(self):
+        return int(self.bus_proxy)
+
+    def __str__(self):
+        buffer_proxy_id = (
+            int(self.buffer_proxy) if self.buffer_proxy is not None else "?"
+        )
+        obj_name = type(self).__name__
+        return "\n".join(
+            [
+                f'<{obj_name} "{self.name}" ({self.path}) [{buffer_proxy_id}] {self.uuid}>',
+                *(f"    {line}" for child in self for line in str(child).splitlines()),
+            ]
+        )
+
+    ### PRIVATE METHODS ###
+
+    def _allocate_buffer(self, provider):
+        self._buffer_proxies["buffer_"] = provider.add_buffer(
+            channel_count=1, file_path=locate(self.path),
+        )
+
+    def _preallocate(self, provider, client):
+        self._client = client
+        self._provider = provider
+        self._debug_tree(self, "Pre-Allocating", suffix=f"{hex(id(provider))}")
+        if self.path is None:
+            return
+        self._allocate_buffer(provider)
+
+    ### PUBLIC METHODS ###
+
+    def serialize(self):
+        serialized = super().serialize()
+        serialized["spec"].update(channel_count=None, path=self.path)
+        for mapping in [serialized["meta"], serialized.get("spec", {}), serialized]:
+            for key in tuple(mapping):
+                if mapping[key] is None:
+                    mapping.pop(key)
+        return serialized
+
+    async def set_(self, path, *, moment: Moment = None):
+        async with self.lock(
+            [self], seconds=moment.seconds if moment is not None else None
+        ):
+            if path == self.path:
+                return
+            self._path = path
+            # Deallocate old buffer after allocating new buffer
+            # TODO: Deallocation should be aware of what notes are using the buffer
+            old_buffer = self.buffer_proxy
+            self._allocate_buffer(self.provider)
+            if old_buffer is not None:
+                old_buffer.free()
+
+    ### PUBLIC PROPERTIES ###
+
+    @property
+    def buffer_proxy(self):
+        return self._buffer_proxies.get("buffer")
+
+    @property
+    def path(self):
+        return self._path
+
+
 class BusParameter(Allocatable, ParameterObject):
 
     ### INITIALIZER ###
@@ -203,6 +291,8 @@ class BusParameter(Allocatable, ParameterObject):
 
     def _preallocate(self, provider, client):
         self._debug_tree(self, "Pre-Allocating", suffix=f"{hex(id(provider))}")
+        self._client = client
+        self._provider = provider
         self._control_bus_proxies["bus"] = provider.add_bus("control")
         self._control_bus_proxies["bus"].set_(self.spec.default)
 
@@ -242,77 +332,6 @@ class BusParameter(Allocatable, ParameterObject):
         return self._value
 
 
-class BufferParameter(Allocatable, ParameterObject):
-
-    ### INITIALIZER ###
-
-    def __init__(
-        self,
-        name: str,
-        *,
-        path: str = None,
-        is_builtin: bool = False,
-        uuid: UUID = None,
-    ):
-        ParameterObject.__init__(self, is_builtin=is_builtin, uuid=uuid)
-        Allocatable.__init__(self, name=name)
-        self._path = path
-
-    ### SPECIAL METHODS ###
-
-    def __float__(self):
-        return float(self.bus_proxy)
-
-    def __int__(self):
-        return int(self.bus_proxy)
-
-    def __str__(self):
-        buffer_proxy_id = (
-            int(self.buffer_proxy) if self.buffer_proxy is not None else "?"
-        )
-        obj_name = type(self).__name__
-        return "\n".join(
-            [
-                f'<{obj_name} "{self.name}" ({self.path}) [{buffer_proxy_id}] {self.uuid}>',
-                *(f"    {line}" for child in self for line in str(child).splitlines()),
-            ]
-        )
-
-    ### PRIVATE METHODS ###
-
-    def _allocate(self, provider, target_node, add_action):
-        Allocatable._allocate(self, provider, target_node, add_action)
-
-    ### PUBLIC METHODS ###
-
-    def serialize(self):
-        serialized = super().serialize()
-        serialized["spec"].update(channel_count=None, path=self.path)
-        for mapping in [serialized["meta"], serialized.get("spec", {}), serialized]:
-            for key in tuple(mapping):
-                if mapping[key] is None:
-                    mapping.pop(key)
-        return serialized
-
-    async def set_(self, path, *, moment: Moment = None):
-        async with self.lock(
-            [self], seconds=moment.seconds if moment is not None else None
-        ):
-            if path == self.path:
-                return
-            self._path = path
-
-    ### PUBLIC PROPERTIES ###
-
-    @property
-    def buffer_proxy(self):
-        return self._buffer_proxy
-
-    @property
-    def path(self):
-        return self.path
-
-
 class CallbackParameter(ParameterObject):
 
     ### INITIALIZER ###
@@ -337,6 +356,12 @@ class CallbackParameter(ParameterObject):
     def __str__(self):
         obj_name = type(self).__name__
         return "\n".join([f'<{obj_name} "{self.name}" ({self.value}) {self.uuid}>'])
+
+    ### PRIVATE METHODS ###
+
+    def _preallocate(self, provider, client):
+        self._debug_tree(self, "Pre-Allocating", suffix=f"{hex(id(provider))}")
+        self._client = client
 
     ### PUBLIC METHODS ###
 

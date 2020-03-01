@@ -71,6 +71,9 @@ class Context(Allocatable, Mixer):
             self._tracks._append(track)
             return track
 
+    def capture(self):
+        return self.provider.server.osc_protocol.capture()
+
     async def delete(self):
         async with self.lock([self]):
             if self.parent:

@@ -11,7 +11,7 @@ from .clips import Clip, Envelope, Note, NoteMoment, Scene, Slot, Timeline
 from .contexts import Context
 from .controllers import Controller
 from .devices import DeviceIn, DeviceObject, DeviceOut
-from .instruments import Instrument
+from .instruments import BasicSampler, BasicSynth, Instrument
 from .midieffects import Arpeggiator, Chord
 from .parameters import (
     Boolean,
@@ -40,6 +40,8 @@ __all__ = [
     "ApplicationObject",
     "Arpeggiator",
     "AudioEffect",
+    "BasicSampler",
+    "BasicSynth",
     "Boolean",
     "BufferParameter",
     "BusParameter",
