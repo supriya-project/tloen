@@ -62,6 +62,15 @@ class SendObject(Allocatable):
             calculation_rate=calculation_rate,
         )
 
+    @classmethod
+    def deserialize(cls, data):
+        return {
+            "DirectIn": DirectIn,
+            "DirectOut": DirectOut,
+            "Receive": Receive,
+            "Send": Send,
+        }[data["kind"]].deserialize(data)
+
     def set_gain(self, gain):
         pass
 
@@ -296,6 +305,14 @@ class Send(Patch):
             calculation_rate=calculation_rate,
         )
 
+    @classmethod
+    def deserialize(cls, data):
+        return cls(
+            name=data["meta"].get("name"),
+            uuid=UUID(data["meta"]["uuid"]),
+            target=Default(),  # WRONG
+        )
+
     ### PUBLIC PROPERTIES ###
 
     @property
@@ -478,6 +495,15 @@ class DirectOut(SendObject):
         node_proxy.free()
 
     ### PUBLIC METHODS ###
+
+    @classmethod
+    def deserialize(cls, data):
+        return cls(
+            name=data["meta"].get("name"),
+            uuid=UUID(data["meta"]["uuid"]),
+            target_bus_id=data["spec"]["target_bus_id"],
+            target_channel_count=data["spec"]["target_channel_count"],
+        )
 
     def serialize(self):
         serialized = super().serialize()

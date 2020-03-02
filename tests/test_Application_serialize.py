@@ -16,6 +16,8 @@ async def test_1():
     await track_one.solo(exclusive=False)
     await track_two.add_send(track_one)
     await track_two.solo(exclusive=False)
+    await track_two.mute()
+    await track_two.cue()
     rack = await track_one.add_device(RackDevice, channel_count=4)
     chain = await rack.add_chain()
     await chain.parameters["gain"].set_(-6.0)
@@ -40,12 +42,6 @@ async def test_1():
                 spec:
                   channel_count: 2
                   parameters:
-                  - kind: CallbackParameter
-                    meta:
-                      name: active
-                      uuid: {cue_track.parameters["active"].uuid}
-                    spec:
-                      value: true
                   - kind: BusParameter
                     meta:
                       name: gain
@@ -72,12 +68,6 @@ async def test_1():
                   uuid: {master_track.uuid}
                 spec:
                   parameters:
-                  - kind: CallbackParameter
-                    meta:
-                      name: active
-                      uuid: {master_track.parameters["active"].uuid}
-                    spec:
-                      value: true
                   - kind: BusParameter
                     meta:
                       name: gain
@@ -138,12 +128,6 @@ async def test_1():
                                 spec:
                                   value: false
                           parameters:
-                          - kind: CallbackParameter
-                            meta:
-                              name: active
-                              uuid: {chain.parameters["active"].uuid}
-                            spec:
-                              value: true
                           - kind: BusParameter
                             meta:
                               name: gain
@@ -171,13 +155,8 @@ async def test_1():
                           uuid: {rack.parameters["active"].uuid}
                         spec:
                           value: true
+                  is_soloed: true
                   parameters:
-                  - kind: CallbackParameter
-                    meta:
-                      name: active
-                      uuid: {track_one.parameters["active"].uuid}
-                    spec:
-                      value: true
                   - kind: BusParameter
                     meta:
                       name: gain
@@ -208,13 +187,9 @@ async def test_1():
                   name: Two
                   uuid: {track_two.uuid}
                 spec:
+                  is_muted: true
+                  is_soloed: true
                   parameters:
-                  - kind: CallbackParameter
-                    meta:
-                      name: active
-                      uuid: {track_two.parameters["active"].uuid}
-                    spec:
-                      value: true
                   - kind: BusParameter
                     meta:
                       name: gain

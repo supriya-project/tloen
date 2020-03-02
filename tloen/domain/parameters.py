@@ -124,6 +124,16 @@ class ParameterObject(ApplicationObject):
     def _preallocate(self, provider, client):
         ...
 
+    ### PUBLIC METHODS ###
+
+    @classmethod
+    def deserialize(cls, data):
+        return {
+            "BufferParameter": BufferParameter,
+            "BusParameter": BusParameter,
+            "CallbackParameter": CallbackParameter,
+        }[data["kind"]].deserialize(data)
+
     ### PUBLIC PROPERTIES ###
 
     @property
@@ -189,6 +199,10 @@ class BufferParameter(Allocatable, ParameterObject):
         self._allocate_buffer(provider)
 
     ### PUBLIC METHODS ###
+
+    @classmethod
+    def deserialize(cls, data):
+        ...
 
     def serialize(self):
         serialized = super().serialize()
@@ -306,6 +320,18 @@ class BusParameter(Allocatable, ParameterObject):
 
     ### PUBLIC METHODS ###
 
+    @classmethod
+    def deserialize(cls, data):
+        if data["spec"].get("spec"):
+            spec = ParameterSpec.deserialize(data["spec"]["spec"])
+        else:
+            spec = Float()
+        return cls(
+            name=data["meta"]["name"],
+            uuid=data["meta"]["uuid"],
+            spec=spec,
+        )
+
     def serialize(self):
         serialized = super().serialize()
         serialized["spec"].update(channel_count=None, value=self.value)
@@ -372,6 +398,10 @@ class CallbackParameter(ParameterObject):
         self._client = client
 
     ### PUBLIC METHODS ###
+
+    @classmethod
+    def deserialize(cls, data):
+        ...
 
     def serialize(self):
         serialized = super().serialize()

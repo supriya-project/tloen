@@ -14,14 +14,12 @@ from .clips import Slot
 from .devices import DeviceObject
 from .midi import NoteOffMessage, NoteOnMessage
 from .parameters import (
-    Boolean,
     BusParameter,
-    CallbackParameter,
     Float,
     ParameterGroup,
     ParameterObject,
 )
-from .sends import Receive, Send, Target
+from .sends import Receive, Send, SendObject, Target
 from .synthdefs import build_patch_synthdef, build_peak_rms_synthdef
 
 logger = logging.getLogger("tloen.domain")
@@ -35,14 +33,6 @@ class TrackObject(Allocatable):
         Allocatable.__init__(self, channel_count=channel_count, name=name)
         self._parameter_group = ParameterGroup()
         self._parameters: Dict[str, ParameterObject] = {}
-        self._add_parameter(
-            CallbackParameter(
-                callback=lambda client, value: client._set_active(value),
-                is_builtin=True,
-                name="active",
-                spec=Boolean(),
-            ),
-        )
         self._add_parameter(
             BusParameter(
                 is_builtin=True,
@@ -215,6 +205,19 @@ class TrackObject(Allocatable):
         if not self.provider:
             return
         self.node_proxies["output"]["active"] = 0
+
+    def _deserialize_sends(self, sends_data):
+        for send_data in sends_data:
+            send = SendObject.deserialize(send_data)
+            position = send_data["spec"].get("position")
+            if position is None:
+                self.receives._append(send)
+            elif position == "prefader":
+                self.prefader_sends._append(send)
+            elif position == "postfader":
+                self.postfader_sends._append(send)
+            else:
+                raise ValueError(f"Unknown send position {position!r}")
 
     def _reallocate(self, difference):
         channel_count = self.effective_channel_count
@@ -437,6 +440,7 @@ class CueTrack(TrackObject):
     def deserialize(cls, data):
         track = cls(uuid=UUID(data["meta"]["uuid"]))
         track._deserialize_parameters(data["spec"]["parameters"])
+        track._deserialize_sends(data["spec"]["sends"])
         return track
 
 
@@ -448,6 +452,7 @@ class MasterTrack(TrackObject):
     def deserialize(cls, data):
         track = cls(uuid=UUID(data["meta"]["uuid"]))
         track._deserialize_parameters(data["spec"]["parameters"])
+        track._deserialize_sends(data["spec"]["sends"])
         return track
 
 
@@ -488,6 +493,7 @@ class UserTrackObject(TrackObject):
             uuid=UUID(data["meta"]["uuid"]),
         )
         track._deserialize_parameters(data["spec"]["parameters"])
+        track._deserialize_sends(data["spec"]["sends"])
         return track
 
     async def duplicate(self):
@@ -497,6 +503,19 @@ class UserTrackObject(TrackObject):
     async def mute(self):
         async with self.lock([self]):
             self._set_active(False)
+
+    def serialize(self):
+        serialized = super().serialize()
+        serialized["spec"].update(
+            is_cued=self.is_cued or None,
+            is_muted=self.is_muted or None,
+            is_soloed=self.is_soloed or None,
+        )
+        for mapping in [serialized["meta"], serialized.get("spec", {}), serialized]:
+            for key in tuple(mapping):
+                if not mapping[key]:
+                    mapping.pop(key)
+        return serialized
 
     @abc.abstractmethod
     async def solo(self, exclusive=True):
