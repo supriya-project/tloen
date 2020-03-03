@@ -1,40 +1,75 @@
-from typing import Callable, Generator, Optional, Sequence, Tuple
+import dataclasses
+from typing import Optional, Sequence
 
 from supriya.enums import AddAction, CalculationRate
 from supriya.typing import Default
 
 import tloen.domain  # noqa
 
-from .bases import Allocatable, AllocatableContainer, Mixer
+from .bases import Allocatable, AllocatableContainer, Mixer, Performable
 from .devices import DeviceObject
-from .midi import MidiMessage
+from .midi import MidiMessage, NoteOffMessage, NoteOnMessage
 from .sends import Send, Target
 from .synthdefs import build_patch_synthdef
 from .tracks import UserTrackObject
 
 
-class Chain(UserTrackObject):
+@dataclasses.dataclass(frozen=True)
+class Transfer:
+    in_pitch: Optional[int] = None
+    out_pitch: Optional[int] = None
 
+    def __call__(
+        self, in_midi_messages: Sequence[MidiMessage]
+    ) -> Sequence[MidiMessage]:
+        out_midi_messages = []
+        for midi_message in in_midi_messages:
+            if isinstance(midi_message, (NoteOnMessage, NoteOffMessage)):
+                if self.in_pitch is None or self.in_pitch == midi_message.pitch:
+                    if self.out_pitch:
+                        midi_message = dataclasses.replace(
+                            midi_message, pitch=self.out_pitch,
+                        )
+                    out_midi_messages.append(midi_message)
+            else:
+                out_midi_messages.append(midi_message)
+        return out_midi_messages
+
+    @classmethod
+    def deserialize(cls, data):
+        return cls(
+            in_pitch=data["spec"].get("in_pitch"),
+            out_pitch=data["spec"].get("out_pitch"),
+        )
+
+    def serialize(self):
+        serialized = {
+            "kind": type(self).__name__,
+            "spec": {"in_pitch": self.in_pitch, "out_pitch": self.out_pitch},
+        }
+        for mapping in [
+            serialized.get("meta", {}),
+            serialized.get("spec", {}),
+            serialized,
+        ]:
+            for key in tuple(mapping):
+                if not mapping[key]:
+                    mapping.pop(key)
+        return serialized
+
+
+class Chain(UserTrackObject):
     def __init__(self, *, channel_count=None, name=None, transfer=None, uuid=None):
         UserTrackObject.__init__(
-            self,
-            channel_count=channel_count,
-            name=name,
-            uuid=uuid,
+            self, channel_count=channel_count, name=name, uuid=uuid,
         )
         # how external notes are filtered / transformed into internal notes
-        self._transfer = transfer
+        self._transfer = transfer or Transfer()
 
     ### PRIVATE METHODS ###
 
     def _cleanup(self):
         Chain._update_activation(self)
-
-    def _perform_input(self):
-        pass
-
-    def _perform_output(self):
-        pass
 
     def _set_parent(self, new_parent):
         if self.is_soloed:
@@ -84,6 +119,15 @@ class Chain(UserTrackObject):
     async def move(self, container, position):
         async with self.lock([self, container]):
             container.chains._mutate(slice(position, position), [self])
+
+    def serialize(self):
+        serialized = super().serialize()
+        serialized.setdefault("spec", {}).update(transfer=self.transfer.serialize(),)
+        for mapping in [serialized["meta"], serialized.get("spec", {}), serialized]:
+            for key in tuple(mapping):
+                if not mapping[key]:
+                    mapping.pop(key)
+        return serialized
 
     async def solo(self, exclusive=True):
         async with self.lock([self]):
@@ -231,33 +275,26 @@ class RackDevice(DeviceObject, Mixer):
     def _cleanup(self):
         Chain._update_activation(self)
 
-    def _perform(
-        self, moment, in_midi_messages
-    ) -> Generator[Tuple[Optional[Callable], Sequence[MidiMessage]], None, None]:
-        # TODO: Refactor for zone control
-        performers = []
-        for chain in self.chains:
-            if chain.devices:
-                performers.append(chain.devices[0].perform)
-            else:
-                performers.append(self._perform_output)
-        for message in in_midi_messages:
-            self._update_captures(moment, message, "I")
+    def _perform_input(self, moment, midi_messages):
+        Performable._perform_input(self, moment, midi_messages)
+        performers = [chain._perform_input for chain in self.chains] or [
+            self._perform_output
+        ]
+        for message in midi_messages:
             for performer in performers:
-                yield performer, (message,)
-
-    def _perform_output(
-        self, moment, in_midi_messages
-    ) -> Generator[Tuple[Optional[Callable], Sequence[MidiMessage]], None, None]:
-        for message in in_midi_messages:
-            self._update_captures(moment, message, "O")
-            yield None, (message,)
+                yield performer, [message]
 
     ### PUBLIC METHODS ###
 
-    async def add_chain(self, channel_count=None, name=None):
+    async def add_chain(
+        self,
+        *,
+        channel_count: Optional[int] = None,
+        name: Optional[str] = None,
+        transfer: Optional[Transfer] = None,
+    ) -> Chain:
         async with self.lock([self]):
-            chain = Chain(channel_count=channel_count, name=name)
+            chain = Chain(channel_count=channel_count, name=name, transfer=transfer)
             await chain.add_send(Default())
             self._chains._append(chain)
             return chain
@@ -278,7 +315,7 @@ class RackDevice(DeviceObject, Mixer):
     def serialize(self):
         serialized = super().serialize()
         serialized.setdefault("spec", {}).update(
-            chains=[chain.serialize() for chain in self.chains]
+            chains=[chain.serialize() for chain in self.chains],
         )
         for mapping in [serialized["meta"], serialized.get("spec", {}), serialized]:
             for key in tuple(mapping):

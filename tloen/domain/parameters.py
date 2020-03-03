@@ -326,11 +326,7 @@ class BusParameter(Allocatable, ParameterObject):
             spec = ParameterSpec.deserialize(data["spec"]["spec"])
         else:
             spec = Float()
-        return cls(
-            name=data["meta"]["name"],
-            uuid=data["meta"]["uuid"],
-            spec=spec,
-        )
+        return cls(name=data["meta"]["name"], uuid=data["meta"]["uuid"], spec=spec,)
 
     def serialize(self):
         serialized = super().serialize()

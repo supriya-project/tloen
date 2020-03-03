@@ -63,7 +63,8 @@ async def test_set_buffer(application):
     assert len(transcript.sent_messages) == 1
     _, message = transcript.sent_messages[0]
     assert message.to_list() == [
-        None, [['/b_allocRead', 0, str(locate(path)), 0, -1]],
+        None,
+        [["/b_allocRead", 0, str(locate(path)), 0, -1]],
     ]
     assert instrument.parameters["buffer_id"].buffer_proxy is not None
     assert instrument.parameters["buffer_id"].path is path
@@ -83,10 +84,19 @@ async def test_perform(application):
     assert len(transcript.sent_messages) == 1
     synthdef = instrument.synthdef.build()
     bundle_contents = [
-        ['/s_new', synthdef.actual_name, 1049, 0, 1046,
-            'amplitude',
+        [
+            "/s_new",
+            synthdef.actual_name,
+            1049,
+            0,
+            1046,
+            "amplitude",
             0.62000124000248,
-            'buffer_id', 0.0, 'out', 28.0],
+            "buffer_id",
+            0.0,
+            "out",
+            28.0,
+        ],
     ]
     assert transcript.sent_messages[0][1].to_list() == [
         None,

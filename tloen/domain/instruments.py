@@ -110,9 +110,12 @@ class BasicSampler(Instrument):
         def signal_block(builder, source, state):
             # TODO: Sampler should be aware of the shape of the sample
             #       In order to handle up- / down-mixing
-            player = PlayBuf.ar(
-                buffer_id=builder["buffer_id"], channel_count=1, done_action=2,
-            ) * builder["amplitude"]
+            player = (
+                PlayBuf.ar(
+                    buffer_id=builder["buffer_id"], channel_count=1, done_action=2,
+                )
+                * builder["amplitude"]
+            )
             return [player] * state["channel_count"]
 
         factory = (

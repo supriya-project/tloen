@@ -1,25 +1,10 @@
-from collections import deque
-from typing import (
-    Callable,
-    Deque,
-    Dict,
-    Generator,
-    List,
-    NamedTuple,
-    Optional,
-    Sequence,
-    Set,
-    Tuple,
-    Type,
-    Union,
-)
+from typing import Callable, Dict, Optional, Set, Type, Union
 from uuid import UUID, uuid4
 
-from supriya.clock import Moment
 from supriya.enums import AddAction, CalculationRate
 from supriya.synthdefs import SynthDef, SynthDefFactory
 
-from .bases import Allocatable
+from .bases import Allocatable, Performable
 from .midi import MidiMessage, NoteOffMessage, NoteOnMessage
 from .parameters import (
     Boolean,
@@ -164,41 +149,13 @@ class DeviceOut(Patch):
         return target.audio_bus_proxies.get("output") if target is not None else None
 
 
-class DeviceObject(Allocatable):
-
-    ### CLASS VARIABLES ###
-
-    class CaptureEntry(NamedTuple):
-        moment: Moment
-        label: str
-        message: MidiMessage
-
-    class Capture:
-        def __init__(self, device: "DeviceObject"):
-            self.device = device
-            self.entries: List["DeviceObject.CaptureEntry"] = []
-
-        def __enter__(self):
-            self.device._captures.add(self)
-            self.entries[:] = []
-            return self
-
-        def __exit__(self, exc_type, exc_value, traceback):
-            self.device._captures.remove(self)
-
-        def __getitem__(self, i):
-            return self.entries[i]
-
-        def __iter__(self):
-            return iter(self.entries)
-
-        def __len__(self):
-            return len(self.entries)
+class DeviceObject(Allocatable, Performable):
 
     ### INITIALIZER ###
 
     def __init__(self, *, channel_count=None, name=None, parameters=None, uuid=None):
         Allocatable.__init__(self, channel_count=channel_count, name=name)
+        Performable.__init__(self)
         self._parameter_group = ParameterGroup()
         self._parameters: Dict[str, ParameterObject] = parameters or {}
         self._add_parameter(
@@ -210,7 +167,6 @@ class DeviceObject(Allocatable):
             ),
         )
         self._uuid = uuid or uuid4()
-        self._captures: Set[DeviceObject.Capture] = set()
         self._input_notes: Set[float] = set()
         self._output_notes: Set[float] = set()
         self._event_handlers: Dict[Type[MidiMessage], Callable] = {
@@ -244,67 +200,26 @@ class DeviceObject(Allocatable):
         result.append(midi_message)
         return result
 
-    def _next_performer(self) -> Optional[Callable]:
-        if self.parent is None:
-            return None
-        index = self.parent.index(self)
-        if index < len(self.parent) - 1:
-            return self.parent[index + 1]._perform
-        for parent in self.parentage[1:]:
-            if hasattr(parent, "_perform_output"):
-                return parent._perform_output
-        return None
-
-    def _perform(
-        self, moment, in_midi_messages: Sequence[MidiMessage]
-    ) -> Generator[Tuple[Optional[Callable], Sequence[MidiMessage]], None, None]:
-        self._debug_tree(
-            self, "Perform", suffix=repr([type(_).__name__ for _ in in_midi_messages])
-        )
-        next_performer = self._next_performer()
-        out_midi_messages = []
-        for in_message in in_midi_messages:
-            self._update_captures(moment=moment, message=in_message, label="I")
-            event_handler = self._event_handlers.get(type(in_message))
-            if not event_handler:
-                out_midi_messages.append(in_message)
-                continue
-            out_midi_messages.extend(event_handler(moment, in_message))
-        for out_message in out_midi_messages:
-            self._update_captures(moment=moment, message=out_message, label="O")
-        yield next_performer, out_midi_messages
-
-    @classmethod
-    def _perform_loop(cls, moment, performer, midi_messages):
-        stack: Deque = deque()
-        stack.append((performer, midi_messages))
+    def _perform_input(self, moment, midi_messages):
+        Performable._perform_input(self, moment, midi_messages)
         out_messages = []
-        while stack:
-            in_performer, in_messages = stack.popleft()
-            for out_performer, out_messages in in_performer(moment, in_messages):
-                if out_messages and out_performer is not None:
-                    stack.append((out_performer, out_messages))
-        return out_messages
+        for message in midi_messages:
+            event_handler = self._event_handlers.get(type(message))
+            if not event_handler:
+                out_messages.append(message)
+                continue
+            out_messages.extend(event_handler(moment, message))
+        yield self._perform_output, out_messages
 
     def _set_active(self, is_active):
         if self.is_active == is_active:
             return
-
-    def _update_captures(self, moment, message, label):
-        if not self._captures:
-            return
-        entry = self.CaptureEntry(moment=moment, message=message, label=label)
-        for capture in self._captures:
-            capture.entries.append(entry)
 
     ### PUBLIC METHODS ###
 
     async def activate(self):
         async with self.lock([self]):
             self._is_active = True
-
-    def capture(self):
-        return self.Capture(self)
 
     async def deactivate(self):
         async with self.lock([self]):
@@ -327,12 +242,6 @@ class DeviceObject(Allocatable):
     async def move(self, container, position):
         async with self.lock([self, container]):
             container.devices._mutate(slice(position, position), [self])
-
-    async def perform(self, midi_messages, moment=None):
-        async with self.lock(
-            [self], seconds=moment.seconds if moment is not None else None
-        ):
-            return self._perform_loop(moment, self._perform, midi_messages)
 
     def serialize(self):
         serialized = super().serialize()

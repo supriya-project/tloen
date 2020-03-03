@@ -6,7 +6,7 @@ from .bases import (
     ApplicationObject,
     Container,
 )
-from .chains import Chain, ChainContainer, RackDevice
+from .chains import Chain, ChainContainer, RackDevice, Transfer
 from .clips import Clip, Envelope, Note, NoteMoment, Scene, Slot, Timeline
 from .contexts import Context
 from .controllers import Controller

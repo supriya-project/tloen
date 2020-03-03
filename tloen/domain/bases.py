@@ -1,8 +1,22 @@
+import abc
 import logging
+from collections import deque
 from contextlib import AsyncExitStack, asynccontextmanager
 from types import MappingProxyType
-from typing import Any, Dict, Mapping, Optional, Set, Union
+from typing import (
+    Any,
+    Callable,
+    Deque,
+    Dict,
+    List,
+    Mapping,
+    NamedTuple,
+    Optional,
+    Set,
+    Union,
+)
 
+from supriya.clock import Moment
 from supriya.commands import FailResponse, NodeQueryRequest
 from supriya.enums import AddAction
 from supriya.provider import (
@@ -18,6 +32,7 @@ from supriya.typing import Missing
 from uqbar.containers import UniqueTreeTuple
 
 import tloen.domain  # noqa
+from tloen.domain.midi import MidiMessage, NoteOffMessage, NoteOnMessage
 
 logger = logging.getLogger("tloen.domain")
 
@@ -558,3 +573,110 @@ class Mixer:
         from .tracks import TrackObject
 
         self._soloed_tracks: Set[TrackObject] = set()
+
+
+class Performable:
+
+    ### CLASS VARIABLES ###
+
+    class CaptureEntry(NamedTuple):
+        moment: Moment
+        label: str
+        message: MidiMessage
+
+    class Capture:
+        def __init__(self, performable: "Performable"):
+            self.performable = performable
+            self.entries: List["performableObject.CaptureEntry"] = []
+
+        def __enter__(self):
+            self.performable._captures.add(self)
+            self.entries[:] = []
+            return self
+
+        def __exit__(self, exc_type, exc_value, traceback):
+            self.performable._captures.remove(self)
+
+        def __getitem__(self, i):
+            return self.entries[i]
+
+        def __iter__(self):
+            return iter(self.entries)
+
+        def __len__(self):
+            return len(self.entries)
+
+    ### INITIALIZER ###
+
+    def __init__(self):
+        self._active_notes: Set[float] = set()
+        self._captures: Set["Performable.Capture"] = set()
+
+    ### PRIVATE METHODS ###
+
+    def _next_performer(self) -> Optional[Callable]:
+        if self.parent is None:
+            return None
+        index = self.parent.index(self)
+        if index < len(self.parent) - 1:
+            return self.parent[index + 1]._perform_input
+        for parent in self.parentage[1:]:
+            if parent is None:
+                return None
+            elif hasattr(parent, "_perform_output"):
+                return parent._perform_output
+        return None
+
+    @abc.abstractmethod
+    def _perform_input(self, moment, midi_messages):
+        for message in midi_messages:
+            self._update_captures(moment, message, "I")
+            if isinstance(message, NoteOnMessage):
+                self._active_notes.add(message.pitch)
+            elif isinstance(message, NoteOffMessage):
+                self._active_notes.remove(message.pitch)
+
+    def _perform_output(self, moment, midi_messages):
+        next_performer = self._next_performer()
+        for message in midi_messages:
+            self._update_captures(moment, message, "O")
+            yield next_performer, [message]
+
+    @classmethod
+    def _perform_loop(cls, moment, performer, midi_messages):
+        stack: Deque = deque()
+        stack.append((performer, midi_messages))
+        out_messages = []
+        while stack:
+            in_performer, in_messages = stack.popleft()
+            for out_performer, out_messages in in_performer(moment, in_messages):
+                if out_messages and out_performer is not None:
+                    stack.append((out_performer, out_messages))
+        return out_messages
+
+    def _update_captures(self, moment, message, label):
+        if not self._captures:
+            return
+        entry = self.CaptureEntry(moment=moment, message=message, label=label)
+        for capture in self._captures:
+            capture.entries.append(entry)
+
+    ### PUBLIC METHODS ###
+
+    def capture(self):
+        return self.Capture(self)
+
+    async def flush(self, moment=None):
+        async with self.lock(
+            [self], seconds=moment.seconds if moment is not None else None
+        ):
+            pass
+
+    async def perform(self, midi_messages, moment=None):
+        self._debug_tree(
+            self, "Perform", suffix=repr([type(_).__name__ for _ in midi_messages])
+        )
+        async with self.lock(
+            [self], seconds=moment.seconds if moment is not None else None
+        ):
+            self._perform_loop(moment, self._perform_input, midi_messages)

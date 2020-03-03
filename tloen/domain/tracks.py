@@ -9,28 +9,30 @@ from supriya.typing import Default
 
 import tloen.domain  # noqa
 
-from .bases import Allocatable, AllocatableContainer, Container, Mixer
+from .bases import (
+    Allocatable,
+    AllocatableContainer,
+    Container,
+    Mixer,
+    Performable,
+)
 from .clips import Slot
 from .devices import DeviceObject
-from .midi import NoteOffMessage, NoteOnMessage
-from .parameters import (
-    BusParameter,
-    Float,
-    ParameterGroup,
-    ParameterObject,
-)
+from .midi import NoteOffMessage
+from .parameters import BusParameter, Float, ParameterGroup, ParameterObject
 from .sends import Receive, Send, SendObject, Target
 from .synthdefs import build_patch_synthdef, build_peak_rms_synthdef
 
 logger = logging.getLogger("tloen.domain")
 
 
-class TrackObject(Allocatable):
+class TrackObject(Allocatable, Performable):
 
     ### INITIALIZER ###
 
     def __init__(self, *, channel_count=None, name=None, uuid=None):
         Allocatable.__init__(self, channel_count=channel_count, name=name)
+        Performable.__init__(self)
         self._parameter_group = ParameterGroup()
         self._parameters: Dict[str, ParameterObject] = {}
         self._add_parameter(
@@ -304,21 +306,12 @@ class TrackObject(Allocatable):
                 receive.effective_source.receive_target._dependencies.add(receive)
             return receive
 
-    async def perform(self, midi_messages, moment=None):
-        self._debug_tree(
-            self, "Perform", suffix=repr([type(_).__name__ for _ in midi_messages])
-        )
-        async with self.lock(
-            [self], seconds=moment.seconds if moment is not None else None
-        ):
-            for midi_message in midi_messages:
-                if isinstance(midi_message, NoteOnMessage):
-                    self._active_notes.add(midi_message.pitch)
-                elif isinstance(midi_message, NoteOffMessage):
-                    self._active_notes.remove(midi_message.pitch)
-            if not self.devices:
-                return
-            await self.devices[0].perform(midi_messages, moment=moment)
+    def _perform_input(self, moment, midi_messages):
+        Performable._perform_input(self, moment, midi_messages)
+        next_performer = self._perform_output
+        if self.devices:
+            next_performer = self.devices[0]._perform_input
+        yield next_performer, midi_messages
 
     async def remove_devices(self, *devices: DeviceObject):
         async with self.lock([self, *devices]):
