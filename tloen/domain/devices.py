@@ -157,7 +157,7 @@ class DeviceObject(Allocatable, Performable):
         Allocatable.__init__(self, channel_count=channel_count, name=name)
         Performable.__init__(self)
         self._parameter_group = ParameterGroup()
-        self._parameters: Dict[str, ParameterObject] = parameters or {}
+        self._parameters: Dict[str, ParameterObject] = {}
         self._add_parameter(
             CallbackParameter(
                 callback=lambda client, value: client._set_active(value),
@@ -166,6 +166,8 @@ class DeviceObject(Allocatable, Performable):
                 spec=Boolean(),
             ),
         )
+        for parameter in (parameters or {}).values():
+            self._add_parameter(parameter)
         self._uuid = uuid or uuid4()
         self._input_notes: Set[float] = set()
         self._output_notes: Set[float] = set()
@@ -173,6 +175,7 @@ class DeviceObject(Allocatable, Performable):
             NoteOnMessage: self._handle_note_on,
             NoteOffMessage: self._handle_note_off,
         }
+        self._mutate(slice(None), [self._parameter_group])
 
     ### SPECIAL METHODS ###
 
@@ -295,7 +298,9 @@ class AllocatableDevice(DeviceObject):
         self._parameter_map = parameter_map or {}
         self._synthdef = synthdef
         self._synthdef_kwargs = dict(synthdef_kwargs or {})
-        self._mutate(slice(None), [self._device_in, self._device_out])
+        self._mutate(slice(None), [
+            self._parameter_group, self._device_in, self._device_out,
+        ])
 
     ### PRIVATE METHODS ###
 

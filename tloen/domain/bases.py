@@ -60,7 +60,7 @@ class ApplicationObject(UniqueTreeTuple):
 
     def _add_parameter(self, parameter):
         if parameter.name in self._parameters:
-            raise ValueError(f'Parameter {parameter["name"]} already added')
+            raise ValueError(f'Parameter {parameter.name} already added')
         self._parameters[parameter.name] = parameter
         self._parameter_group._append(parameter)
 

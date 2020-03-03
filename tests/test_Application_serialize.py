@@ -51,6 +51,7 @@ async def test_1():
             - {track_two.uuid}
         - kind: CueTrack
           meta:
+            parent: {context.uuid}
             uuid: {cue_track.uuid}
           spec:
             channel_count: 2
@@ -62,17 +63,20 @@ async def test_1():
         - kind: BusParameter
           meta:
             name: gain
+            parent: {cue_track.uuid}
             uuid: {cue_track.parameters["gain"].uuid}
           spec:
             value: 0.0
         - kind: BusParameter
           meta:
             name: mix
+            parent: {cue_track.uuid}
             uuid: {cue_track.parameters["mix"].uuid}
           spec:
             value: 0.0
         - kind: DirectOut
           meta:
+            parent: {cue_track.uuid}
             uuid: {cue_track.postfader_sends[0].uuid}
           spec:
             position: postfader
@@ -80,6 +84,7 @@ async def test_1():
             target_channel_count: 2
         - kind: MasterTrack
           meta:
+            parent: {context.uuid}
             uuid: {master_track.uuid}
           spec:
             parameters:
@@ -89,11 +94,13 @@ async def test_1():
         - kind: BusParameter
           meta:
             name: gain
+            parent: {master_track.uuid}
             uuid: {master_track.parameters["gain"].uuid}
           spec:
             value: 0.0
         - kind: DirectOut
           meta:
+            parent: {master_track.uuid}
             uuid: {master_track.postfader_sends[0].uuid}
           spec:
             position: postfader
@@ -102,6 +109,7 @@ async def test_1():
         - kind: Track
           meta:
             name: One
+            parent: {context.uuid}
             uuid: {track_one.uuid}
           spec:
             devices:
@@ -116,29 +124,34 @@ async def test_1():
         - kind: BusParameter
           meta:
             name: gain
+            parent: {track_one.uuid}
             uuid: {track_one.parameters["gain"].uuid}
           spec:
             value: 0.0
         - kind: BusParameter
           meta:
             name: panning
+            parent: {track_one.uuid}
             uuid: {track_one.parameters["panning"].uuid}
           spec:
             value: 0.0
         - kind: Send
           meta:
+            parent: {track_one.uuid}
             uuid: {track_one.postfader_sends[0].uuid}
           spec:
             position: postfader
             target: default
         - kind: Send
           meta:
+            parent: {track_one.uuid}
             uuid: {track_one.postfader_sends[1].uuid}
           spec:
             position: postfader
             target: {track_two.uuid}
         - kind: RackDevice
           meta:
+            parent: {track_one.uuid}
             uuid: {rack.uuid}
           spec:
             chains:
@@ -154,6 +167,7 @@ async def test_1():
             value: true
         - kind: Chain
           meta:
+            parent: {rack.uuid}
             uuid: {chain.uuid}
           spec:
             devices:
@@ -169,23 +183,27 @@ async def test_1():
         - kind: BusParameter
           meta:
             name: gain
+            parent: {chain.uuid}
             uuid: {chain.parameters["gain"].uuid}
           spec:
             value: -6.0
         - kind: BusParameter
           meta:
             name: panning
+            parent: {chain.uuid}
             uuid: {chain.parameters["panning"].uuid}
           spec:
             value: 0.0
         - kind: Send
           meta:
+            parent: {chain.uuid}
             uuid: {chain.postfader_sends[0].uuid}
           spec:
             position: postfader
             target: default
         - kind: Arpeggiator
           meta:
+            parent: {chain.uuid}
             uuid: {arpeggiator.uuid}
           spec:
             parameters:
@@ -193,31 +211,36 @@ async def test_1():
         - kind: CallbackParameter
           meta:
             name: active
+            parent: {arpeggiator.uuid}
             uuid: {arpeggiator.parameters["active"].uuid}
           spec:
             value: true
         - kind: BasicSampler
           meta:
+            parent: {chain.uuid}
             uuid: {sampler.uuid}
           spec:
             parameters:
-            - {sampler.parameters["buffer_id"].uuid}
             - {sampler.parameters["active"].uuid}
-        - kind: BufferParameter
-          meta:
-            name: buffer_id
-            uuid: {sampler.parameters["buffer_id"].uuid}
-          spec:
-            path: tloen:samples/808/bd-long-03.wav
+            - {sampler.parameters["buffer_id"].uuid}
         - kind: CallbackParameter
           meta:
             name: active
+            parent: {sampler.uuid}
             uuid: {sampler.parameters["active"].uuid}
           spec:
             value: false
+        - kind: BufferParameter
+          meta:
+            name: buffer_id
+            parent: {sampler.uuid}
+            uuid: {sampler.parameters["buffer_id"].uuid}
+          spec:
+            path: tloen:samples/808/bd-long-03.wav
         - kind: Track
           meta:
             name: Two
+            parent: {context.uuid}
             uuid: {track_two.uuid}
           spec:
             is_muted: true
@@ -231,23 +254,27 @@ async def test_1():
         - kind: BusParameter
           meta:
             name: gain
+            parent: {track_two.uuid}
             uuid: {track_two.parameters["gain"].uuid}
           spec:
             value: 0.0
         - kind: BusParameter
           meta:
             name: panning
+            parent: {track_two.uuid}
             uuid: {track_two.parameters["panning"].uuid}
           spec:
             value: 0.0
         - kind: Send
           meta:
+            parent: {track_two.uuid}
             uuid: {track_two.postfader_sends[0].uuid}
           spec:
             position: postfader
             target: default
         - kind: Send
           meta:
+            parent: {track_two.uuid}
             uuid: {track_two.postfader_sends[1].uuid}
           spec:
             position: postfader

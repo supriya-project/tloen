@@ -191,9 +191,9 @@ class BufferParameter(Allocatable, ParameterObject):
         )
 
     def _preallocate(self, provider, client):
+        self._debug_tree(self, "Pre-Allocating", suffix=f"{hex(id(provider))}")
         self._client = client
         self._provider = provider
-        self._debug_tree(self, "Pre-Allocating", suffix=f"{hex(id(provider))}")
         if self.path is None:
             return
         self._allocate_buffer(provider)
@@ -384,6 +384,7 @@ class CallbackParameter(ParameterObject):
     def _preallocate(self, provider, client):
         self._debug_tree(self, "Pre-Allocating", suffix=f"{hex(id(provider))}")
         self._client = client
+        self._provider = provider
 
     ### PUBLIC METHODS ###
 

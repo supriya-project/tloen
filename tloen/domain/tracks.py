@@ -433,6 +433,11 @@ class CueTrack(TrackObject):
             ),
         )
 
+    def serialize(self):
+        serialized, auxiliary_entities = super().serialize()
+        serialized["meta"]["parent"] = str(self.parent.uuid)
+        return serialized, auxiliary_entities
+
     @classmethod
     def deserialize(cls, data):
         track = cls(uuid=UUID(data["meta"]["uuid"]))
@@ -444,6 +449,11 @@ class CueTrack(TrackObject):
 class MasterTrack(TrackObject):
     def __init__(self, *, uuid=None):
         TrackObject.__init__(self, uuid=uuid)
+
+    def serialize(self):
+        serialized, auxiliary_entities = super().serialize()
+        serialized["meta"]["parent"] = str(self.parent.uuid)
+        return serialized, auxiliary_entities
 
     @classmethod
     def deserialize(cls, data):
