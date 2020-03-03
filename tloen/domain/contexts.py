@@ -116,17 +116,17 @@ class Context(Allocatable, Mixer):
                 self._tracks._remove(track)
 
     def serialize(self):
-        serialized = super().serialize()
+        serialized, auxiliary_entities = super().serialize()
         serialized["spec"].update(
-            cue_track=self.cue_track.serialize(),
-            master_track=self.master_track.serialize(),
-            tracks=[track.serialize() for track in self.tracks],
+            cue_track=str(self.cue_track.uuid),
+            master_track=str(self.master_track.uuid),
+            tracks=[str(track.uuid) for track in self.tracks]
         )
-        for mapping in [serialized["meta"], serialized["spec"], serialized]:
-            for key in tuple(mapping):
-                if not mapping[key]:
-                    mapping.pop(key)
-        return serialized
+        for track in [self.cue_track, self.master_track, *self.tracks]:
+            aux = track.serialize()
+            auxiliary_entities.append(aux[0])
+            auxiliary_entities.extend(aux[1])
+        return serialized, auxiliary_entities
 
     @classmethod
     def deserialize(cls, data):

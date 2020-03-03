@@ -78,6 +78,11 @@ class Chain(UserTrackObject):
                 continue
             yield next_performer, [out_message]
 
+    def serialize(self):
+        serialized, auxiliary_entities = super().serialize()
+        serialized.setdefault("spec", {}).update(transfer=self.transfer.serialize(),)
+        return serialized, auxiliary_entities
+
     def _set_parent(self, new_parent):
         if self.is_soloed:
             mixer = self.mixer
@@ -126,15 +131,6 @@ class Chain(UserTrackObject):
     async def move(self, container, position):
         async with self.lock([self, container]):
             container.chains._mutate(slice(position, position), [self])
-
-    def serialize(self):
-        serialized = super().serialize()
-        serialized.setdefault("spec", {}).update(transfer=self.transfer.serialize(),)
-        for mapping in [serialized["meta"], serialized.get("spec", {}), serialized]:
-            for key in tuple(mapping):
-                if not mapping[key]:
-                    mapping.pop(key)
-        return serialized
 
     async def solo(self, exclusive=True):
         async with self.lock([self]):
@@ -320,15 +316,15 @@ class RackDevice(DeviceObject, Mixer):
                 self._chains._remove(chain)
 
     def serialize(self):
-        serialized = super().serialize()
-        serialized.setdefault("spec", {}).update(
-            chains=[chain.serialize() for chain in self.chains],
-        )
-        for mapping in [serialized["meta"], serialized.get("spec", {}), serialized]:
-            for key in tuple(mapping):
-                if not mapping[key]:
-                    mapping.pop(key)
-        return serialized
+        serialized, auxiliary_entities = super().serialize()
+        chains = []
+        for chain in self.chains:
+            chains.append(str(chain.uuid))
+            aux = chain.serialize()
+            auxiliary_entities.append(aux[0])
+            auxiliary_entities.extend(aux[1])
+        serialized["spec"]["chains"] = chains
+        return serialized, auxiliary_entities
 
     async def set_channel_count(self, channel_count: Optional[int]):
         async with self.lock([self]):

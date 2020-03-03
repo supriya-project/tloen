@@ -75,6 +75,9 @@ class ApplicationObject(UniqueTreeTuple):
             raise RuntimeError
         new_application._registry[self.uuid] = self
 
+    def _cleanup(self):
+        pass
+
     def _deapplicate(self, old_application):
         self._debug_tree(self, "Deapplicating", suffix=repr(None))
         if not hasattr(self, "uuid"):
@@ -158,9 +161,6 @@ class ApplicationObject(UniqueTreeTuple):
         for item in old_items:
             item._set(application=None)
 
-    def _cleanup(self):
-        pass
-
     ### PUBLIC METHODS ###
 
     @classmethod
@@ -172,7 +172,7 @@ class ApplicationObject(UniqueTreeTuple):
         pass
 
     def serialize(self):
-        return {
+        serialized = {
             "kind": type(self).__name__,
             "meta": {
                 "name": self.name,
@@ -180,13 +180,22 @@ class ApplicationObject(UniqueTreeTuple):
             },
             "spec": {
                 "channel_count": getattr(self, "channel_count", None),
-                "parameters": (
-                    [param.serialize() for param in self.parameters.values()]
-                    if hasattr(self, "parameters")
-                    else None
-                ),
+                "parameters": [],
             },
         }
+        if (
+            self.parent is not None
+            and self.parent.parent is not None
+            and hasattr(self.parent.parent, "uuid")
+        ):
+            serialized["meta"]["parent"] = str(self.parent.parent.uuid)
+        auxiliary_entities = []
+        for parameter in getattr(self, "parameters", {}).values():
+            serialized["spec"]["parameters"].append(str(parameter.uuid))
+            aux = parameter.serialize()
+            auxiliary_entities.append(aux[0])
+            auxiliary_entities.extend(aux[1])
+        return serialized, auxiliary_entities
 
     ### PUBLIC PROPERTIES ###
 

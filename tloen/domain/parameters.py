@@ -205,13 +205,9 @@ class BufferParameter(Allocatable, ParameterObject):
         ...
 
     def serialize(self):
-        serialized = super().serialize()
+        serialized, auxiliary_entities = super().serialize()
         serialized["spec"].update(channel_count=None, path=self.path)
-        for mapping in [serialized["meta"], serialized.get("spec", {}), serialized]:
-            for key in tuple(mapping):
-                if mapping[key] is None:
-                    mapping.pop(key)
-        return serialized
+        return serialized, auxiliary_entities
 
     async def set_(self, path, *, moment: Moment = None):
         async with self.lock(
@@ -329,15 +325,11 @@ class BusParameter(Allocatable, ParameterObject):
         return cls(name=data["meta"]["name"], uuid=data["meta"]["uuid"], spec=spec,)
 
     def serialize(self):
-        serialized = super().serialize()
+        serialized, auxiliary_entities = super().serialize()
         serialized["spec"].update(channel_count=None, value=self.value)
         if not self._is_builtin:
             serialized["spec"]["spec"] = self.spec.serialize()
-        for mapping in [serialized["meta"], serialized.get("spec", {}), serialized]:
-            for key in tuple(mapping):
-                if mapping[key] is None:
-                    mapping.pop(key)
-        return serialized
+        return serialized, auxiliary_entities
 
     async def set_(self, value, *, moment: Moment = None):
         async with self.lock(
@@ -400,15 +392,11 @@ class CallbackParameter(ParameterObject):
         ...
 
     def serialize(self):
-        serialized = super().serialize()
-        serialized["spec"]["value"] = self.value
+        serialized, auxiliary_entities = super().serialize()
+        serialized["spec"].update(channel_count=None, value=self.value)
         if not self._is_builtin:
             serialized["spec"]["spec"] = self.spec.serialize()
-        for mapping in [serialized["meta"], serialized.get("spec", {}), serialized]:
-            for key in tuple(mapping):
-                if mapping[key] is None:
-                    mapping.pop(key)
-        return serialized
+        return serialized, auxiliary_entities
 
     async def set_(self, value, *, moment: Moment = None):
         async with self.lock(

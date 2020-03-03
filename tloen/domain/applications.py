@@ -214,14 +214,30 @@ class Application(UniqueTreeTuple):
         return provider.session
 
     def serialize(self):
-        return {
+        def clean(data):
+            for mapping in [data.get("meta", {}), data.get("spec", {}), data]:
+                for key in tuple(mapping):
+                    value = mapping[key]
+                    if value is None or (isinstance(value, (list, dict)) and not value):
+                        mapping.pop(key)
+
+        serialized = {
             "kind": type(self).__name__,
             "spec": {
                 "channel_count": self.channel_count,
-                "contexts": [context.serialize() for context in self.contexts],
+                "contexts": [],
                 "transport": self.transport.serialize(),
             },
         }
+        entities = [serialized]
+        for context in self.contexts:
+            serialized["spec"]["contexts"].append(str(context.uuid))
+            aux = context.serialize()
+            entities.append(aux[0])
+            entities.extend(aux[1])
+        for entity in entities:
+            clean(entity)
+        return {"entities": entities}
 
     @classmethod
     async def deserialize(cls, data):

@@ -186,17 +186,13 @@ class Patch(SendObject):
     ### PUBLIC METHODS ###
 
     def serialize(self):
-        serialized = super().serialize()
-        if isinstance(self.target, Default):
-            target = "default"
-        else:
-            target = str(self.effective_target.uuid)
-        serialized["spec"]["target"] = target
-        for mapping in [serialized["meta"], serialized.get("spec", {}), serialized]:
-            for key in tuple(mapping):
-                if not mapping[key]:
-                    mapping.pop(key)
-        return serialized
+        serialized, auxiliary_entities = super().serialize()
+        serialized["spec"]["target"] = (
+            str(self.effective_target.uuid)
+            if not isinstance(self.target, Default)
+            else "default"
+        )
+        return serialized, auxiliary_entities
 
     ### PUBLIC PROPERTIES ###
 
@@ -307,6 +303,9 @@ class Send(Patch):
 
     @classmethod
     def deserialize(cls, data):
+        target = data["spec"]["target"]
+        if target == "default":
+            target = Default()
         return cls(
             name=data["meta"].get("name"),
             uuid=UUID(data["meta"]["uuid"]),
@@ -374,6 +373,17 @@ class Receive(Patch):
                 raise ValueError
         self._source = source
         Patch.__init__(self, name=name, uuid=uuid)
+
+    @classmethod
+    def deserialize(cls, data):
+        source = data["spec"]["source"]
+        if source == "default":
+            source = Default()
+        return cls(
+            name=data["meta"].get("name"),
+            uuid=UUID(data["meta"]["uuid"]),
+            source=Default(),  # WRONG
+        )
 
     ### PUBLIC PROPERTIES ###
 
@@ -506,17 +516,12 @@ class DirectOut(SendObject):
         )
 
     def serialize(self):
-        serialized = super().serialize()
+        serialized, auxiliary_entities = super().serialize()
         serialized["spec"].update(
             target_bus_id=self.target_bus_id,
             target_channel_count=self.target_channel_count,
         )
-        for mapping in [serialized["meta"], serialized.get("spec", {}), serialized]:
-            for key in tuple(mapping):
-                value = mapping[key]
-                if (isinstance(value, list) and not value) or value is None:
-                    mapping.pop(key)
-        return serialized
+        return serialized, auxiliary_entities
 
     ### PUBLIC PROPERTIES ###
 

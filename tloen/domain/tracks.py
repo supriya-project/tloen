@@ -336,24 +336,28 @@ class TrackObject(Allocatable, Performable):
                     send.effective_target.send_target._dependencies.remove(send)
 
     def serialize(self):
-        serialized = super().serialize()
+        serialized, auxiliary_entities = super().serialize()
+        devices = []
         sends = []
         for send in self.prefader_sends:
-            serialized_send = send.serialize()
-            serialized_send["spec"]["position"] = "prefader"
-            sends.append(serialized_send)
+            sends.append(str(send.uuid))
+            send_entities = send.serialize()
+            send_entities[0]["spec"]["position"] = "prefader"
+            auxiliary_entities.append(send_entities[0])
+            auxiliary_entities.extend(send_entities[1])
         for send in self.postfader_sends:
-            serialized_send = send.serialize()
-            serialized_send["spec"]["position"] = "postfader"
-            sends.append(serialized_send)
-        serialized["spec"].update(
-            devices=[device.serialize() for device in self.devices], sends=sends
-        )
-        for mapping in [serialized["meta"], serialized.get("spec", {}), serialized]:
-            for key in tuple(mapping):
-                if not mapping[key]:
-                    mapping.pop(key)
-        return serialized
+            sends.append(str(send.uuid))
+            send_entities = send.serialize()
+            send_entities[0]["spec"]["position"] = "postfader"
+            auxiliary_entities.append(send_entities[0])
+            auxiliary_entities.extend(send_entities[1])
+        for device in self.devices:
+            devices.append(str(device.uuid))
+            device_entities = device.serialize()
+            auxiliary_entities.append(device_entities[0])
+            auxiliary_entities.extend(device_entities[1])
+        serialized["spec"].update(devices=devices, sends=sends)
+        return serialized, auxiliary_entities
 
     async def set_channel_count(self, channel_count: Optional[int]):
         async with self.lock([self]):
@@ -498,17 +502,13 @@ class UserTrackObject(TrackObject):
             self._set_active(False)
 
     def serialize(self):
-        serialized = super().serialize()
+        serialized, auxiliary_entities = super().serialize()
         serialized["spec"].update(
             is_cued=self.is_cued or None,
             is_muted=self.is_muted or None,
             is_soloed=self.is_soloed or None,
         )
-        for mapping in [serialized["meta"], serialized.get("spec", {}), serialized]:
-            for key in tuple(mapping):
-                if not mapping[key]:
-                    mapping.pop(key)
-        return serialized
+        return serialized, auxiliary_entities
 
     @abc.abstractmethod
     async def solo(self, exclusive=True):
@@ -753,10 +753,10 @@ class Track(UserTrackObject):
             for track in tracks:
                 self._tracks._remove(track)
 
-    def serialize(self):
-        serialized = super().serialize()
+    def _serialize(self):
+        serialized = super()._serialize()
         serialized.setdefault("spec", {}).update(
-            tracks=[track.serialize() for track in self.tracks]
+            tracks=[track._serialize() for track in self.tracks]
         )
         for mapping in [serialized["meta"], serialized.get("spec", {}), serialized]:
             for key in tuple(mapping):

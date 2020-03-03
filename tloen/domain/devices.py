@@ -243,14 +243,6 @@ class DeviceObject(Allocatable, Performable):
         async with self.lock([self, container]):
             container.devices._mutate(slice(position, position), [self])
 
-    def serialize(self):
-        serialized = super().serialize()
-        for mapping in [serialized["meta"], serialized.get("spec", {}), serialized]:
-            for key in tuple(mapping):
-                if not mapping[key]:
-                    mapping.pop(key)
-        return serialized
-
     async def set_channel_count(self, channel_count: Optional[int]):
         async with self.lock([self]):
             if channel_count is not None:
