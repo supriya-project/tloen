@@ -640,6 +640,10 @@ class Performable:
         next_performer = self._next_performer()
         for message in midi_messages:
             self._update_captures(moment, message, "O")
+            if isinstance(message, NoteOnMessage) and message.pitch in self._active_notes:
+                continue
+            elif isinstance(message, NoteOffMessage) and message.pitch not in self._active_notes:
+                continue
             yield next_performer, [message]
 
     @classmethod

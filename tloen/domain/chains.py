@@ -1,5 +1,5 @@
 import dataclasses
-from typing import Optional, Sequence
+from typing import Optional
 
 from supriya.enums import AddAction, CalculationRate
 from supriya.typing import Default
@@ -19,21 +19,17 @@ class Transfer:
     in_pitch: Optional[int] = None
     out_pitch: Optional[int] = None
 
-    def __call__(
-        self, in_midi_messages: Sequence[MidiMessage]
-    ) -> Sequence[MidiMessage]:
-        out_midi_messages = []
-        for midi_message in in_midi_messages:
-            if isinstance(midi_message, (NoteOnMessage, NoteOffMessage)):
-                if self.in_pitch is None or self.in_pitch == midi_message.pitch:
-                    if self.out_pitch:
-                        midi_message = dataclasses.replace(
-                            midi_message, pitch=self.out_pitch,
-                        )
-                    out_midi_messages.append(midi_message)
+    def __call__(self, midi_message: MidiMessage) -> Optional[MidiMessage]:
+        if isinstance(midi_message, (NoteOnMessage, NoteOffMessage)):
+            if self.in_pitch is None or self.in_pitch == midi_message.pitch:
+                if self.out_pitch:
+                    midi_message = dataclasses.replace(
+                        midi_message, pitch=self.out_pitch,
+                    )
+                return midi_message
             else:
-                out_midi_messages.append(midi_message)
-        return out_midi_messages
+                return None
+        return midi_message
 
     @classmethod
     def deserialize(cls, data):
@@ -70,6 +66,17 @@ class Chain(UserTrackObject):
 
     def _cleanup(self):
         Chain._update_activation(self)
+
+    def _perform_input(self, moment, midi_messages):
+        Performable._perform_input(self, moment, midi_messages)
+        next_performer = self._perform_output
+        if self.devices:
+            next_performer = self.devices[0]._perform_input
+        for message in midi_messages:
+            out_message = self.transfer(message)
+            if out_message is None:
+                continue
+            yield next_performer, [out_message]
 
     def _set_parent(self, new_parent):
         if self.is_soloed:
