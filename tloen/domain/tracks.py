@@ -553,7 +553,6 @@ class Track(UserTrackObject):
         self._active_slot_start_delta: 0.0
         self._clip_launch_event_id: Optional[int] = None
         self._clip_perform_event_id: Optional[int] = None
-        self._active_notes: Set[float] = set()
         self._pending_slot_index: Optional[int] = None
         self._slots = Container(label="Slots")
         self._tracks = TrackContainer("input", AddAction.ADD_AFTER, label="SubTracks")
@@ -582,7 +581,7 @@ class Track(UserTrackObject):
         if self._active_slot_index is not None:
             self.slots[self._active_slot_index].clip._is_playing = False
             midi_messages = [
-                NoteOffMessage(pitch=pitch) for pitch in self._active_notes
+                NoteOffMessage(pitch=pitch) for pitch in self._active_pitches
             ]
             if midi_messages:
                 await self.perform(midi_messages, moment=desired_moment)
@@ -621,16 +620,16 @@ class Track(UserTrackObject):
         note_moment = clip.at(
             desired_moment.offset, start_delta=self._active_slot_start_delta
         )
-        active_notes = sorted(self._active_notes)
+        active_pitches = sorted(self._active_pitches)
         midi_messages = []
         for midi_message in note_moment.note_off_messages:
             midi_messages.append(midi_message)
-            if midi_message.pitch in active_notes:
-                active_notes.remove(midi_message.pitch)
+            if midi_message.pitch in active_pitches:
+                active_pitches.remove(midi_message.pitch)
         overlap_pitches = set(_.pitch for _ in note_moment.overlap_notes or [])
-        for active_note in active_notes:
-            if active_note not in overlap_pitches:
-                midi_messages.append(NoteOffMessage(pitch=active_note))
+        for active_pitch in active_pitches:
+            if active_pitch not in overlap_pitches:
+                midi_messages.append(NoteOffMessage(pitch=active_pitch))
         midi_messages.extend(note_moment.note_on_messages)
         if midi_messages:
             await self.perform(midi_messages, desired_moment)

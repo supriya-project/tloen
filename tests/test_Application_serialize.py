@@ -2,13 +2,7 @@ import pytest
 import yaml
 from uqbar.strings import normalize
 
-from tloen.domain import (
-    Application,
-    Arpeggiator,
-    BasicSampler,
-    Instrument,
-    RackDevice,
-)
+from tloen.domain import Application, Arpeggiator, BasicSampler, RackDevice
 
 
 @pytest.mark.asyncio
@@ -153,6 +147,8 @@ async def test_1():
                             spec:
                               position: postfader
                               target: default
+                          transfer:
+                            kind: Transfer
                       channel_count: 4
                       parameters:
                       - kind: CallbackParameter

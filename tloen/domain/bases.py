@@ -575,7 +575,7 @@ class Mixer:
         self._soloed_tracks: Set[TrackObject] = set()
 
 
-class Performable:
+class Performable(ApplicationObject):
 
     ### CLASS VARIABLES ###
 
@@ -587,7 +587,7 @@ class Performable:
     class Capture:
         def __init__(self, performable: "Performable"):
             self.performable = performable
-            self.entries: List["performableObject.CaptureEntry"] = []
+            self.entries: List["Performable.CaptureEntry"] = []
 
         def __enter__(self):
             self.performable._captures.add(self)
@@ -609,7 +609,7 @@ class Performable:
     ### INITIALIZER ###
 
     def __init__(self):
-        self._active_notes: Set[float] = set()
+        self._active_pitches: Set[float] = set()
         self._captures: Set["Performable.Capture"] = set()
 
     ### PRIVATE METHODS ###
@@ -632,17 +632,24 @@ class Performable:
         for message in midi_messages:
             self._update_captures(moment, message, "I")
             if isinstance(message, NoteOnMessage):
-                self._active_notes.add(message.pitch)
+                self._active_pitches.add(message.pitch)
             elif isinstance(message, NoteOffMessage):
-                self._active_notes.remove(message.pitch)
+                self._active_pitches.remove(message.pitch)
+        return midi_messages
 
     def _perform_output(self, moment, midi_messages):
         next_performer = self._next_performer()
         for message in midi_messages:
             self._update_captures(moment, message, "O")
-            if isinstance(message, NoteOnMessage) and message.pitch in self._active_notes:
+            if (
+                isinstance(message, NoteOnMessage)
+                and message.pitch in self._active_pitches
+            ):
                 continue
-            elif isinstance(message, NoteOffMessage) and message.pitch not in self._active_notes:
+            elif (
+                isinstance(message, NoteOffMessage)
+                and message.pitch not in self._active_pitches
+            ):
                 continue
             yield next_performer, [message]
 

@@ -78,6 +78,7 @@ __all__ = [
     "Track",
     "TrackContainer",
     "TrackObject",
+    "Transfer",
     "Transport",
     "UserTrackObject",
 ]
