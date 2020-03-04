@@ -1,7 +1,7 @@
 import pytest
 import yaml
 
-from tloen.domain import Application, Arpeggiator, BasicSampler, RackDevice
+from tloen.domain import Application, Arpeggiator, BasicSampler, RackDevice, Transfer
 
 
 @pytest.mark.asyncio
@@ -17,7 +17,7 @@ async def test(tmp_path):
     await track_two.mute()
     await track_two.cue()
     rack = await track_one.add_device(RackDevice, channel_count=4)
-    chain = await rack.add_chain()
+    chain = await rack.add_chain(transfer=Transfer(in_pitch=64, out_pitch=60))
     await chain.parameters["gain"].set_(-6.0)
     await chain.add_device(Arpeggiator)
     sampler = await chain.add_device(BasicSampler)

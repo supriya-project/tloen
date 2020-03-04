@@ -33,7 +33,7 @@ class Transfer:
         return midi_message
 
     @classmethod
-    async def deserialize(cls, data):
+    async def deserialize(cls, data, application):
         return cls(
             in_pitch=data["spec"].get("in_pitch"),
             out_pitch=data["spec"].get("out_pitch"),
@@ -130,9 +130,11 @@ class Chain(UserTrackObject):
         parent = application.registry.get(parent_uuid)
         if parent is None:
             return True
+        transfer = await Transfer.deserialize(data["spec"]["transfer"], application)
         chain = cls(
             channel_count=data["spec"].get("channel_count"),
             name=data["meta"].get("name"),
+            transfer=transfer,
             uuid=UUID(data["meta"]["uuid"]),
         )
         parent.chains._append(chain)
