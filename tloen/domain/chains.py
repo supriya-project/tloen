@@ -229,7 +229,9 @@ class RackDevice(DeviceObject, Mixer):
         Mixer.__init__(self)
         self._chains = ChainContainer("input", AddAction.ADD_AFTER)
         self._send_target = Target(label="SendTarget")
-        self._mutate(slice(None), [self._parameter_group, self._chains, self._send_target])
+        self._mutate(
+            slice(None), [self._parameter_group, self._chains, self._send_target]
+        )
 
     ### PRIVATE METHODS ###
 

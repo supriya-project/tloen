@@ -3,11 +3,15 @@ from typing import Optional
 
 import rtmidi
 
-from .messages import ControllerChangeMessage, NoteOnMessage, NoteOffMessage, MidiMessage
+from .messages import (
+    ControllerChangeMessage,
+    MidiMessage,
+    NoteOffMessage,
+    NoteOnMessage,
+)
 
 
 class AsyncMidiProtocol:
-
     def __init__(self):
         self.is_running = False
         self.loop = None

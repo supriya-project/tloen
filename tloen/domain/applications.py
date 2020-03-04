@@ -1,12 +1,12 @@
 import asyncio
 import enum
 import pathlib
-import yaml
 from collections import deque
 from types import MappingProxyType
 from typing import Deque, Dict, Mapping, Optional, Tuple, Union
 from uuid import UUID
 
+import yaml
 from supriya.nonrealtime import Session
 from supriya.provider import Provider
 from uqbar.containers import UniqueTreeTuple

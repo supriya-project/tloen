@@ -679,7 +679,10 @@ class Track(UserTrackObject):
 
         if self.is_soloed:
             for node in self.parentage:
-                if isinstance(node, (UserTrackObject, Context)) and self in node._soloed_tracks:
+                if (
+                    isinstance(node, (UserTrackObject, Context))
+                    and self in node._soloed_tracks
+                ):
                     node._soloed_tracks.remove(self)
         UserTrackObject._set_parent(self, new_parent)
         if self.is_soloed:

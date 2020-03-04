@@ -235,10 +235,7 @@ class DeviceObject(Allocatable, Performable):
         parent = application.registry.get(parent_uuid)
         if parent is None:
             return True
-        device = cls(
-            name=data["meta"].get("name"),
-            uuid=UUID(data["meta"]["uuid"]),
-        )
+        device = cls(name=data["meta"].get("name"), uuid=UUID(data["meta"]["uuid"]),)
         parent.devices._append(device)
         return False
 
