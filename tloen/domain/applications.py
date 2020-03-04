@@ -241,12 +241,21 @@ class Application(UniqueTreeTuple):
 
     @classmethod
     async def deserialize(cls, data):
-        application = cls(channel_count=data["spec"]["channel_count"])
+        entities_data = deque(data["entities"])
+        entity_data = entities_data.popleft()
+        application = cls(channel_count=entity_data["spec"].get("channel_count", 2),)
         await application.transport.deserialize(
-            data["spec"]["transport"], application.transport,
+            entity_data["spec"]["transport"], application.transport,
         )
-        for context_data in data["spec"]["contexts"]:
-            application.contexts._append(Context.deserialize(context_data))
+        while entities_data:
+            entity_data = entities_data.popleft()
+            if entity_data.get("visits", 0) > 2:
+                continue  # discard it
+            entity_class = getattr(tloen.domain, entity_data["kind"])
+            if entity_class.deserialize(entity_data, application):
+                entity_data["visits"] = entity_data.get("visits", 0) + 1
+                entities_data.append(entity_data)
+                continue
         return application
 
     async def set_channel_count(self, channel_count: int):

@@ -298,9 +298,9 @@ class AllocatableDevice(DeviceObject):
         self._parameter_map = parameter_map or {}
         self._synthdef = synthdef
         self._synthdef_kwargs = dict(synthdef_kwargs or {})
-        self._mutate(slice(None), [
-            self._parameter_group, self._device_in, self._device_out,
-        ])
+        self._mutate(
+            slice(None), [self._parameter_group, self._device_in, self._device_out]
+        )
 
     ### PRIVATE METHODS ###
 

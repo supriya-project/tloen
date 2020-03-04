@@ -124,16 +124,6 @@ class ParameterObject(ApplicationObject):
     def _preallocate(self, provider, client):
         ...
 
-    ### PUBLIC METHODS ###
-
-    @classmethod
-    def deserialize(cls, data):
-        return {
-            "BufferParameter": BufferParameter,
-            "BusParameter": BusParameter,
-            "CallbackParameter": CallbackParameter,
-        }[data["kind"]].deserialize(data)
-
     ### PUBLIC PROPERTIES ###
 
     @property
@@ -201,8 +191,24 @@ class BufferParameter(Allocatable, ParameterObject):
     ### PUBLIC METHODS ###
 
     @classmethod
-    def deserialize(cls, data):
-        ...
+    def deserialize(cls, data, application) -> bool:
+        parent_uuid = UUID(data["meta"]["parent"])
+        parent = application.registry.get(parent_uuid)
+        if parent is None:
+            return True
+        parameter = cls(
+            channel_count=data["spec"].get("channel_count"),
+            name=data["meta"].get("name"),
+            uuid=UUID(data["meta"]["uuid"]),
+            path=data["spec"]["path"],
+        )
+        if parameter.name in parent.parameters:
+            old_parameter = parent.parameters.get(parameter.name)
+            old_parameter._path = parameter.path
+            old_parameter._uuid = parameter.uuid
+        else:
+            parent._add_parameter(parameter)
+        return False
 
     def serialize(self):
         serialized, auxiliary_entities = super().serialize()
@@ -317,12 +323,25 @@ class BusParameter(Allocatable, ParameterObject):
     ### PUBLIC METHODS ###
 
     @classmethod
-    def deserialize(cls, data):
+    def deserialize(cls, data, application) -> bool:
+        parent_uuid = UUID(data["meta"]["parent"])
+        parent = application.registry.get(parent_uuid)
+        if parent is None:
+            return True
         if data["spec"].get("spec"):
             spec = ParameterSpec.deserialize(data["spec"]["spec"])
         else:
             spec = Float()
-        return cls(name=data["meta"]["name"], uuid=data["meta"]["uuid"], spec=spec,)
+        parameter = cls(
+            name=data["meta"].get("name"), spec=spec, uuid=UUID(data["meta"]["uuid"]),
+        )
+        if parameter.name in parent.parameters:
+            old_parameter = parent.parameters.get(parameter.name)
+            old_parameter._value = parameter.value
+            old_parameter._uuid = parameter.uuid
+        else:
+            parent._add_parameter(parameter)
+        return False
 
     def serialize(self):
         serialized, auxiliary_entities = super().serialize()
@@ -389,8 +408,28 @@ class CallbackParameter(ParameterObject):
     ### PUBLIC METHODS ###
 
     @classmethod
-    def deserialize(cls, data):
-        ...
+    def deserialize(cls, data, application) -> bool:
+        parent_uuid = UUID(data["meta"]["parent"])
+        parent = application.registry.get(parent_uuid)
+        if parent is None:
+            return True
+        if data["spec"].get("spec"):
+            spec = ParameterSpec.deserialize(data["spec"]["spec"])
+        else:
+            spec = Float()
+        parameter = cls(
+            callback=lambda x: x,
+            name=data["meta"].get("name"),
+            spec=spec,
+            uuid=UUID(data["meta"]["uuid"]),
+        )
+        if parameter.name in parent.parameters:
+            old_parameter = parent.parameters.get(parameter.name)
+            old_parameter._value = parameter.value
+            old_parameter._uuid = parameter.uuid
+        else:
+            parent._add_parameter(parameter)
+        return False
 
     def serialize(self):
         serialized, auxiliary_entities = super().serialize()

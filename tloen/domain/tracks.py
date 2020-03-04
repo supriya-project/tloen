@@ -439,11 +439,13 @@ class CueTrack(TrackObject):
         return serialized, auxiliary_entities
 
     @classmethod
-    def deserialize(cls, data):
+    def deserialize(cls, data, application) -> bool:
         track = cls(uuid=UUID(data["meta"]["uuid"]))
-        track._deserialize_parameters(data["spec"]["parameters"])
-        track._deserialize_sends(data["spec"]["sends"])
-        return track
+        parent_uuid = UUID(data["meta"]["parent"])
+        parent = application.registry[parent_uuid]
+        parent._replace(parent.cue_track, track)
+        parent._cue_track = track
+        return False
 
 
 class MasterTrack(TrackObject):
@@ -456,11 +458,13 @@ class MasterTrack(TrackObject):
         return serialized, auxiliary_entities
 
     @classmethod
-    def deserialize(cls, data):
+    def deserialize(cls, data, application) -> bool:
         track = cls(uuid=UUID(data["meta"]["uuid"]))
-        track._deserialize_parameters(data["spec"]["parameters"])
-        track._deserialize_sends(data["spec"]["sends"])
-        return track
+        parent_uuid = UUID(data["meta"]["parent"])
+        parent = application.registry[parent_uuid]
+        parent._replace(parent.master_track, track)
+        parent._master_track = track
+        return False
 
 
 class UserTrackObject(TrackObject):
@@ -493,15 +497,18 @@ class UserTrackObject(TrackObject):
             self.parent._remove(self)
 
     @classmethod
-    def deserialize(cls, data):
+    def deserialize(cls, data, application) -> bool:
+        parent_uuid = UUID(data["meta"]["parent"])
+        parent = application.registry.get(parent_uuid)
+        if parent is None:
+            return True
         track = cls(
             channel_count=data["spec"].get("channel_count"),
             name=data["meta"].get("name"),
             uuid=UUID(data["meta"]["uuid"]),
         )
-        track._deserialize_parameters(data["spec"]["parameters"])
-        track._deserialize_sends(data["spec"]["sends"])
-        return track
+        parent.tracks._append(track)
+        return False
 
     async def duplicate(self):
         async with self.lock([self]):
@@ -773,13 +780,6 @@ class Track(UserTrackObject):
                 if not mapping[key]:
                     mapping.pop(key)
         return serialized
-
-    @classmethod
-    def deserialize(cls, data):
-        track = super().deserialize(data)
-        for track_data in data["spec"].get("tracks", []):
-            track.tracks._append(cls.deserialize(track_data))
-        return track
 
     async def solo(self, exclusive=True):
         from .contexts import Context

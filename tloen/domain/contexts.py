@@ -120,7 +120,7 @@ class Context(Allocatable, Mixer):
         serialized["spec"].update(
             cue_track=str(self.cue_track.uuid),
             master_track=str(self.master_track.uuid),
-            tracks=[str(track.uuid) for track in self.tracks]
+            tracks=[str(track.uuid) for track in self.tracks],
         )
         for track in [self.cue_track, self.master_track, *self.tracks]:
             aux = track.serialize()
@@ -129,21 +129,14 @@ class Context(Allocatable, Mixer):
         return serialized, auxiliary_entities
 
     @classmethod
-    def deserialize(cls, data):
+    def deserialize(cls, data, application) -> bool:
         context = cls(
             channel_count=data["spec"].get("channel_count"),
             name=data["meta"].get("name"),
             uuid=UUID(data["meta"]["uuid"]),
         )
-        master_track = MasterTrack.deserialize(data["spec"]["master_track"])
-        cue_track = CueTrack.deserialize(data["spec"]["cue_track"])
-        context._replace(context.master_track, master_track)
-        context._replace(context.cue_track, cue_track)
-        context._master_track = master_track
-        context._cue_track = cue_track
-        for track_data in data["spec"].get("tracks", []):
-            context.tracks._append(Track.deserialize(track_data))
-        return context
+        application.contexts._append(context)
+        return False
 
     async def set_channel_count(self, channel_count: Optional[int]):
         async with self.lock([self]):

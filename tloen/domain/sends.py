@@ -62,15 +62,6 @@ class SendObject(Allocatable):
             calculation_rate=calculation_rate,
         )
 
-    @classmethod
-    def deserialize(cls, data):
-        return {
-            "DirectIn": DirectIn,
-            "DirectOut": DirectOut,
-            "Receive": Receive,
-            "Send": Send,
-        }[data["kind"]].deserialize(data)
-
     def set_gain(self, gain):
         pass
 
@@ -302,15 +293,30 @@ class Send(Patch):
         )
 
     @classmethod
-    def deserialize(cls, data):
-        target = data["spec"]["target"]
-        if target == "default":
+    def deserialize(cls, data, application) -> bool:
+        parent_uuid = UUID(data["meta"]["parent"])
+        parent = application.registry.get(parent_uuid)
+        if parent is None:
+            return True
+        if data["spec"]["target"] == "default":
             target = Default()
-        return cls(
+        else:
+            target_uuid = UUID(data["spec"]["target"])
+            target = application.registry.get(target_uuid)
+            if target is None:
+                return True
+        send = cls(
             name=data["meta"].get("name"),
             uuid=UUID(data["meta"]["uuid"]),
-            target=Default(),  # WRONG
+            target=target,
         )
+        if data["spec"]["position"] == "prefader":
+            parent.prefader_sends._append(send)
+        elif data["spec"]["position"] == "postfader":
+            parent.postfader_sends._append(send)
+        else:
+            raise ValueError(f"Unknown position: {data['position']}")
+        return False
 
     ### PUBLIC PROPERTIES ###
 
@@ -375,15 +381,30 @@ class Receive(Patch):
         Patch.__init__(self, name=name, uuid=uuid)
 
     @classmethod
-    def deserialize(cls, data):
-        source = data["spec"]["source"]
-        if source == "default":
+    def deserialize(cls, data, application) -> bool:
+        parent_uuid = UUID(data["meta"]["parent"])
+        parent = application.registry.get(parent_uuid)
+        if parent is None:
+            return True
+        if data["spec"]["source"] == "default":
             source = Default()
-        return cls(
+        else:
+            source_uuid = UUID(data["spec"]["source"])
+            source = application.registry.get(source_uuid)
+            if source is None:
+                return True
+        send = cls(
             name=data["meta"].get("name"),
             uuid=UUID(data["meta"]["uuid"]),
-            source=Default(),  # WRONG
+            source=source,
         )
+        if data["spec"]["position"] == "prefader":
+            parent.prefader_sends._append(send)
+        elif data["spec"]["position"] == "postfader":
+            parent.postfader_sends._append(send)
+        else:
+            raise ValueError(f"Unknown position: {data['position']}")
+        return False
 
     ### PUBLIC PROPERTIES ###
 
@@ -507,13 +528,23 @@ class DirectOut(SendObject):
     ### PUBLIC METHODS ###
 
     @classmethod
-    def deserialize(cls, data):
-        return cls(
+    def deserialize(cls, data, application):
+        parent_uuid = UUID(data["meta"]["parent"])
+        parent = application.registry.get(parent_uuid)
+        if parent is None:
+            return True
+        send = cls(
             name=data["meta"].get("name"),
             uuid=UUID(data["meta"]["uuid"]),
             target_bus_id=data["spec"]["target_bus_id"],
             target_channel_count=data["spec"]["target_channel_count"],
         )
+        if data["spec"]["position"] == "prefader":
+            parent.prefader_sends._append(send)
+        elif data["spec"]["position"] == "postfader":
+            parent.postfader_sends._append(send)
+        else:
+            raise ValueError(f"Unknown position: {data['position']}")
 
     def serialize(self):
         serialized, auxiliary_entities = super().serialize()
