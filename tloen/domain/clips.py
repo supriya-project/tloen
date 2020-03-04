@@ -6,8 +6,9 @@ from uuid import uuid4
 from supriya.clock import TimeUnit
 from supriya.intervals import IntervalTree
 
-from .bases import ApplicationObject
 from tloen.midi import NoteOffMessage, NoteOnMessage
+
+from .bases import ApplicationObject
 
 
 @dataclasses.dataclass(frozen=True, order=True)

@@ -3,8 +3,9 @@ from typing import Dict, List, Tuple
 
 from supriya.clock import TempoClock, TimeUnit
 
-from .devices import DeviceObject
 from tloen.midi import NoteOffMessage, NoteOnMessage
+
+from .devices import DeviceObject
 
 
 class Chord(DeviceObject):

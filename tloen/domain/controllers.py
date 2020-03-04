@@ -2,8 +2,9 @@ from uuid import UUID, uuid4
 
 import rtmidi
 
-from .bases import ApplicationObject
 from tloen.midi import ControllerChangeMessage, NoteOffMessage, NoteOnMessage
+
+from .bases import ApplicationObject
 
 
 class Controller(ApplicationObject):

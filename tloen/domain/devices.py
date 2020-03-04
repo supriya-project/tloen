@@ -4,8 +4,9 @@ from uuid import UUID, uuid4
 from supriya.enums import AddAction, CalculationRate
 from supriya.synthdefs import SynthDef, SynthDefFactory
 
-from .bases import Allocatable, Performable
 from tloen.midi import MidiMessage, NoteOffMessage, NoteOnMessage
+
+from .bases import Allocatable, Performable
 from .parameters import (
     Boolean,
     CallbackParameter,

@@ -5,10 +5,10 @@ from supriya.enums import AddAction, CalculationRate
 from supriya.typing import Default
 
 import tloen.domain  # noqa
+from tloen.midi import MidiMessage, NoteOffMessage, NoteOnMessage
 
 from .bases import Allocatable, AllocatableContainer, Mixer, Performable
 from .devices import DeviceObject
-from tloen.midi import MidiMessage, NoteOffMessage, NoteOnMessage
 from .sends import Send, Target
 from .synthdefs import build_patch_synthdef
 from .tracks import UserTrackObject

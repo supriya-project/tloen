@@ -8,6 +8,7 @@ from supriya.enums import AddAction, CalculationRate
 from supriya.typing import Default
 
 import tloen.domain  # noqa
+from tloen.midi import NoteOffMessage
 
 from .bases import (
     Allocatable,
@@ -18,7 +19,6 @@ from .bases import (
 )
 from .clips import Slot
 from .devices import DeviceObject
-from tloen.midi import NoteOffMessage
 from .parameters import BusParameter, Float, ParameterGroup, ParameterObject
 from .sends import Receive, Send, SendObject, Target
 from .synthdefs import build_patch_synthdef, build_peak_rms_synthdef

@@ -1,5 +1,4 @@
 class AsyncMidiProtocol:
-
     def __init__(self):
         self.loop = None
         self.is_running = False
