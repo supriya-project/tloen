@@ -229,6 +229,19 @@ class DeviceObject(Allocatable, Performable):
         async with self.lock([self]):
             self._is_active = False
 
+    @classmethod
+    async def deserialize(cls, data, application) -> bool:
+        parent_uuid = UUID(data["meta"]["parent"])
+        parent = application.registry.get(parent_uuid)
+        if parent is None:
+            return True
+        device = cls(
+            name=data["meta"].get("name"),
+            uuid=UUID(data["meta"]["uuid"]),
+        )
+        parent.devices._append(device)
+        return False
+
     async def delete(self):
         async with self.lock([self]):
             if self.parent is None:

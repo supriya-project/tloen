@@ -162,6 +162,7 @@ async def test_1():
         - kind: CallbackParameter
           meta:
             name: active
+            parent: {rack.uuid}
             uuid: {rack.parameters["active"].uuid}
           spec:
             value: true

@@ -1,8 +1,10 @@
 import asyncio
 import enum
+import pathlib
+import yaml
 from collections import deque
 from types import MappingProxyType
-from typing import Deque, Dict, Mapping, Optional, Tuple
+from typing import Deque, Dict, Mapping, Optional, Tuple, Union
 from uuid import UUID
 
 from supriya.nonrealtime import Session
@@ -213,6 +215,16 @@ class Application(UniqueTreeTuple):
         self._status = self.Status.OFFLINE
         return provider.session
 
+    @classmethod
+    def load(cls, file_path: Union[str, pathlib.Path]):
+        return cls.deserialize(yaml.safe_load(pathlib.Path(file_path).read_text()))
+
+    def save(self, file_path: Union[str, pathlib.Path], force=False):
+        path = pathlib.Path(file_path)
+        if path.exists() and not force:
+            raise RuntimeError
+        path.write_text(yaml.dump(self.serialize()))
+
     def serialize(self):
         def clean(data):
             for mapping in [data.get("meta", {}), data.get("spec", {}), data]:
@@ -252,7 +264,8 @@ class Application(UniqueTreeTuple):
             if entity_data.get("visits", 0) > 2:
                 continue  # discard it
             entity_class = getattr(tloen.domain, entity_data["kind"])
-            if entity_class.deserialize(entity_data, application):
+            should_defer = await entity_class.deserialize(entity_data, application)
+            if should_defer:
                 entity_data["visits"] = entity_data.get("visits", 0) + 1
                 entities_data.append(entity_data)
                 continue

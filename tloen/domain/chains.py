@@ -1,5 +1,6 @@
 import dataclasses
 from typing import Optional
+from uuid import UUID
 
 from supriya.enums import AddAction, CalculationRate
 from supriya.typing import Default
@@ -32,7 +33,7 @@ class Transfer:
         return midi_message
 
     @classmethod
-    def deserialize(cls, data):
+    async def deserialize(cls, data):
         return cls(
             in_pitch=data["spec"].get("in_pitch"),
             out_pitch=data["spec"].get("out_pitch"),
@@ -78,11 +79,6 @@ class Chain(UserTrackObject):
                 continue
             yield next_performer, [out_message]
 
-    def serialize(self):
-        serialized, auxiliary_entities = super().serialize()
-        serialized.setdefault("spec", {}).update(transfer=self.transfer.serialize(),)
-        return serialized, auxiliary_entities
-
     def _set_parent(self, new_parent):
         if self.is_soloed:
             mixer = self.mixer
@@ -127,6 +123,31 @@ class Chain(UserTrackObject):
             track._deactivate()
 
     ### PUBLIC METHODS ###
+
+    @classmethod
+    async def deserialize(cls, data, application) -> bool:
+        parent_uuid = UUID(data["meta"]["parent"])
+        parent = application.registry.get(parent_uuid)
+        if parent is None:
+            return True
+        chain = cls(
+            channel_count=data["spec"].get("channel_count"),
+            name=data["meta"].get("name"),
+            uuid=UUID(data["meta"]["uuid"]),
+        )
+        parent.chains._append(chain)
+        if data["spec"].get("is_cued"):
+            await chain.cue()
+        if data["spec"].get("is_muted"):
+            await chain.mute()
+        if data["spec"].get("is_soloed"):
+            await chain.solo(exclusive=False)
+        return False
+
+    def serialize(self):
+        serialized, auxiliary_entities = super().serialize()
+        serialized.setdefault("spec", {}).update(transfer=self.transfer.serialize(),)
+        return serialized, auxiliary_entities
 
     async def move(self, container, position):
         async with self.lock([self, container]):
@@ -208,7 +229,7 @@ class RackDevice(DeviceObject, Mixer):
         Mixer.__init__(self)
         self._chains = ChainContainer("input", AddAction.ADD_AFTER)
         self._send_target = Target(label="SendTarget")
-        self._mutate(slice(None), [self._chains, self._send_target])
+        self._mutate(slice(None), [self._parameter_group, self._chains, self._send_target])
 
     ### PRIVATE METHODS ###
 
@@ -325,6 +346,20 @@ class RackDevice(DeviceObject, Mixer):
             auxiliary_entities.extend(aux[1])
         serialized["spec"]["chains"] = chains
         return serialized, auxiliary_entities
+
+    @classmethod
+    async def deserialize(cls, data, application) -> bool:
+        parent_uuid = UUID(data["meta"]["parent"])
+        parent = application.registry.get(parent_uuid)
+        if parent is None:
+            return True
+        rack = cls(
+            channel_count=data["spec"].get("channel_count"),
+            name=data["meta"].get("name"),
+            uuid=UUID(data["meta"]["uuid"]),
+        )
+        parent.devices._append(rack)
+        return False
 
     async def set_channel_count(self, channel_count: Optional[int]):
         async with self.lock([self]):

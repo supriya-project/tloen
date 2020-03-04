@@ -191,7 +191,7 @@ class BufferParameter(Allocatable, ParameterObject):
     ### PUBLIC METHODS ###
 
     @classmethod
-    def deserialize(cls, data, application) -> bool:
+    async def deserialize(cls, data, application) -> bool:
         parent_uuid = UUID(data["meta"]["parent"])
         parent = application.registry.get(parent_uuid)
         if parent is None:
@@ -323,13 +323,13 @@ class BusParameter(Allocatable, ParameterObject):
     ### PUBLIC METHODS ###
 
     @classmethod
-    def deserialize(cls, data, application) -> bool:
+    async def deserialize(cls, data, application) -> bool:
         parent_uuid = UUID(data["meta"]["parent"])
         parent = application.registry.get(parent_uuid)
         if parent is None:
             return True
         if data["spec"].get("spec"):
-            spec = ParameterSpec.deserialize(data["spec"]["spec"])
+            spec = await ParameterSpec.deserialize(data["spec"]["spec"])
         else:
             spec = Float()
         parameter = cls(
@@ -337,10 +337,11 @@ class BusParameter(Allocatable, ParameterObject):
         )
         if parameter.name in parent.parameters:
             old_parameter = parent.parameters.get(parameter.name)
-            old_parameter._value = parameter.value
             old_parameter._uuid = parameter.uuid
         else:
             parent._add_parameter(parameter)
+        parameter = parent.parameters[data["meta"]["name"]]
+        await parameter.set_(data["spec"]["value"])
         return False
 
     def serialize(self):
@@ -408,13 +409,13 @@ class CallbackParameter(ParameterObject):
     ### PUBLIC METHODS ###
 
     @classmethod
-    def deserialize(cls, data, application) -> bool:
+    async def deserialize(cls, data, application) -> bool:
         parent_uuid = UUID(data["meta"]["parent"])
         parent = application.registry.get(parent_uuid)
         if parent is None:
             return True
         if data["spec"].get("spec"):
-            spec = ParameterSpec.deserialize(data["spec"]["spec"])
+            spec = await ParameterSpec.deserialize(data["spec"]["spec"])
         else:
             spec = Float()
         parameter = cls(
@@ -425,10 +426,11 @@ class CallbackParameter(ParameterObject):
         )
         if parameter.name in parent.parameters:
             old_parameter = parent.parameters.get(parameter.name)
-            old_parameter._value = parameter.value
             old_parameter._uuid = parameter.uuid
         else:
             parent._add_parameter(parameter)
+        parameter = parent.parameters[data["meta"]["name"]]
+        await parameter.set_(data["spec"]["value"])
         return False
 
     def serialize(self):

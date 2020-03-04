@@ -20,7 +20,7 @@ from .bases import (
 from .clips import Slot
 from .devices import DeviceObject
 from .parameters import BusParameter, Float, ParameterGroup, ParameterObject
-from .sends import Receive, Send, SendObject, Target
+from .sends import Receive, Send, Target
 from .synthdefs import build_patch_synthdef, build_peak_rms_synthdef
 
 logger = logging.getLogger("tloen.domain")
@@ -207,19 +207,6 @@ class TrackObject(Allocatable, Performable):
         if not self.provider:
             return
         self.node_proxies["output"]["active"] = 0
-
-    def _deserialize_sends(self, sends_data):
-        for send_data in sends_data:
-            send = SendObject.deserialize(send_data)
-            position = send_data["spec"].get("position")
-            if position is None:
-                self.receives._append(send)
-            elif position == "prefader":
-                self.prefader_sends._append(send)
-            elif position == "postfader":
-                self.postfader_sends._append(send)
-            else:
-                raise ValueError(f"Unknown send position {position!r}")
 
     def _reallocate(self, difference):
         channel_count = self.effective_channel_count
@@ -439,7 +426,7 @@ class CueTrack(TrackObject):
         return serialized, auxiliary_entities
 
     @classmethod
-    def deserialize(cls, data, application) -> bool:
+    async def deserialize(cls, data, application) -> bool:
         track = cls(uuid=UUID(data["meta"]["uuid"]))
         parent_uuid = UUID(data["meta"]["parent"])
         parent = application.registry[parent_uuid]
@@ -458,7 +445,7 @@ class MasterTrack(TrackObject):
         return serialized, auxiliary_entities
 
     @classmethod
-    def deserialize(cls, data, application) -> bool:
+    async def deserialize(cls, data, application) -> bool:
         track = cls(uuid=UUID(data["meta"]["uuid"]))
         parent_uuid = UUID(data["meta"]["parent"])
         parent = application.registry[parent_uuid]
@@ -495,20 +482,6 @@ class UserTrackObject(TrackObject):
             if self.parent is None:
                 raise ValueError
             self.parent._remove(self)
-
-    @classmethod
-    def deserialize(cls, data, application) -> bool:
-        parent_uuid = UUID(data["meta"]["parent"])
-        parent = application.registry.get(parent_uuid)
-        if parent is None:
-            return True
-        track = cls(
-            channel_count=data["spec"].get("channel_count"),
-            name=data["meta"].get("name"),
-            uuid=UUID(data["meta"]["uuid"]),
-        )
-        parent.tracks._append(track)
-        return False
 
     async def duplicate(self):
         async with self.lock([self]):
@@ -706,7 +679,7 @@ class Track(UserTrackObject):
 
         if self.is_soloed:
             for node in self.parentage:
-                if isinstance(node, (UserTrackObject, Context)):
+                if isinstance(node, (UserTrackObject, Context)) and self in node._soloed_tracks:
                     node._soloed_tracks.remove(self)
         UserTrackObject._set_parent(self, new_parent)
         if self.is_soloed:
@@ -747,6 +720,26 @@ class Track(UserTrackObject):
             await track.add_send(Default())
             self._tracks._append(track)
             return track
+
+    @classmethod
+    async def deserialize(cls, data, application) -> bool:
+        parent_uuid = UUID(data["meta"]["parent"])
+        parent = application.registry.get(parent_uuid)
+        if parent is None:
+            return True
+        track = cls(
+            channel_count=data["spec"].get("channel_count"),
+            name=data["meta"].get("name"),
+            uuid=UUID(data["meta"]["uuid"]),
+        )
+        parent.tracks._append(track)
+        if data["spec"].get("is_cued"):
+            await track.cue()
+        if data["spec"].get("is_muted"):
+            await track.mute()
+        if data["spec"].get("is_soloed"):
+            await track.solo(exclusive=False)
+        return False
 
     @classmethod
     async def group(cls, tracks, *, name=None):

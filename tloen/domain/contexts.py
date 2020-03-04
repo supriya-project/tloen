@@ -129,7 +129,7 @@ class Context(Allocatable, Mixer):
         return serialized, auxiliary_entities
 
     @classmethod
-    def deserialize(cls, data, application) -> bool:
+    async def deserialize(cls, data, application) -> bool:
         context = cls(
             channel_count=data["spec"].get("channel_count"),
             name=data["meta"].get("name"),

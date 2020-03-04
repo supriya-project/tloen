@@ -293,7 +293,7 @@ class Send(Patch):
         )
 
     @classmethod
-    def deserialize(cls, data, application) -> bool:
+    async def deserialize(cls, data, application) -> bool:
         parent_uuid = UUID(data["meta"]["parent"])
         parent = application.registry.get(parent_uuid)
         if parent is None:
@@ -381,7 +381,7 @@ class Receive(Patch):
         Patch.__init__(self, name=name, uuid=uuid)
 
     @classmethod
-    def deserialize(cls, data, application) -> bool:
+    async def deserialize(cls, data, application) -> bool:
         parent_uuid = UUID(data["meta"]["parent"])
         parent = application.registry.get(parent_uuid)
         if parent is None:
@@ -528,7 +528,7 @@ class DirectOut(SendObject):
     ### PUBLIC METHODS ###
 
     @classmethod
-    def deserialize(cls, data, application):
+    async def deserialize(cls, data, application):
         parent_uuid = UUID(data["meta"]["parent"])
         parent = application.registry.get(parent_uuid)
         if parent is None:
