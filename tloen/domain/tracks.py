@@ -18,7 +18,7 @@ from .bases import (
 )
 from .clips import Slot
 from .devices import DeviceObject
-from .midi import NoteOffMessage
+from tloen.midi import NoteOffMessage
 from .parameters import BusParameter, Float, ParameterGroup, ParameterObject
 from .sends import Receive, Send, SendObject, Target
 from .synthdefs import build_patch_synthdef, build_peak_rms_synthdef

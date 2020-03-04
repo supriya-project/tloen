@@ -3,7 +3,7 @@ from supriya.synthdefs import SynthDefCompiler
 from supriya.utils import locate
 
 from tloen.domain import Application, BasicSampler, DeviceIn, DeviceOut
-from tloen.domain.midi import NoteOnMessage
+from tloen.midi import NoteOnMessage
 
 
 @pytest.fixture

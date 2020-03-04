@@ -1,7 +1,7 @@
 import pytest
 
 from tloen.domain import Application, Instrument, RackDevice, Transfer
-from tloen.domain.midi import NoteOnMessage
+from tloen.midi import NoteOnMessage
 
 
 @pytest.mark.asyncio

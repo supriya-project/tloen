@@ -472,8 +472,9 @@ class ParameterGroup(AllocatableContainer):
 
     def _allocate(self, provider, target_node, add_action):
         Allocatable._allocate(self, provider, target_node, add_action)
+        if not any(isinstance(x, BusParameter) for x in self):
+            return
         target_node = self.parent.node_proxies[self.target_node_name]
-        if any(isinstance(x, BusParameter) for x in self):
-            self._node_proxies["node"] = provider.add_group(
-                target_node=target_node, add_action=self.add_action, name=self.label
-            )
+        self._node_proxies["node"] = provider.add_group(
+            target_node=target_node, add_action=self.add_action, name=self.label
+        )

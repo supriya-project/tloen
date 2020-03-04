@@ -5,7 +5,7 @@ from supriya.enums import AddAction, CalculationRate
 from supriya.synthdefs import SynthDef, SynthDefFactory
 
 from .bases import Allocatable, Performable
-from .midi import MidiMessage, NoteOffMessage, NoteOnMessage
+from tloen.midi import MidiMessage, NoteOffMessage, NoteOnMessage
 from .parameters import (
     Boolean,
     CallbackParameter,

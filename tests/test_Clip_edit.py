@@ -5,7 +5,7 @@ import pytest
 from supriya.clock import AsyncTempoClock, Moment
 
 from tloen.domain import Application, Instrument, Note
-from tloen.domain.midi import NoteOffMessage, NoteOnMessage
+from tloen.midi import NoteOffMessage, NoteOnMessage
 
 logger = logging.getLogger("tloen.test")
 

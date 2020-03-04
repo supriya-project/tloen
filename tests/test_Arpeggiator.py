@@ -5,7 +5,7 @@ import pytest
 from supriya.assets.synthdefs import default
 
 from tloen.domain import Application, Arpeggiator, Instrument
-from tloen.domain.midi import NoteOffMessage, NoteOnMessage
+from tloen.midi import NoteOffMessage, NoteOnMessage
 
 
 @pytest.fixture(autouse=True)

@@ -32,7 +32,7 @@ from supriya.typing import Missing
 from uqbar.containers import UniqueTreeTuple
 
 import tloen.domain  # noqa
-from tloen.domain.midi import MidiMessage, NoteOffMessage, NoteOnMessage
+from tloen.midi import MidiMessage, NoteOffMessage, NoteOnMessage
 
 logger = logging.getLogger("tloen.domain")
 

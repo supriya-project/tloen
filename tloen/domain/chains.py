@@ -8,7 +8,7 @@ import tloen.domain  # noqa
 
 from .bases import Allocatable, AllocatableContainer, Mixer, Performable
 from .devices import DeviceObject
-from .midi import MidiMessage, NoteOffMessage, NoteOnMessage
+from tloen.midi import MidiMessage, NoteOffMessage, NoteOnMessage
 from .sends import Send, Target
 from .synthdefs import build_patch_synthdef
 from .tracks import UserTrackObject

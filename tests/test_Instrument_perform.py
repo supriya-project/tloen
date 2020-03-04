@@ -5,7 +5,7 @@ from supriya.assets.synthdefs import default
 from uqbar.strings import normalize
 
 from tloen.domain import Application, Instrument
-from tloen.domain.midi import NoteOnMessage
+from tloen.midi import NoteOnMessage
 
 
 @pytest.fixture

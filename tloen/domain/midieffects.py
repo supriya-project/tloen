@@ -4,7 +4,7 @@ from typing import Dict, List, Tuple
 from supriya.clock import TempoClock, TimeUnit
 
 from .devices import DeviceObject
-from .midi import NoteOffMessage, NoteOnMessage
+from tloen.midi import NoteOffMessage, NoteOnMessage
 
 
 class Chord(DeviceObject):
