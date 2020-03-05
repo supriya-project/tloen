@@ -2,7 +2,13 @@ import pytest
 import yaml
 from uqbar.strings import normalize
 
-from tloen.domain import Application, Arpeggiator, BasicSampler, RackDevice, Transfer
+from tloen.domain import (
+    Application,
+    Arpeggiator,
+    BasicSampler,
+    RackDevice,
+    Transfer,
+)
 
 
 @pytest.mark.asyncio
