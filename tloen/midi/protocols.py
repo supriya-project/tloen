@@ -1,4 +1,5 @@
 import asyncio
+import dataclasses
 from typing import Callable, Dict, List, Optional, Type
 
 import rtmidi
@@ -11,6 +12,7 @@ from .messages import (
 )
 
 
+@dataclasses.dataclass
 class MidiCallback:
     procedure: Callable
     message_class: Optional[Type[MidiMessage]]
@@ -23,7 +25,9 @@ class AsyncMidiProtocol:
     ### INITIALIZER ###
 
     def __init__(self):
-        self.callbacks: Dict[Type[MidiMessage], Dict[int, List[MidiCallback]]] = {}
+        self.callbacks: Dict[
+            Optional[Type[MidiMessage]], Dict[Optional[int], List[MidiCallback]]
+        ] = {}
         self.is_running = False
         self.loop = None
         self.port = None
@@ -31,9 +35,10 @@ class AsyncMidiProtocol:
     ### PRIVATE METHODS ###
 
     def _match_callbacks(self, message: MidiMessage):
-        callbacks = []
+        callbacks: List[MidiCallback] = []
         for by_message_class in [
-            self.callbacks.get(None, {}), self.callbacks.get(type(message), {}),
+            self.callbacks.get(None, {}),
+            self.callbacks.get(type(message), {}),
         ]:
             callbacks.extend(by_message_class.get(None, []))
             if message.channel_number is not None:
@@ -59,15 +64,16 @@ class AsyncMidiProtocol:
                 timestamp=timestamp,
             )
         elif message_type == 9:
-            class_ = NoteOnMessage
-            if data[1] == 0:
-                class_ = NoteOffMessage
-            return class_(
+            kwargs = dict(
                 channel_number=channel_number,
                 pitch=data[0],
                 velocity=data[1],
                 timestamp=timestamp,
             )
+            if data[1] == 0:
+                return NoteOffMessage(**kwargs)
+            else:
+                return NoteOnMessage(**kwargs)
         elif message_type == 11:
             return ControllerChangeMessage(
                 channel_number=channel_number,
@@ -75,7 +81,7 @@ class AsyncMidiProtocol:
                 controller_value=data[1],
                 timestamp=timestamp,
             )
-        return
+        return None
 
     ### PUBLIC METHODS ###
 
@@ -107,7 +113,7 @@ class AsyncMidiProtocol:
         self,
         procedure,
         *,
-        message_class: Optional[Type[MidiCallback]] = None,
+        message_class: Optional[Type[MidiMessage]] = None,
         channel: Optional[int] = None,
         once: bool = False,
     ):

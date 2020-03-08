@@ -4,28 +4,28 @@ from typing import Optional
 
 @dataclasses.dataclass
 class MidiMessage:
-    pass
+    channel_number: Optional[int] = None
 
 
 @dataclasses.dataclass
 class ControllerChangeMessage(MidiMessage):
-    controller_number: Optional[int]
-    controller_value: Optional[int]
     channel_number: Optional[int] = None
+    controller_number: Optional[int] = None
+    controller_value: Optional[int] = None
     timestamp: Optional[float] = None
 
 
 @dataclasses.dataclass
 class NoteOffMessage(MidiMessage):
-    pitch: Optional[int]
-    velocity: Optional[int] = 100
     channel_number: Optional[int] = None
+    pitch: Optional[int] = 60
+    velocity: Optional[int] = 100
     timestamp: Optional[float] = None
 
 
 @dataclasses.dataclass
 class NoteOnMessage(MidiMessage):
-    pitch: Optional[int]
-    velocity: Optional[int] = 100
     channel_number: Optional[int] = None
+    pitch: Optional[int] = 60
+    velocity: Optional[int] = 100
     timestamp: Optional[float] = None
