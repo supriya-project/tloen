@@ -1,6 +1,6 @@
 import asyncio
 
-from tloen.harness import Harness
+from tloen.core import Harness
 
 
 async def main():

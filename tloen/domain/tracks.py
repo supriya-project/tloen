@@ -604,10 +604,7 @@ class Track(UserTrackObject):
             event_type=self.transport.EventType.CLIP_PERFORM,
         )
         self.application.pubsub.publish(
-            ClipLaunched(
-                clip_uuid=self.slots[self._active_slot_index].clip.uuid,
-                moment=desired_moment,
-            ),
+            ClipLaunched(clip_uuid=self.slots[self._active_slot_index].clip.uuid),
         )
 
     async def _clip_perform_callback(self, current_moment, desired_moment, event):

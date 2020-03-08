@@ -3,7 +3,7 @@ from collections import deque
 from typing import Optional, Tuple
 from uuid import UUID, uuid4
 
-from supriya.clock import Moment, TimeUnit
+from supriya.clock import TimeUnit
 from supriya.intervals import IntervalTree
 
 from tloen.midi import NoteOffMessage, NoteOnMessage
@@ -280,6 +280,10 @@ class Clip(ClipObject):
     def notes(self):
         return sorted(self._interval_tree)
 
+    @property
+    def clip_delta(self):
+        return self._clip_delta
+
 
 class Slot(ApplicationObject):
 
@@ -401,7 +405,7 @@ class Timeline:
 
 
 @dataclasses.dataclass
-class ClipToggleNote(Command):
+class ToggleClipNote(Command):
     clip_uuid: UUID
     pitch: float
     offset: float
@@ -409,13 +413,13 @@ class ClipToggleNote(Command):
 
     async def execute(self, harness):
         clip: Clip = harness.domain_application.registry[self.clip_uuid]
-        moment = clip._notes.get_moment_at(self.offset)
-        for note in moment.start_notes:
+        moment = clip._interval_tree.get_moment_at(self.offset)
+        for note in moment.start_intervals:
             if note.pitch == self.pitch:
-                await self.remove_notes([note])
+                await clip.remove_notes([note])
                 break
         else:
-            await self.add_notes(
+            await clip.add_notes(
                 [
                     Note(
                         start_offset=self.offset,
@@ -427,7 +431,7 @@ class ClipToggleNote(Command):
 
 
 @dataclasses.dataclass
-class SlotAddClip(Command):
+class AddClip(Command):
     slot_uuid: UUID
     clip_uuid: Optional[UUID]
 
@@ -438,21 +442,17 @@ class SlotAddClip(Command):
 
 
 @dataclasses.dataclass
-class SlotFire(Command):
-    slot_uuid: UUID
+class FireSlot(Command):
+    # slot_uuid: UUID
 
     async def execute(self, harness):
-        slot: Slot = harness.domain_application.registry[self.slot_uuid]
+        slot = harness.domain_application.contexts[0].tracks[0].slots[0]
+        # slot: Slot = harness.domain_application.registry[self.slot_uuid]
         await slot.fire()
 
 
 @dataclasses.dataclass
-class SlotFired(Event):
-    slot_uuid: UUID
-
-
-@dataclasses.dataclass
-class SlotRemoveClip(Command):
+class RemoveClip(Command):
     slot_uuid: UUID
 
     async def execute(self, harness):
@@ -463,9 +463,13 @@ class SlotRemoveClip(Command):
 @dataclasses.dataclass
 class ClipLaunched(Event):
     clip_uuid: UUID
-    moment: Moment
 
 
 @dataclasses.dataclass
 class ClipModified(Event):
     clip_uuid: UUID
+
+
+@dataclasses.dataclass
+class SlotFired(Event):
+    slot_uuid: UUID

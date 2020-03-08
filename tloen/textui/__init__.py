@@ -7,6 +7,7 @@ from ..domain.applications import (
     ExitToTerminal,
     QuitApplication,
 )
+from ..domain.clips import FireSlot
 from ..domain.transports import ToggleTransport
 from ..pubsub import PubSub
 from .status import StatusWidget
@@ -14,9 +15,10 @@ from .transport import TransportWidget
 
 
 class Application:
-    def __init__(self, command_queue, pubsub=None):
+    def __init__(self, command_queue, pubsub=None, registry=None):
         self.command_queue = command_queue
         self.pubsub = pubsub or PubSub()
+        self.registry = registry if registry is not None else {}
         self.logo_widget = urwid.Text("\nt / l / ö / n", align="center")
         self.widget = urwid.Filler(
             urwid.Padding(
@@ -39,6 +41,7 @@ class Application:
             "ctrl q": QuitApplication(),
             "ctrl b": BootApplication(),
             "ctrl c": ExitToTerminal(),
+            "ctrl g": FireSlot(),
             " ": ToggleTransport(),
         }
 
