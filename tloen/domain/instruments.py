@@ -44,7 +44,7 @@ class Instrument(AllocatableDevice):
         self._notes_to_synths.clear()
 
     def _handle_note_off(self, moment, midi_message):
-        self._input_notes.remove(midi_message.pitch)
+        self._input_pitches.pop(midi_message.pitch, None)
         synth = self._notes_to_synths.pop(midi_message.pitch, None)
         if synth is not None:
             synth.free()
@@ -52,9 +52,9 @@ class Instrument(AllocatableDevice):
 
     def _handle_note_on(self, moment, midi_message):
         pitch = midi_message.pitch
-        if pitch in self._input_notes:
+        if pitch in self._input_pitches:
             self._handle_note_off(moment, midi_message)
-        self._input_notes.add(midi_message.pitch)
+        self._input_pitches[midi_message.pitch] = [midi_message.pitch]
         self._notes_to_synths[pitch] = self.node_proxies["body"].add_synth(
             synthdef=self.synthdef,
             out=self._audio_bus_proxies["output"],
@@ -91,9 +91,9 @@ class BasicSampler(Instrument):
         if self.parameters["buffer_id"].buffer_proxy is None:
             return []
         pitch = midi_message.pitch
-        if pitch in self._input_notes:
+        if pitch in self._input_pitches:
             self._handle_note_off(moment, midi_message)
-        self._input_notes.add(midi_message.pitch)
+        self._input_pitches[midi_message.pitch] = [midi_message.pitch]
         self._notes_to_synths[pitch] = self.node_proxies["body"].add_synth(
             synthdef=self.synthdef.build(channel_count=2),
             out=self._audio_bus_proxies["output"],

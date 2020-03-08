@@ -1,4 +1,4 @@
-from typing import Callable, Dict, Optional, Set, Type, Union
+from typing import Callable, Dict, Optional, Type, Union
 from uuid import UUID, uuid4
 
 from supriya.enums import AddAction, CalculationRate
@@ -170,8 +170,6 @@ class DeviceObject(Allocatable, Performable):
         for parameter in (parameters or {}).values():
             self._add_parameter(parameter)
         self._uuid = uuid or uuid4()
-        self._input_notes: Set[float] = set()
-        self._output_notes: Set[float] = set()
         self._event_handlers: Dict[Type[MidiMessage], Callable] = {
             NoteOnMessage: self._handle_note_on,
             NoteOffMessage: self._handle_note_off,
@@ -193,21 +191,21 @@ class DeviceObject(Allocatable, Performable):
     ### PRIVATE METHODS ###
 
     def _handle_note_off(self, moment, midi_message):
-        self._input_notes.remove(midi_message.pitch)
+        self._input_pitches.pop(midi_message.pitch, None)
         return [midi_message]
 
     def _handle_note_on(self, moment, midi_message):
         result = []
-        if midi_message.pitch in self._input_notes:
+        if midi_message.pitch in self._input_pitches:
             result.extend(self._handle_note_off(moment, midi_message))
-        self._input_notes.add(midi_message.pitch)
+        self._input_pitches[midi_message.pitch] = [midi_message.pitch]
         result.append(midi_message)
         return result
 
     def _perform_input(self, moment, midi_messages):
-        Performable._perform_input(self, moment, midi_messages)
         out_messages = []
         for message in midi_messages:
+            self._update_captures(moment, message, "I")
             event_handler = self._event_handlers.get(type(message))
             if not event_handler:
                 out_messages.append(message)

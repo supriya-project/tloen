@@ -1,4 +1,5 @@
 import asyncio
+import dataclasses
 import enum
 import pathlib
 from collections import deque
@@ -7,19 +8,14 @@ from typing import Deque, Dict, Mapping, Optional, Tuple, Union
 from uuid import UUID
 
 import yaml
+from supriya.commands import StatusResponse
 from supriya.nonrealtime import Session
 from supriya.provider import Provider
 from uqbar.containers import UniqueTreeTuple
 
 import tloen.domain  # noqa
 
-from ..events import (
-    ApplicationBooted,
-    ApplicationBooting,
-    ApplicationQuit,
-    ApplicationQuitting,
-    ApplicationStatusRefreshed,
-)
+from ..bases import Command, Event
 from ..pubsub import PubSub
 from .bases import Container
 from .clips import Scene
@@ -324,3 +320,46 @@ class Application(UniqueTreeTuple):
     @property
     def transport(self) -> Transport:
         return self._transport
+
+
+@dataclasses.dataclass
+class BootApplication(Command):
+    async def execute(self, harness):
+        await harness.domain_application.boot()
+
+
+@dataclasses.dataclass
+class ExitToTerminal(Command):
+    async def execute(self, harness):
+        await harness.exit()
+
+
+@dataclasses.dataclass
+class QuitApplication(Command):
+    async def execute(self, harness):
+        await harness.domain_application.quit()
+
+
+@dataclasses.dataclass
+class ApplicationBooting(Event):
+    ...
+
+
+@dataclasses.dataclass
+class ApplicationBooted(Event):
+    port: int
+
+
+@dataclasses.dataclass
+class ApplicationQuitting(Event):
+    ...
+
+
+@dataclasses.dataclass
+class ApplicationQuit(Event):
+    ...
+
+
+@dataclasses.dataclass
+class ApplicationStatusRefreshed(Event):
+    status: StatusResponse

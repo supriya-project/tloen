@@ -21,6 +21,7 @@ async def application(mocker, monkeypatch):
     async def wait_for_event(self, sleep_time):
         await asyncio.sleep(0)
         await self._event.wait()
+        logger.info("Waking up")
 
     monkeypatch.setattr(AsyncTempoClock, "_wait_for_event", wait_for_event)
     mock_time = mocker.patch.object(AsyncTempoClock, "get_current_time")
@@ -52,6 +53,7 @@ async def test_1(mocker, application):
     with track.devices[0].capture() as transcript:
         await track.slots[0].fire()
         await set_time(0, application.transport)
+    assert track.slots[0].clip.is_playing
     assert list(transcript) == [
         Instrument.CaptureEntry(
             moment=Moment(
@@ -72,6 +74,7 @@ async def test_1(mocker, application):
     with track.devices[0].capture() as transcript:
         await track.slots[0].clip.remove_notes(track.slots[0].clip.notes)
         await asyncio.sleep(0)
+    assert track.slots[0].clip.is_playing
     assert list(transcript) == [
         Instrument.CaptureEntry(
             moment=Moment(

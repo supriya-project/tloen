@@ -2,7 +2,12 @@ import asyncio
 
 import urwid
 
-from .. import events
+from ..domain.applications import (
+    BootApplication,
+    ExitToTerminal,
+    QuitApplication,
+)
+from ..domain.transports import ToggleTransport
 from ..pubsub import PubSub
 from .status import StatusWidget
 from .transport import TransportWidget
@@ -11,7 +16,6 @@ from .transport import TransportWidget
 class Application:
     def __init__(self, command_queue, pubsub=None):
         self.command_queue = command_queue
-        self.registry = {}
         self.pubsub = pubsub or PubSub()
         self.logo_widget = urwid.Text("\nt / l / ö / n", align="center")
         self.widget = urwid.Filler(
@@ -32,10 +36,10 @@ class Application:
             bottom=1,
         )
         self.handlers = {
-            "ctrl q": events.QuitApplication(),
-            "ctrl b": events.BootApplication(),
-            "ctrl c": events.ExitToTerminal(),
-            " ": events.ToggleTransport(),
+            "ctrl q": QuitApplication(),
+            "ctrl b": BootApplication(),
+            "ctrl c": ExitToTerminal(),
+            " ": ToggleTransport(),
         }
 
     def unhandled_input(self, key):

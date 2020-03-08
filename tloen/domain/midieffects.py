@@ -12,34 +12,30 @@ class Chord(DeviceObject):
     def __init__(self, name=None, uuid=None):
         DeviceObject.__init__(self, name=name, uuid=uuid)
         self._transpositions = []
-        self._input_notes_to_output_notes: Dict[float, List[float]] = {}
 
     def _handle_note_off(self, moment, midi_message):
         result = []
         pitch = midi_message.pitch
-        self._input_notes.remove(pitch)
-        output_pitchs = self._input_notes_to_output_notes.pop(pitch)
-        for pitch in sorted(output_pitchs):
-            if pitch in self._output_notes:
-                self._output_notes.remove(pitch)
+        for pitch in sorted(self._input_pitches.pop(pitch, [])):
+            if pitch in self._output_pitches:
+                self._output_pitches.remove(pitch)
                 result.append(NoteOffMessage(pitch=pitch))
         return result
 
     def _handle_note_on(self, moment, midi_message):
         result = []
         pitch = midi_message.pitch
-        if pitch in self._input_notes:
+        if pitch in self._input_pitches:
             result.extend(self._handle_note_off(moment, midi_message))
         transpositions = sorted(set(pitch + _ for _ in self._transpositions or [0]))
-        self._input_notes.add(pitch)
-        self._input_notes_to_output_notes[pitch] = transpositions
+        self._input_pitches[pitch] = transpositions
         for transposition in transpositions:
-            if transposition in self._output_notes:
+            if transposition in self._output_pitches:
                 result.append(NoteOffMessage(pitch=transposition))
             result.append(
                 NoteOnMessage(pitch=transposition, velocity=midi_message.velocity)
             )
-            self._output_notes.add(transposition)
+            self._output_pitches.add(transposition)
         return result
 
 
@@ -57,7 +53,7 @@ class Arpeggiator(DeviceObject):
 
     def __init__(self, name=None, uuid=None):
         DeviceObject.__init__(self, name=name, uuid=uuid)
-        self._input_notes_to_velocities: Dict[float, float] = {}
+        self._input_pitches_to_velocities: Dict[float, float] = {}
         self._pattern: List[Tuple[float, float]] = ()
         self._pattern_style = self.PatternStyle.UP
         self._current_index = 0
@@ -78,21 +74,21 @@ class Arpeggiator(DeviceObject):
         old_application.transport._dependencies.remove(self)
 
     def _handle_note_off(self, moment, midi_message):
-        self._input_notes.remove(midi_message.pitch)
-        self._input_notes_to_velocities.pop(midi_message.pitch)
+        self._input_pitches.pop(midi_message.pitch)
+        self._input_pitches.pop(midi_message.pitch)
         self._pattern = self._rebuild_pattern()
         return []
 
     def _handle_note_on(self, moment, midi_message):
-        self._input_notes.add(midi_message.pitch)
-        self._input_notes_to_velocities[midi_message.pitch] = midi_message.velocity
+        self._input_pitches[midi_message.pitch] = [midi_message.pitch]
+        self._input_pitches_to_velocities[midi_message.pitch] = midi_message.velocity
         self._pattern = self._rebuild_pattern()
         return []
 
     def _rebuild_pattern(self):
-        if not self._input_notes:
+        if not self._input_pitches:
             return ()
-        initial_pairs = sorted(self._input_notes_to_velocities.items())
+        initial_pairs = sorted(self._input_pitches_to_velocities.items())
         octave_pairs = []
         pattern_pairs = []
         for octave in range(self._octaves + 1):
@@ -148,9 +144,9 @@ class Arpeggiator(DeviceObject):
             self._previous_pitch = pitch
             self._current_index += 1
             midi_messages = []
-            if pitch in self._output_notes:
+            if pitch in self._output_pitches:
                 midi_messages.append(NoteOffMessage(pitch=pitch))
-            self._output_notes.add(pitch)
+            self._output_pitches.add(pitch)
             midi_messages.append(NoteOnMessage(pitch=pitch, velocity=velocity))
             for message in midi_messages:
                 self._update_captures(moment=desired_moment, message=message, label="O")
@@ -169,12 +165,12 @@ class Arpeggiator(DeviceObject):
     ):
         async with self.lock([self], seconds=desired_moment.seconds):
             self._debug_tree(self, "Note Off CB")
-            if pitch not in self._output_notes:
+            if pitch not in self._output_pitches:
                 return
             midi_messages = [NoteOffMessage(pitch=pitch)]
             for message in midi_messages:
                 self._update_captures(moment=desired_moment, message=message, label="O")
-            self._output_notes.remove(pitch)
+            self._output_pitches.remove(pitch)
             performer = self._next_performer()
             if performer is None:
                 return

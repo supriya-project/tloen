@@ -2,7 +2,11 @@ from functools import singledispatchmethod
 
 import urwid
 
-from ..events import TransportStarted, TransportStopped, TransportTicked
+from ..domain.transports import (
+    TransportStarted,
+    TransportStopped,
+    TransportTicked,
+)
 from ..pubsub import PubSub
 
 

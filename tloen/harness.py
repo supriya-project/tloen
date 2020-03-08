@@ -2,7 +2,7 @@ import asyncio
 import signal
 
 from . import domain, gridui, pubsub, textui
-from .events import ApplicationStatusRefreshed
+from .domain.applications import ApplicationStatusRefreshed
 
 
 class Harness:
@@ -21,13 +21,20 @@ class Harness:
         )
         self.update_period = 0.1
 
-    async def run(self):
-        def handler(*args):
-            return True
-
+    async def build_application(self):
         self.domain_application = await domain.Application.new(
             context_count=1, track_count=4, scene_count=8, pubsub=self.pubsub
         )
+        track = self.domain_application.contexts[0].tracks[0]
+        sampler = await track.add_device(domain.BasicSampler)
+        await sampler.parameters["buffer_id"].set_("tloen:samples/808/bd-long-03.wav")
+        await track.slots[0].add_clip()
+
+    async def run(self, gridui=True, textui=True):
+        def handler(*args):
+            return True
+
+        await self.build_application()
         loop = asyncio.get_running_loop()
         loop.add_signal_handler(signal.SIGINT, handler)
         loop.add_signal_handler(signal.SIGTSTP, handler)

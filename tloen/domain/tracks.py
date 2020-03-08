@@ -1,4 +1,5 @@
 import abc
+import dataclasses
 import logging
 from types import MappingProxyType
 from typing import Dict, Mapping, Optional, Set, Type, Union
@@ -10,6 +11,7 @@ from supriya.typing import Default
 import tloen.domain  # noqa
 from tloen.midi import NoteOffMessage
 
+from ..bases import Command
 from .bases import (
     Allocatable,
     AllocatableContainer,
@@ -17,7 +19,7 @@ from .bases import (
     Mixer,
     Performable,
 )
-from .clips import Slot
+from .clips import ClipLaunched, Slot
 from .devices import DeviceObject
 from .parameters import BusParameter, Float, ParameterGroup, ParameterObject
 from .sends import Receive, Send, Target
@@ -294,8 +296,9 @@ class TrackObject(Allocatable, Performable):
             return receive
 
     def _perform_input(self, moment, midi_messages):
-        Performable._perform_input(self, moment, midi_messages)
-        next_performer = self._perform_output
+        next_perform, midi_messages = Performable._perform_input(
+            self, moment, midi_messages,
+        )
         if self.devices:
             next_performer = self.devices[0]._perform_input
         yield next_performer, midi_messages
@@ -540,7 +543,6 @@ class Track(UserTrackObject):
             self, channel_count=channel_count, name=name, uuid=uuid
         )
         self._active_slot_index: Optional[int] = None
-        self._active_slot_start_delta: 0.0
         self._clip_launch_event_id: Optional[int] = None
         self._clip_perform_event_id: Optional[int] = None
         self._pending_slot_index: Optional[int] = None
@@ -569,12 +571,13 @@ class Track(UserTrackObject):
         self._clip_launch_event_id = None
         # if a clip is active, perform note offs
         if self._active_slot_index is not None:
-            self.slots[self._active_slot_index].clip._is_playing = False
             midi_messages = [
-                NoteOffMessage(pitch=pitch) for pitch in self._active_pitches
+                NoteOffMessage(pitch=pitch) for pitch in self._input_pitches
             ]
             if midi_messages:
                 await self.perform(midi_messages, moment=desired_moment)
+            self.slots[self._active_slot_index].clip._is_playing = False
+            self.slots[self._active_slot_index].clip._start_delta = 0.0
         # if pending clip is null-ish, null out variables
         if (
             self._pending_slot_index is None
@@ -584,15 +587,14 @@ class Track(UserTrackObject):
             )
             or self.slots[self._pending_slot_index].clip is None
         ):
-            self._active_slot_start_delta = None
             self._active_slot_index = None
             self._pending_slot_index = None
             self._debug_tree(self, "Launch/CB", suffix="Bailing")
             return
         # set variables to new clip
         self._active_slot_index = self._pending_slot_index
-        self._active_slot_start_delta = desired_moment.offset
         self.slots[self._active_slot_index].clip._is_playing = True
+        self.slots[self._active_slot_index].clip._start_delta = desired_moment.offset
         # schedule perform callback
         if self._clip_perform_event_id is not None:
             await self.transport.cancel(self._clip_perform_event_id)
@@ -601,25 +603,29 @@ class Track(UserTrackObject):
             schedule_at=desired_moment.offset,
             event_type=self.transport.EventType.CLIP_PERFORM,
         )
+        self.application.pubsub.publish(
+            ClipLaunched(
+                clip_uuid=self.slots[self._active_slot_index].clip.uuid,
+                moment=desired_moment,
+            ),
+        )
 
     async def _clip_perform_callback(self, current_moment, desired_moment, event):
         self._debug_tree(self, "Perform/CB", suffix=str(self._active_slot_index))
         if self._active_slot_index is None:
             return None
         clip = self.slots[self._active_slot_index].clip
-        note_moment = clip.at(
-            desired_moment.offset, start_delta=self._active_slot_start_delta
-        )
-        active_pitches = sorted(self._active_pitches)
+        note_moment = clip.at(desired_moment.offset, start_delta=clip._start_delta)
+        input_pitches = sorted(self._input_pitches)
         midi_messages = []
         for midi_message in note_moment.note_off_messages:
             midi_messages.append(midi_message)
-            if midi_message.pitch in active_pitches:
-                active_pitches.remove(midi_message.pitch)
+            if midi_message.pitch in input_pitches:
+                input_pitches.remove(midi_message.pitch)
         overlap_pitches = set(_.pitch for _ in note_moment.overlap_notes or [])
-        for active_pitch in active_pitches:
-            if active_pitch not in overlap_pitches:
-                midi_messages.append(NoteOffMessage(pitch=active_pitch))
+        for input_pitch in input_pitches:
+            if input_pitch not in overlap_pitches:
+                midi_messages.append(NoteOffMessage(pitch=input_pitch))
         midi_messages.extend(note_moment.note_on_messages)
         if midi_messages:
             await self.perform(midi_messages, desired_moment)
@@ -860,3 +866,81 @@ class TrackContainer(AllocatableContainer):
             if isinstance(parent, tloen.domain.Context):
                 return parent
         return None
+
+
+@dataclasses.dataclass
+class TrackAdd(Command):
+    context_uuid: UUID
+    track_uuid: Optional[UUID]
+
+    async def execute(self, harness):
+        context: tloen.domain.Context = harness.domain_application.registry[
+            self.context_uuid
+        ]
+        track: Track = await context.add_track()
+        self.track_uuid = track.uuid
+
+
+@dataclasses.dataclass
+class TrackCue(Command):
+    track_uuid: UUID
+
+    async def execute(self, harness):
+        track: Track = harness.domain_application.registry[self.track_uuid]
+        await track.cue()
+
+
+@dataclasses.dataclass
+class TrackDelete(Command):
+    track_uuid: UUID
+
+    async def execute(self, harness):
+        track: Track = harness.domain_application.registry[self.track_uuid]
+        await track.delete()
+
+
+@dataclasses.dataclass
+class TrackMute(Command):
+    track_uuid: UUID
+
+    async def execute(self, harness):
+        track: Track = harness.domain_application.registry[self.track_uuid]
+        await track.mute()
+
+
+@dataclasses.dataclass
+class TrackSolo(Command):
+    track_uuid: UUID
+    exclusive: bool = True
+
+    async def execute(self, harness):
+        track: Track = harness.domain_application.registry[self.track_uuid]
+        await track.solo(exclusive=self.exclusive)
+
+
+@dataclasses.dataclass
+class TrackUncue(Command):
+    track_uuid: UUID
+
+    async def execute(self, harness):
+        track: Track = harness.domain_application.registry[self.track_uuid]
+        await track.uncue()
+
+
+@dataclasses.dataclass
+class TrackUnmute(Command):
+    track_uuid: UUID
+
+    async def execute(self, harness):
+        track: Track = harness.domain_application.registry[self.track_uuid]
+        await track.unmute()
+
+
+@dataclasses.dataclass
+class TrackUnsolo(Command):
+    track_uuid: UUID
+    exclusive: bool = False
+
+    async def execute(self, harness):
+        track: Track = harness.domain_application.registry[self.track_uuid]
+        await track.unsolo(exclusive=self.exclusive)

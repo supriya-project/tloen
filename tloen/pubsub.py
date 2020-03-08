@@ -1,6 +1,6 @@
 from typing import Callable, Dict, List, Type
 
-from .events import Event
+from .bases import Event
 
 
 class PubSub:

@@ -1,13 +1,14 @@
 import dataclasses
 from collections import deque
 from typing import Optional, Tuple
-from uuid import uuid4
+from uuid import UUID, uuid4
 
-from supriya.clock import TimeUnit
+from supriya.clock import Moment, TimeUnit
 from supriya.intervals import IntervalTree
 
 from tloen.midi import NoteOffMessage, NoteOnMessage
 
+from ..bases import Command, Event
 from .bases import ApplicationObject
 
 
@@ -96,6 +97,7 @@ class Clip(ClipObject):
         self._duration = float(duration)
         self._is_looping = is_looping
         self._is_playing = False
+        self._start_delta = 0.0
         self._interval_tree = IntervalTree()
         self._add_notes(notes or [])
 
@@ -111,15 +113,6 @@ class Clip(ClipObject):
         )
 
     ### PRIVATE METHODS ###
-
-    async def _notify(self):
-        if self.application is not None and self.is_playing:
-            track = self.parent.parent.parent
-            await self.transport.reschedule(
-                track._clip_perform_event_id,
-                schedule_at=self.transport._clock.get_current_time(),
-                time_unit=TimeUnit.SECONDS,
-            )
 
     def _add_notes(self, notes):
         def validate_new_notes(new_notes):
@@ -197,6 +190,19 @@ class Clip(ClipObject):
             to_remove.extend(invalidated_old_notes)
         self._remove_notes(to_remove)
         self._interval_tree.update(to_add)
+
+    async def _notify(self):
+        self._debug_tree(self, "Notifying")
+        if self.application is None:
+            return
+        if self.is_playing:
+            track = self.parent.parent.parent
+            await self.transport.reschedule(
+                track._clip_perform_event_id,
+                schedule_at=self.transport._clock.get_current_time(),
+                time_unit=TimeUnit.SECONDS,
+            )
+        self.application.pubsub.publish(ClipModified(self.uuid))
 
     def _remove_notes(self, notes):
         self._debug_tree(self, "Editing")
@@ -322,6 +328,7 @@ class Slot(ApplicationObject):
         if track is None:
             return
         await track._fire(self.parent.index(self))
+        self.application.pubsub.publish(SlotFired(self.uuid))
 
     async def move_clip(self, slot):
         await slot._set_clip(self.clip)
@@ -391,3 +398,74 @@ class Scene(ApplicationObject):
 
 class Timeline:
     pass
+
+
+@dataclasses.dataclass
+class ClipToggleNote(Command):
+    clip_uuid: UUID
+    pitch: float
+    offset: float
+    duration: float = 1 / 16
+
+    async def execute(self, harness):
+        clip: Clip = harness.domain_application.registry[self.clip_uuid]
+        moment = clip._notes.get_moment_at(self.offset)
+        for note in moment.start_notes:
+            if note.pitch == self.pitch:
+                await self.remove_notes([note])
+                break
+        else:
+            await self.add_notes(
+                [
+                    Note(
+                        start_offset=self.offset,
+                        stop_offset=self.offset + self.duration,
+                        pitch=self.pitch,
+                    ),
+                ]
+            )
+
+
+@dataclasses.dataclass
+class SlotAddClip(Command):
+    slot_uuid: UUID
+    clip_uuid: Optional[UUID]
+
+    async def execute(self, harness):
+        slot: Slot = harness.domain_application.registry[self.slot_uuid]
+        clip = await slot.add_clip()
+        self.clip_uuid = clip.uuid
+
+
+@dataclasses.dataclass
+class SlotFire(Command):
+    slot_uuid: UUID
+
+    async def execute(self, harness):
+        slot: Slot = harness.domain_application.registry[self.slot_uuid]
+        await slot.fire()
+
+
+@dataclasses.dataclass
+class SlotFired(Event):
+    slot_uuid: UUID
+
+
+@dataclasses.dataclass
+class SlotRemoveClip(Command):
+    slot_uuid: UUID
+
+    async def execute(self, harness):
+        slot: Slot = harness.domain_application.registry[self.slot_uuid]
+        await slot.remove_clip()
+
+
+@dataclasses.dataclass
+class ClipLaunched(Event):
+    clip_uuid: UUID
+    moment: Moment
+
+
+@dataclasses.dataclass
+class ClipModified(Event):
+    clip_uuid: UUID

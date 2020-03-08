@@ -2,7 +2,7 @@ from functools import singledispatchmethod
 
 import urwid
 
-from ..events import (
+from ..domain.applications import (
     ApplicationBooted,
     ApplicationBooting,
     ApplicationQuit,
@@ -64,7 +64,7 @@ class StatusWidget(urwid.WidgetWrap):
 
     @handle_event.register
     def _handle_application_booted(self, event: ApplicationBooted):
-        self.text["status"] = "booted".ljust(8)
+        self.text["status"] = "online".ljust(8)
         self.text["port"] = str(event.port).ljust(5)
         self.update_text()
 

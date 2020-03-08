@@ -69,8 +69,9 @@ class Chain(UserTrackObject):
         Chain._update_activation(self)
 
     def _perform_input(self, moment, midi_messages):
-        Performable._perform_input(self, moment, midi_messages)
-        next_performer = self._perform_output
+        next_performer, midi_messages = Performable._perform_input(
+            self, moment, midi_messages,
+        )
         if self.devices:
             next_performer = self.devices[0]._perform_input
         for message in midi_messages:
@@ -304,10 +305,12 @@ class RackDevice(DeviceObject, Mixer):
         Chain._update_activation(self)
 
     def _perform_input(self, moment, midi_messages):
-        Performable._perform_input(self, moment, midi_messages)
-        performers = [chain._perform_input for chain in self.chains] or [
-            self._perform_output
-        ]
+        next_performer, midi_messages = Performable._perform_input(
+            self, moment, midi_messages,
+        )
+        performers = [next_performer]
+        if self.chains:
+            performers = [chain._perform_input for chain in self.chains]
         for message in midi_messages:
             for performer in performers:
                 yield performer, [message]

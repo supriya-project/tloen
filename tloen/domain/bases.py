@@ -1,4 +1,3 @@
-import abc
 import logging
 from collections import deque
 from contextlib import AsyncExitStack, asynccontextmanager
@@ -618,7 +617,8 @@ class Performable(ApplicationObject):
     ### INITIALIZER ###
 
     def __init__(self):
-        self._active_pitches: Set[float] = set()
+        self._input_pitches: Dict[float, List[float]] = {}
+        self._output_pitches: Set[float] = set()
         self._captures: Set["Performable.Capture"] = set()
 
     ### PRIVATE METHODS ###
@@ -636,30 +636,32 @@ class Performable(ApplicationObject):
                 return parent._perform_output
         return None
 
-    @abc.abstractmethod
     def _perform_input(self, moment, midi_messages):
         for message in midi_messages:
             self._update_captures(moment, message, "I")
             if isinstance(message, NoteOnMessage):
-                self._active_pitches.add(message.pitch)
-            elif isinstance(message, NoteOffMessage):
-                self._active_pitches.remove(message.pitch)
-        return midi_messages
+                self._input_pitches[message.pitch] = [message.pitch]
+            elif (
+                isinstance(message, NoteOffMessage)
+                and message.pitch in self._input_pitches
+            ):
+                self._input_pitches.pop(message.pitch, None)
+        return self._perform_output, midi_messages
 
     def _perform_output(self, moment, midi_messages):
         next_performer = self._next_performer()
         for message in midi_messages:
             self._update_captures(moment, message, "O")
-            if (
-                isinstance(message, NoteOnMessage)
-                and message.pitch in self._active_pitches
-            ):
-                continue
-            elif (
-                isinstance(message, NoteOffMessage)
-                and message.pitch not in self._active_pitches
-            ):
-                continue
+            if isinstance(message, NoteOnMessage):
+                if message.pitch in self._output_pitches:
+                    continue
+                else:
+                    self._output_pitches.add(message.pitch)
+            elif isinstance(message, NoteOffMessage):
+                if message.pitch not in self._output_pitches:
+                    continue
+                else:
+                    self._output_pitches.remove(message.pitch)
             yield next_performer, [message]
 
     @classmethod

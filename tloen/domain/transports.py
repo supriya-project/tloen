@@ -1,10 +1,11 @@
 import asyncio
+import dataclasses
 import enum
 from typing import Dict, Optional, Set, Tuple
 
-from supriya.clock import AsyncTempoClock
+from supriya.clock import AsyncTempoClock, Moment
 
-from .. import events
+from ..bases import Command, Event
 from .bases import ApplicationObject
 from .parameters import ParameterGroup, ParameterObject
 
@@ -42,7 +43,7 @@ class Transport(ApplicationObject):
         await self.application.perform([midi_message], moment=current_moment)
 
     def _tick_callback(self, current_moment, desired_moment, event):
-        self.application.pubsub.publish(events.TransportTicked(desired_moment))
+        self.application.pubsub.publish(TransportTicked(desired_moment))
         return 1 / desired_moment.time_signature[1] / 4
 
     ### PUBLIC METHODS ###
@@ -97,7 +98,7 @@ class Transport(ApplicationObject):
             self._tick_event_id = await self.cue(self._tick_callback)
             await asyncio.gather(*[_._start() for _ in self._dependencies])
             await self._clock.start()
-        self.application.pubsub.publish(events.TransportStarted())
+        self.application.pubsub.publish(TransportStarted())
 
     async def stop(self):
         await self._clock.stop()
@@ -105,7 +106,7 @@ class Transport(ApplicationObject):
             await asyncio.gather(*[_._stop() for _ in self._dependencies])
             await self.application.flush()
             await self.cancel(self._tick_event_id)
-        self.application.pubsub.publish(events.TransportStopped())
+        self.application.pubsub.publish(TransportStopped())
 
     ### PUBLIC PROPERTIES ###
 
@@ -120,3 +121,51 @@ class Transport(ApplicationObject):
     @property
     def parameters(self):
         return self._parameters
+
+
+@dataclasses.dataclass
+class ToggleTransport(Command):
+    async def execute(self, harness):
+        if harness.domain_application.transport.is_running:
+            await harness.domain_application.transport.stop()
+        else:
+            await harness.domain_application.transport.start()
+
+
+@dataclasses.dataclass
+class SetTransportTempo(Command):
+    tempo: float
+
+    async def execute(self, harness):
+        await harness.domain_application.transport.set_tempo(self.tempo)
+
+
+@dataclasses.dataclass
+class NudgeTransportTempoUp(Command):
+    async def execute(self, harness):
+        transport = harness.domain_application.transport
+        new_tempo = min(transport.clock.beats_per_minute + 1.0, 1000.0)
+        await transport.set_tempo(new_tempo)
+
+
+@dataclasses.dataclass
+class NudgeTransportTempoDown(Command):
+    async def execute(self, harness):
+        transport = harness.domain_application.transport
+        new_tempo = max(transport.clock.beats_per_minute - 1.0, 1.0)
+        await transport.set_tempo(new_tempo)
+
+
+@dataclasses.dataclass
+class TransportStarted(Event):
+    pass
+
+
+@dataclasses.dataclass
+class TransportStopped(Event):
+    pass
+
+
+@dataclasses.dataclass
+class TransportTicked(Event):  # TODO: ClipView needs to know start delta
+    moment: Moment
