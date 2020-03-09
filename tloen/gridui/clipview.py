@@ -49,7 +49,6 @@ class ClipView(GridApp):
     def _update_notes(self):
         self.buffers["notes"].led_all(0)
         for note in self.clip.notes:
-            print(note)
             y = 7 - (note.pitch - 60)
             x = int(note.start_offset * 16)
             if 0 <= x < 16 and 0 <= y < 8:

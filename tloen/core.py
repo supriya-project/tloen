@@ -51,8 +51,20 @@ class Harness:
             context_count=1, track_count=4, scene_count=8, pubsub=self.pubsub
         )
         track = domain_application.contexts[0].tracks[0]
-        sampler = await track.add_device(domain.BasicSampler)
-        await sampler.parameters["buffer_id"].set_("tloen:samples/808/bd-long-03.wav")
+        rack = await track.add_device(domain.RackDevice)
+        for i, sample_path in enumerate([
+            "tloen:samples/808/bass-drum.wav",
+            "tloen:samples/808/snare-drum.wav",
+            "tloen:samples/808/clap.wav",
+            "tloen:samples/808/maraca.wav",
+            "tloen:samples/808/closed-hat.wav",
+            "tloen:samples/808/low-tom-tom.wav",
+            "tloen:samples/808/mid-tom-tom.wav",
+            "tloen:samples/808/high-tom-tom.wav",
+        ]):
+            chain = await rack.add_chain(transfer=domain.Transfer(in_pitch=i + 60))
+            sampler = await chain.add_device(domain.BasicSampler)
+            await sampler.parameters["buffer_id"].set_(sample_path)
         await track.slots[0].add_clip()
         return domain_application
 
@@ -80,8 +92,7 @@ class Harness:
             await asyncio.sleep(self.update_period)
 
     async def exit(self):
-        if self.domain_application is not None:
-            await self.domain_application.quit()
+        await self.domain_application.quit()
         self.gridui_application.exit()
         self.textui_application.exit()
         self.exit_future.set_result(True)
