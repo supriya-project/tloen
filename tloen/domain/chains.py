@@ -20,6 +20,8 @@ class Transfer:
     in_pitch: Optional[int] = None
     out_pitch: Optional[int] = None
 
+    ### SPECIAL METHODS ###
+
     def __call__(self, midi_message: MidiMessage) -> Optional[MidiMessage]:
         if isinstance(midi_message, (NoteOnMessage, NoteOffMessage)):
             if self.in_pitch is None or self.in_pitch == midi_message.pitch:
@@ -32,14 +34,16 @@ class Transfer:
                 return None
         return midi_message
 
+    ### PRIVATE METHODS ###
+
     @classmethod
-    async def deserialize(cls, data, application):
+    async def _deserialize(cls, data, application):
         return cls(
             in_pitch=data["spec"].get("in_pitch"),
             out_pitch=data["spec"].get("out_pitch"),
         )
 
-    def serialize(self):
+    def _serialize(self):
         serialized = {
             "kind": type(self).__name__,
             "spec": {"in_pitch": self.in_pitch, "out_pitch": self.out_pitch},
@@ -68,6 +72,28 @@ class Chain(UserTrackObject):
     def _cleanup(self):
         Chain._update_activation(self)
 
+    @classmethod
+    async def _deserialize(cls, data, application) -> bool:
+        parent_uuid = UUID(data["meta"]["parent"])
+        parent = application.registry.get(parent_uuid)
+        if parent is None:
+            return True
+        transfer = await Transfer._deserialize(data["spec"]["transfer"], application)
+        chain = cls(
+            channel_count=data["spec"].get("channel_count"),
+            name=data["meta"].get("name"),
+            transfer=transfer,
+            uuid=UUID(data["meta"]["uuid"]),
+        )
+        parent.chains._append(chain)
+        if data["spec"].get("is_cued"):
+            await chain.cue()
+        if data["spec"].get("is_muted"):
+            await chain.mute()
+        if data["spec"].get("is_soloed"):
+            await chain.solo(exclusive=False)
+        return False
+
     def _perform_input(self, moment, midi_messages):
         next_performer, midi_messages = Performable._perform_input(
             self, moment, midi_messages,
@@ -79,6 +105,11 @@ class Chain(UserTrackObject):
             if out_message is None:
                 continue
             yield next_performer, [out_message]
+
+    def _serialize(self):
+        serialized, auxiliary_entities = super()._serialize()
+        serialized.setdefault("spec", {}).update(transfer=self.transfer._serialize(),)
+        return serialized, auxiliary_entities
 
     def _set_parent(self, new_parent):
         if self.is_soloed:
@@ -124,33 +155,6 @@ class Chain(UserTrackObject):
             track._deactivate()
 
     ### PUBLIC METHODS ###
-
-    @classmethod
-    async def deserialize(cls, data, application) -> bool:
-        parent_uuid = UUID(data["meta"]["parent"])
-        parent = application.registry.get(parent_uuid)
-        if parent is None:
-            return True
-        transfer = await Transfer.deserialize(data["spec"]["transfer"], application)
-        chain = cls(
-            channel_count=data["spec"].get("channel_count"),
-            name=data["meta"].get("name"),
-            transfer=transfer,
-            uuid=UUID(data["meta"]["uuid"]),
-        )
-        parent.chains._append(chain)
-        if data["spec"].get("is_cued"):
-            await chain.cue()
-        if data["spec"].get("is_muted"):
-            await chain.mute()
-        if data["spec"].get("is_soloed"):
-            await chain.solo(exclusive=False)
-        return False
-
-    def serialize(self):
-        serialized, auxiliary_entities = super().serialize()
-        serialized.setdefault("spec", {}).update(transfer=self.transfer.serialize(),)
-        return serialized, auxiliary_entities
 
     async def move(self, container, position):
         async with self.lock([self, container]):
@@ -284,6 +288,34 @@ class RackDevice(DeviceObject, Mixer):
             name="RackOut",
         )
 
+    @classmethod
+    async def _deserialize(cls, data, application) -> bool:
+        parent_uuid = UUID(data["meta"]["parent"])
+        parent = application.registry.get(parent_uuid)
+        if parent is None:
+            return True
+        rack = cls(
+            channel_count=data["spec"].get("channel_count"),
+            name=data["meta"].get("name"),
+            uuid=UUID(data["meta"]["uuid"]),
+        )
+        parent.devices._append(rack)
+        return False
+
+    def _cleanup(self):
+        Chain._update_activation(self)
+
+    def _perform_input(self, moment, midi_messages):
+        next_performer, midi_messages = Performable._perform_input(
+            self, moment, midi_messages,
+        )
+        performers = [next_performer]
+        if self.chains:
+            performers = [chain._perform_input for chain in self.chains]
+        for message in midi_messages:
+            for performer in performers:
+                yield performer, [message]
+
     def _reallocate(self, difference):
         channel_count = self.effective_channel_count
         output_bus_group = self._audio_bus_proxies.pop("output")
@@ -301,19 +333,16 @@ class RackDevice(DeviceObject, Mixer):
         for synth in [input_synth, output_synth]:
             synth.free()
 
-    def _cleanup(self):
-        Chain._update_activation(self)
-
-    def _perform_input(self, moment, midi_messages):
-        next_performer, midi_messages = Performable._perform_input(
-            self, moment, midi_messages,
-        )
-        performers = [next_performer]
-        if self.chains:
-            performers = [chain._perform_input for chain in self.chains]
-        for message in midi_messages:
-            for performer in performers:
-                yield performer, [message]
+    def _serialize(self):
+        serialized, auxiliary_entities = super()._serialize()
+        chains = []
+        for chain in self.chains:
+            chains.append(str(chain.uuid))
+            aux = chain._serialize()
+            auxiliary_entities.append(aux[0])
+            auxiliary_entities.extend(aux[1])
+        serialized["spec"]["chains"] = chains
+        return serialized, auxiliary_entities
 
     ### PUBLIC METHODS ###
 
@@ -342,31 +371,6 @@ class RackDevice(DeviceObject, Mixer):
                 raise ValueError
             for chain in chains:
                 self._chains._remove(chain)
-
-    def serialize(self):
-        serialized, auxiliary_entities = super().serialize()
-        chains = []
-        for chain in self.chains:
-            chains.append(str(chain.uuid))
-            aux = chain.serialize()
-            auxiliary_entities.append(aux[0])
-            auxiliary_entities.extend(aux[1])
-        serialized["spec"]["chains"] = chains
-        return serialized, auxiliary_entities
-
-    @classmethod
-    async def deserialize(cls, data, application) -> bool:
-        parent_uuid = UUID(data["meta"]["parent"])
-        parent = application.registry.get(parent_uuid)
-        if parent is None:
-            return True
-        rack = cls(
-            channel_count=data["spec"].get("channel_count"),
-            name=data["meta"].get("name"),
-            uuid=UUID(data["meta"]["uuid"]),
-        )
-        parent.devices._append(rack)
-        return False
 
     async def set_channel_count(self, channel_count: Optional[int]):
         async with self.lock([self]):

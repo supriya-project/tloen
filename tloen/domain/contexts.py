@@ -62,6 +62,29 @@ class Context(Allocatable, Mixer):
     def _cleanup(self):
         Track._update_activation(self)
 
+    @classmethod
+    async def _deserialize(cls, data, application) -> bool:
+        context = cls(
+            channel_count=data["spec"].get("channel_count"),
+            name=data["meta"].get("name"),
+            uuid=UUID(data["meta"]["uuid"]),
+        )
+        application.contexts._append(context)
+        return False
+
+    def _serialize(self):
+        serialized, auxiliary_entities = super()._serialize()
+        serialized["spec"].update(
+            cue_track=str(self.cue_track.uuid),
+            master_track=str(self.master_track.uuid),
+            tracks=[str(track.uuid) for track in self.tracks],
+        )
+        for track in [self.cue_track, self.master_track, *self.tracks]:
+            aux = track._serialize()
+            auxiliary_entities.append(aux[0])
+            auxiliary_entities.extend(aux[1])
+        return serialized, auxiliary_entities
+
     ### PUBLIC METHODS ###
 
     async def add_track(self, *, name=None) -> Track:
@@ -114,29 +137,6 @@ class Context(Allocatable, Mixer):
                 raise ValueError
             for track in tracks:
                 self._tracks._remove(track)
-
-    def serialize(self):
-        serialized, auxiliary_entities = super().serialize()
-        serialized["spec"].update(
-            cue_track=str(self.cue_track.uuid),
-            master_track=str(self.master_track.uuid),
-            tracks=[str(track.uuid) for track in self.tracks],
-        )
-        for track in [self.cue_track, self.master_track, *self.tracks]:
-            aux = track.serialize()
-            auxiliary_entities.append(aux[0])
-            auxiliary_entities.extend(aux[1])
-        return serialized, auxiliary_entities
-
-    @classmethod
-    async def deserialize(cls, data, application) -> bool:
-        context = cls(
-            channel_count=data["spec"].get("channel_count"),
-            name=data["meta"].get("name"),
-            uuid=UUID(data["meta"]["uuid"]),
-        )
-        application.contexts._append(context)
-        return False
 
     async def set_channel_count(self, channel_count: Optional[int]):
         async with self.lock([self]):

@@ -42,6 +42,20 @@ class Transport(ApplicationObject):
     ):
         await self.application.perform([midi_message], moment=current_moment)
 
+    @classmethod
+    async def _deserialize(cls, data, transport_object):
+        await transport_object.set_tempo(data["spec"]["tempo"])
+        await transport_object.set_time_signature(*data["spec"]["time_signature"])
+
+    def _serialize(self):
+        return {
+            "kind": type(self).__name__,
+            "spec": {
+                "tempo": self._clock.beats_per_minute,
+                "time_signature": list(self._clock.time_signature),
+            },
+        }
+
     def _tick_callback(self, current_moment, desired_moment, event):
         self.application.pubsub.publish(TransportTicked(desired_moment))
         return 1 / desired_moment.time_signature[1] / 4
@@ -72,20 +86,6 @@ class Transport(ApplicationObject):
 
     async def schedule(self, *args, **kwargs) -> int:
         return await self._clock.schedule(*args, **kwargs)
-
-    def serialize(self):
-        return {
-            "kind": type(self).__name__,
-            "spec": {
-                "tempo": self._clock.beats_per_minute,
-                "time_signature": list(self._clock.time_signature),
-            },
-        }
-
-    @classmethod
-    async def deserialize(cls, data, transport_object):
-        await transport_object.set_tempo(data["spec"]["tempo"])
-        await transport_object.set_time_signature(*data["spec"]["time_signature"])
 
     async def set_tempo(self, beats_per_minute: float):
         await self._clock.change(beats_per_minute=beats_per_minute)

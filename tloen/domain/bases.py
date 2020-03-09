@@ -144,6 +144,32 @@ class ApplicationObject(UniqueTreeTuple):
         index = self.index(old_node)
         self._mutate(slice(index, index + 1), [new_node])
 
+    def _serialize(self):
+        serialized = {
+            "kind": type(self).__name__,
+            "meta": {
+                "name": self.name,
+                "uuid": str(self.uuid) if hasattr(self, "uuid") else None,
+            },
+            "spec": {
+                "channel_count": getattr(self, "channel_count", None),
+                "parameters": [],
+            },
+        }
+        if (
+            self.parent is not None
+            and self.parent.parent is not None
+            and hasattr(self.parent.parent, "uuid")
+        ):
+            serialized["meta"]["parent"] = str(self.parent.parent.uuid)
+        auxiliary_entities = []
+        for parameter in getattr(self, "parameters", {}).values():
+            serialized["spec"]["parameters"].append(str(parameter.uuid))
+            aux = parameter._serialize()
+            auxiliary_entities.append(aux[0])
+            auxiliary_entities.extend(aux[1])
+        return serialized, auxiliary_entities
+
     def _set(
         self,
         application: Optional[Union[Missing, "tloen.domain.Application"]] = Missing(),
@@ -169,32 +195,6 @@ class ApplicationObject(UniqueTreeTuple):
 
     def rename(self, name):
         pass
-
-    def serialize(self):
-        serialized = {
-            "kind": type(self).__name__,
-            "meta": {
-                "name": self.name,
-                "uuid": str(self.uuid) if hasattr(self, "uuid") else None,
-            },
-            "spec": {
-                "channel_count": getattr(self, "channel_count", None),
-                "parameters": [],
-            },
-        }
-        if (
-            self.parent is not None
-            and self.parent.parent is not None
-            and hasattr(self.parent.parent, "uuid")
-        ):
-            serialized["meta"]["parent"] = str(self.parent.parent.uuid)
-        auxiliary_entities = []
-        for parameter in getattr(self, "parameters", {}).values():
-            serialized["spec"]["parameters"].append(str(parameter.uuid))
-            aux = parameter.serialize()
-            auxiliary_entities.append(aux[0])
-            auxiliary_entities.extend(aux[1])
-        return serialized, auxiliary_entities
 
     ### PUBLIC PROPERTIES ###
 

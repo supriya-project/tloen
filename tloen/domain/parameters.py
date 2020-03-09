@@ -36,7 +36,9 @@ class Boolean(ParameterSpec):
     def __call__(self, value):
         return bool(value)
 
-    def serialize(self):
+    ### PRIVATE METHODS ###
+
+    def _serialize(self):
         return {"type": type(self).__name__.lower(), "default": self.default}
 
 
@@ -60,7 +62,9 @@ class Float(ParameterSpec):
             return self.maximum
         return value
 
-    def serialize(self):
+    ### PRIVATE METHODS ###
+
+    def _serialize(self):
         return {
             "type": type(self).__name__.lower(),
             "default": self.default,
@@ -87,7 +91,9 @@ class Integer(ParameterSpec):
             return self.maximum
         return value
 
-    def serialize(self):
+    ### PRIVATE METHODS ###
+
+    def _serialize(self):
         return {
             "type": type(self).__name__.lower(),
             "default": self.default,
@@ -103,7 +109,9 @@ class Null(ParameterSpec):
     def __call__(self, value):
         return None
 
-    def serialize(self):
+    ### PRIVATE METHODS ###
+
+    def _serialize(self):
         return {"type": type(self).__name__.lower()}
 
 
@@ -182,18 +190,8 @@ class BufferParameter(Allocatable, ParameterObject):
             channel_count=self.channel_count, file_path=locate(self.path),
         )
 
-    def _preallocate(self, provider, client):
-        self._debug_tree(self, "Pre-Allocating", suffix=f"{hex(id(provider))}")
-        self._client = client
-        self._provider = provider
-        if self.path is None:
-            return
-        self._allocate_buffer(provider)
-
-    ### PUBLIC METHODS ###
-
     @classmethod
-    async def deserialize(cls, data, application) -> bool:
+    async def _deserialize(cls, data, application) -> bool:
         parent_uuid = UUID(data["meta"]["parent"])
         parent = application.registry.get(parent_uuid)
         if parent is None:
@@ -212,10 +210,20 @@ class BufferParameter(Allocatable, ParameterObject):
             parent._add_parameter(parameter)
         return False
 
-    def serialize(self):
-        serialized, auxiliary_entities = super().serialize()
+    def _preallocate(self, provider, client):
+        self._debug_tree(self, "Pre-Allocating", suffix=f"{hex(id(provider))}")
+        self._client = client
+        self._provider = provider
+        if self.path is None:
+            return
+        self._allocate_buffer(provider)
+
+    def _serialize(self):
+        serialized, auxiliary_entities = super()._serialize()
         serialized["spec"].update(channel_count=None, path=self.path)
         return serialized, auxiliary_entities
+
+    ### PUBLIC METHODS ###
 
     async def set_(self, path, *, moment: Moment = None):
         async with self.lock(
@@ -317,23 +325,14 @@ class BusParameter(Allocatable, ParameterObject):
             )
         return builder.build("mixer/ramp")
 
-    def _preallocate(self, provider, client):
-        self._debug_tree(self, "Pre-Allocating", suffix=f"{hex(id(provider))}")
-        self._client = client
-        self._provider = provider
-        self._control_bus_proxies["bus"] = provider.add_bus("control")
-        self._control_bus_proxies["bus"].set_(self.spec.default)
-
-    ### PUBLIC METHODS ###
-
     @classmethod
-    async def deserialize(cls, data, application) -> bool:
+    async def _deserialize(cls, data, application) -> bool:
         parent_uuid = UUID(data["meta"]["parent"])
         parent = application.registry.get(parent_uuid)
         if parent is None:
             return True
         if data["spec"].get("spec"):
-            spec = await ParameterSpec.deserialize(data["spec"]["spec"])
+            spec = await ParameterSpec._deserialize(data["spec"]["spec"])
         else:
             spec = Float()
         parameter = cls(
@@ -348,12 +347,21 @@ class BusParameter(Allocatable, ParameterObject):
         await parameter.set_(data["spec"]["value"])
         return False
 
-    def serialize(self):
-        serialized, auxiliary_entities = super().serialize()
+    def _preallocate(self, provider, client):
+        self._debug_tree(self, "Pre-Allocating", suffix=f"{hex(id(provider))}")
+        self._client = client
+        self._provider = provider
+        self._control_bus_proxies["bus"] = provider.add_bus("control")
+        self._control_bus_proxies["bus"].set_(self.spec.default)
+
+    def _serialize(self):
+        serialized, auxiliary_entities = super()._serialize()
         serialized["spec"].update(channel_count=None, value=self.value)
         if not self._is_builtin:
-            serialized["spec"]["spec"] = self.spec.serialize()
+            serialized["spec"]["spec"] = self.spec._serialize()
         return serialized, auxiliary_entities
+
+    ### PUBLIC METHODS ###
 
     async def set_(self, value, *, moment: Moment = None):
         async with self.lock(
@@ -407,21 +415,14 @@ class CallbackParameter(ParameterObject):
 
     ### PRIVATE METHODS ###
 
-    def _preallocate(self, provider, client):
-        self._debug_tree(self, "Pre-Allocating", suffix=f"{hex(id(provider))}")
-        self._client = client
-        self._provider = provider
-
-    ### PUBLIC METHODS ###
-
     @classmethod
-    async def deserialize(cls, data, application) -> bool:
+    async def _deserialize(cls, data, application) -> bool:
         parent_uuid = UUID(data["meta"]["parent"])
         parent = application.registry.get(parent_uuid)
         if parent is None:
             return True
         if data["spec"].get("spec"):
-            spec = await ParameterSpec.deserialize(data["spec"]["spec"])
+            spec = await ParameterSpec._deserialize(data["spec"]["spec"])
         else:
             spec = Float()
         parameter = cls(
@@ -439,12 +440,19 @@ class CallbackParameter(ParameterObject):
         await parameter.set_(data["spec"]["value"])
         return False
 
-    def serialize(self):
-        serialized, auxiliary_entities = super().serialize()
+    def _preallocate(self, provider, client):
+        self._debug_tree(self, "Pre-Allocating", suffix=f"{hex(id(provider))}")
+        self._client = client
+        self._provider = provider
+
+    def _serialize(self):
+        serialized, auxiliary_entities = super()._serialize()
         serialized["spec"].update(channel_count=None, value=self.value)
         if not self._is_builtin:
-            serialized["spec"]["spec"] = self.spec.serialize()
+            serialized["spec"]["spec"] = self.spec._serialize()
         return serialized, auxiliary_entities
+
+    ### PUBLIC METHODS ###
 
     async def set_(self, value, *, moment: Moment = None):
         async with self.lock(

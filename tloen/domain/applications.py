@@ -234,13 +234,13 @@ class Application(UniqueTreeTuple):
             "spec": {
                 "channel_count": self.channel_count,
                 "contexts": [],
-                "transport": self.transport.serialize(),
+                "transport": self.transport._serialize(),
             },
         }
         entities = [serialized]
         for context in self.contexts:
             serialized["spec"]["contexts"].append(str(context.uuid))
-            aux = context.serialize()
+            aux = context._serialize()
             entities.append(aux[0])
             entities.extend(aux[1])
         for entity in entities:
@@ -252,7 +252,7 @@ class Application(UniqueTreeTuple):
         entities_data = deque(data["entities"])
         entity_data = entities_data.popleft()
         application = cls(channel_count=entity_data["spec"].get("channel_count", 2),)
-        await application.transport.deserialize(
+        await application.transport._deserialize(
             entity_data["spec"]["transport"], application.transport,
         )
         while entities_data:
@@ -260,7 +260,7 @@ class Application(UniqueTreeTuple):
             if entity_data.get("visits", 0) > 2:
                 continue  # discard it
             entity_class = getattr(tloen.domain, entity_data["kind"])
-            should_defer = await entity_class.deserialize(entity_data, application)
+            should_defer = await entity_class._deserialize(entity_data, application)
             if should_defer:
                 entity_data["visits"] = entity_data.get("visits", 0) + 1
                 entities_data.append(entity_data)

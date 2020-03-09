@@ -174,16 +174,16 @@ class Patch(SendObject):
         ):
             self._reallocate(difference)
 
-    ### PUBLIC METHODS ###
-
-    def serialize(self):
-        serialized, auxiliary_entities = super().serialize()
+    def _serialize(self):
+        serialized, auxiliary_entities = super()._serialize()
         serialized["spec"]["target"] = (
             str(self.effective_target.uuid)
             if not isinstance(self.target, Default)
             else "default"
         )
         return serialized, auxiliary_entities
+
+    ### PUBLIC METHODS ###
 
     ### PUBLIC PROPERTIES ###
 
@@ -273,27 +273,10 @@ class Send(Patch):
         self._target = target
         Patch.__init__(self, name=name, uuid=uuid)
 
-    ### PUBLIC METHODS ###
+    ### PRIVATE METHODS ###
 
     @classmethod
-    def build_synthdef(
-        cls,
-        source_channel_count,
-        target_channel_count,
-        *,
-        feedback=False,
-        calculation_rate=CalculationRate.AUDIO,
-    ):
-        return build_patch_synthdef(
-            source_channel_count,
-            target_channel_count,
-            feedback=feedback,
-            gain=True,
-            calculation_rate=calculation_rate,
-        )
-
-    @classmethod
-    async def deserialize(cls, data, application) -> bool:
+    async def _deserialize(cls, data, application) -> bool:
         parent_uuid = UUID(data["meta"]["parent"])
         parent = application.registry.get(parent_uuid)
         if parent is None:
@@ -317,6 +300,25 @@ class Send(Patch):
         else:
             raise ValueError(f"Unknown position: {data['position']}")
         return False
+
+    ### PUBLIC METHODS ###
+
+    @classmethod
+    def build_synthdef(
+        cls,
+        source_channel_count,
+        target_channel_count,
+        *,
+        feedback=False,
+        calculation_rate=CalculationRate.AUDIO,
+    ):
+        return build_patch_synthdef(
+            source_channel_count,
+            target_channel_count,
+            feedback=feedback,
+            gain=True,
+            calculation_rate=calculation_rate,
+        )
 
     ### PUBLIC PROPERTIES ###
 
@@ -380,8 +382,10 @@ class Receive(Patch):
         self._source = source
         Patch.__init__(self, name=name, uuid=uuid)
 
+    ### PRIVATE METHODS ###
+
     @classmethod
-    async def deserialize(cls, data, application) -> bool:
+    async def _deserialize(cls, data, application) -> bool:
         parent_uuid = UUID(data["meta"]["parent"])
         parent = application.registry.get(parent_uuid)
         if parent is None:
@@ -517,18 +521,8 @@ class DirectOut(SendObject):
             target_node=self.parent.node_proxy,
         )
 
-    def _reallocate(self, difference):
-        Allocatable._reallocate(self, difference)
-        node_proxy = self._node_proxies.pop("node")
-        self._allocate(
-            self.provider, target_node=node_proxy, add_action=AddAction.ADD_AFTER
-        )
-        node_proxy.free()
-
-    ### PUBLIC METHODS ###
-
     @classmethod
-    async def deserialize(cls, data, application):
+    async def _deserialize(cls, data, application):
         parent_uuid = UUID(data["meta"]["parent"])
         parent = application.registry.get(parent_uuid)
         if parent is None:
@@ -546,8 +540,16 @@ class DirectOut(SendObject):
         else:
             raise ValueError(f"Unknown position: {data['position']}")
 
-    def serialize(self):
-        serialized, auxiliary_entities = super().serialize()
+    def _reallocate(self, difference):
+        Allocatable._reallocate(self, difference)
+        node_proxy = self._node_proxies.pop("node")
+        self._allocate(
+            self.provider, target_node=node_proxy, add_action=AddAction.ADD_AFTER
+        )
+        node_proxy.free()
+
+    def _serialize(self):
+        serialized, auxiliary_entities = super()._serialize()
         serialized["spec"].update(
             target_bus_id=self.target_bus_id,
             target_channel_count=self.target_channel_count,

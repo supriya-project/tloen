@@ -259,6 +259,30 @@ class TrackObject(Allocatable, Performable):
         for send in sorted(self.send_target._dependencies, key=lambda x: x.graph_order):
             send._reconcile()
 
+    def _serialize(self):
+        serialized, auxiliary_entities = super()._serialize()
+        devices = []
+        sends = []
+        for send in self.prefader_sends:
+            sends.append(str(send.uuid))
+            send_entities = send._serialize()
+            send_entities[0]["spec"]["position"] = "prefader"
+            auxiliary_entities.append(send_entities[0])
+            auxiliary_entities.extend(send_entities[1])
+        for send in self.postfader_sends:
+            sends.append(str(send.uuid))
+            send_entities = send._serialize()
+            send_entities[0]["spec"]["position"] = "postfader"
+            auxiliary_entities.append(send_entities[0])
+            auxiliary_entities.extend(send_entities[1])
+        for device in self.devices:
+            devices.append(str(device.uuid))
+            device_entities = device._serialize()
+            auxiliary_entities.append(device_entities[0])
+            auxiliary_entities.extend(device_entities[1])
+        serialized["spec"].update(devices=devices, sends=sends)
+        return serialized, auxiliary_entities
+
     def _set_active(self, is_active):
         if self._is_muted != is_active:
             return
@@ -322,30 +346,6 @@ class TrackObject(Allocatable, Performable):
                     self.postfader_sends._remove(send)
                 if send.effective_target is not None:
                     send.effective_target.send_target._dependencies.remove(send)
-
-    def serialize(self):
-        serialized, auxiliary_entities = super().serialize()
-        devices = []
-        sends = []
-        for send in self.prefader_sends:
-            sends.append(str(send.uuid))
-            send_entities = send.serialize()
-            send_entities[0]["spec"]["position"] = "prefader"
-            auxiliary_entities.append(send_entities[0])
-            auxiliary_entities.extend(send_entities[1])
-        for send in self.postfader_sends:
-            sends.append(str(send.uuid))
-            send_entities = send.serialize()
-            send_entities[0]["spec"]["position"] = "postfader"
-            auxiliary_entities.append(send_entities[0])
-            auxiliary_entities.extend(send_entities[1])
-        for device in self.devices:
-            devices.append(str(device.uuid))
-            device_entities = device.serialize()
-            auxiliary_entities.append(device_entities[0])
-            auxiliary_entities.extend(device_entities[1])
-        serialized["spec"].update(devices=devices, sends=sends)
-        return serialized, auxiliary_entities
 
     async def set_channel_count(self, channel_count: Optional[int]):
         async with self.lock([self]):
@@ -411,6 +411,9 @@ class TrackObject(Allocatable, Performable):
 
 
 class CueTrack(TrackObject):
+
+    ### INITIALIZER ###
+
     def __init__(self, *, uuid=None):
         TrackObject.__init__(self, channel_count=2, uuid=uuid)
         self._add_parameter(
@@ -421,13 +424,10 @@ class CueTrack(TrackObject):
             ),
         )
 
-    def serialize(self):
-        serialized, auxiliary_entities = super().serialize()
-        serialized["meta"]["parent"] = str(self.parent.uuid)
-        return serialized, auxiliary_entities
+    ### PRIVATE METHODS ###
 
     @classmethod
-    async def deserialize(cls, data, application) -> bool:
+    async def _deserialize(cls, data, application) -> bool:
         track = cls(uuid=UUID(data["meta"]["uuid"]))
         parent_uuid = UUID(data["meta"]["parent"])
         parent = application.registry[parent_uuid]
@@ -435,24 +435,34 @@ class CueTrack(TrackObject):
         parent._cue_track = track
         return False
 
-
-class MasterTrack(TrackObject):
-    def __init__(self, *, uuid=None):
-        TrackObject.__init__(self, uuid=uuid)
-
-    def serialize(self):
-        serialized, auxiliary_entities = super().serialize()
+    def _serialize(self):
+        serialized, auxiliary_entities = super()._serialize()
         serialized["meta"]["parent"] = str(self.parent.uuid)
         return serialized, auxiliary_entities
 
+
+class MasterTrack(TrackObject):
+
+    ### INITIALIZER ###
+
+    def __init__(self, *, uuid=None):
+        TrackObject.__init__(self, uuid=uuid)
+
+    ### PRIVATE METHODS ###
+
     @classmethod
-    async def deserialize(cls, data, application) -> bool:
+    async def _deserialize(cls, data, application) -> bool:
         track = cls(uuid=UUID(data["meta"]["uuid"]))
         parent_uuid = UUID(data["meta"]["parent"])
         parent = application.registry[parent_uuid]
         parent._replace(parent.master_track, track)
         parent._master_track = track
         return False
+
+    def _serialize(self):
+        serialized, auxiliary_entities = super()._serialize()
+        serialized["meta"]["parent"] = str(self.parent.uuid)
+        return serialized, auxiliary_entities
 
 
 class UserTrackObject(TrackObject):
@@ -471,6 +481,17 @@ class UserTrackObject(TrackObject):
                 spec=Float(minimum=-1.0, maximum=1.0, default=0),
             ),
         )
+
+    ### PRIVATE METHODS ###
+
+    def _serialize(self):
+        serialized, auxiliary_entities = super()._serialize()
+        serialized["spec"].update(
+            is_cued=self.is_cued or None,
+            is_muted=self.is_muted or None,
+            is_soloed=self.is_soloed or None,
+        )
+        return serialized, auxiliary_entities
 
     ### PUBLIC METHODS ###
 
@@ -491,15 +512,6 @@ class UserTrackObject(TrackObject):
     async def mute(self):
         async with self.lock([self]):
             self._set_active(False)
-
-    def serialize(self):
-        serialized, auxiliary_entities = super().serialize()
-        serialized["spec"].update(
-            is_cued=self.is_cued or None,
-            is_muted=self.is_muted or None,
-            is_soloed=self.is_soloed or None,
-        )
-        return serialized, auxiliary_entities
 
     @abc.abstractmethod
     async def solo(self, exclusive=True):
@@ -628,6 +640,26 @@ class Track(UserTrackObject):
             return None
         return note_moment.next_offset - desired_moment.offset
 
+    @classmethod
+    async def _deserialize(cls, data, application) -> bool:
+        parent_uuid = UUID(data["meta"]["parent"])
+        parent = application.registry.get(parent_uuid)
+        if parent is None:
+            return True
+        track = cls(
+            channel_count=data["spec"].get("channel_count"),
+            name=data["meta"].get("name"),
+            uuid=UUID(data["meta"]["uuid"]),
+        )
+        parent.tracks._append(track)
+        if data["spec"].get("is_cued"):
+            await track.cue()
+        if data["spec"].get("is_muted"):
+            await track.mute()
+        if data["spec"].get("is_soloed"):
+            await track.solo(exclusive=False)
+        return False
+
     async def _fire(self, slot_index, quantization=None):
         if not self.application:
             return
@@ -735,26 +767,6 @@ class Track(UserTrackObject):
             await track.add_send(Default())
             self._tracks._append(track)
             return track
-
-    @classmethod
-    async def deserialize(cls, data, application) -> bool:
-        parent_uuid = UUID(data["meta"]["parent"])
-        parent = application.registry.get(parent_uuid)
-        if parent is None:
-            return True
-        track = cls(
-            channel_count=data["spec"].get("channel_count"),
-            name=data["meta"].get("name"),
-            uuid=UUID(data["meta"]["uuid"]),
-        )
-        parent.tracks._append(track)
-        if data["spec"].get("is_cued"):
-            await track.cue()
-        if data["spec"].get("is_muted"):
-            await track.mute()
-        if data["spec"].get("is_soloed"):
-            await track.solo(exclusive=False)
-        return False
 
     @classmethod
     async def group(cls, tracks, *, name=None):

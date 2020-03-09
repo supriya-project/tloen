@@ -190,6 +190,16 @@ class DeviceObject(Allocatable, Performable):
 
     ### PRIVATE METHODS ###
 
+    @classmethod
+    async def _deserialize(cls, data, application) -> bool:
+        parent_uuid = UUID(data["meta"]["parent"])
+        parent = application.registry.get(parent_uuid)
+        if parent is None:
+            return True
+        device = cls(name=data["meta"].get("name"), uuid=UUID(data["meta"]["uuid"]),)
+        parent.devices._append(device)
+        return False
+
     def _handle_note_off(self, moment, midi_message):
         self._input_pitches.pop(midi_message.pitch, None)
         return [midi_message]
@@ -226,16 +236,6 @@ class DeviceObject(Allocatable, Performable):
     async def deactivate(self):
         async with self.lock([self]):
             self._is_active = False
-
-    @classmethod
-    async def deserialize(cls, data, application) -> bool:
-        parent_uuid = UUID(data["meta"]["parent"])
-        parent = application.registry.get(parent_uuid)
-        if parent is None:
-            return True
-        device = cls(name=data["meta"].get("name"), uuid=UUID(data["meta"]["uuid"]),)
-        parent.devices._append(device)
-        return False
 
     async def delete(self):
         async with self.lock([self]):
