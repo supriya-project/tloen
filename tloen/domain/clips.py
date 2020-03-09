@@ -8,7 +8,7 @@ from supriya.intervals import IntervalTree
 
 from tloen.midi import NoteOffMessage, NoteOnMessage
 
-from ..bases import Command, Event
+from ..bases import Event
 from .bases import ApplicationObject
 
 
@@ -402,62 +402,6 @@ class Scene(ApplicationObject):
 
 class Timeline:
     pass
-
-
-@dataclasses.dataclass
-class ToggleClipNote(Command):
-    clip_uuid: UUID
-    pitch: float
-    offset: float
-    duration: float = 1 / 16
-
-    async def execute(self, harness):
-        clip: Clip = harness.domain_application.registry[self.clip_uuid]
-        moment = clip._interval_tree.get_moment_at(self.offset)
-        for note in moment.start_intervals:
-            if note.pitch == self.pitch:
-                await clip.remove_notes([note])
-                break
-        else:
-            await clip.add_notes(
-                [
-                    Note(
-                        start_offset=self.offset,
-                        stop_offset=self.offset + self.duration,
-                        pitch=self.pitch,
-                    ),
-                ]
-            )
-
-
-@dataclasses.dataclass
-class AddClip(Command):
-    slot_uuid: UUID
-    clip_uuid: Optional[UUID]
-
-    async def execute(self, harness):
-        slot: Slot = harness.domain_application.registry[self.slot_uuid]
-        clip = await slot.add_clip()
-        self.clip_uuid = clip.uuid
-
-
-@dataclasses.dataclass
-class FireSlot(Command):
-    # slot_uuid: UUID
-
-    async def execute(self, harness):
-        slot = harness.domain_application.contexts[0].tracks[0].slots[0]
-        # slot: Slot = harness.domain_application.registry[self.slot_uuid]
-        await slot.fire()
-
-
-@dataclasses.dataclass
-class RemoveClip(Command):
-    slot_uuid: UUID
-
-    async def execute(self, harness):
-        slot: Slot = harness.domain_application.registry[self.slot_uuid]
-        await slot.remove_clip()
 
 
 @dataclasses.dataclass

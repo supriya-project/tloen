@@ -1,5 +1,4 @@
 import abc
-import dataclasses
 import logging
 from types import MappingProxyType
 from typing import Dict, Mapping, Optional, Set, Type, Union
@@ -11,7 +10,6 @@ from supriya.typing import Default
 import tloen.domain  # noqa
 from tloen.midi import NoteOffMessage
 
-from ..bases import Command
 from .bases import (
     Allocatable,
     AllocatableContainer,
@@ -210,6 +208,14 @@ class TrackObject(Allocatable, Performable):
             return
         self.node_proxies["output"]["active"] = 0
 
+    def _perform_input(self, moment, midi_messages):
+        next_perform, midi_messages = Performable._perform_input(
+            self, moment, midi_messages,
+        )
+        if self.devices:
+            next_performer = self.devices[0]._perform_input
+        yield next_performer, midi_messages
+
     def _reallocate(self, difference):
         channel_count = self.effective_channel_count
         # buses
@@ -294,14 +300,6 @@ class TrackObject(Allocatable, Performable):
             if receive.effective_source is not None:
                 receive.effective_source.receive_target._dependencies.add(receive)
             return receive
-
-    def _perform_input(self, moment, midi_messages):
-        next_perform, midi_messages = Performable._perform_input(
-            self, moment, midi_messages,
-        )
-        if self.devices:
-            next_performer = self.devices[0]._perform_input
-        yield next_performer, midi_messages
 
     async def remove_devices(self, *devices: DeviceObject):
         async with self.lock([self, *devices]):
@@ -863,81 +861,3 @@ class TrackContainer(AllocatableContainer):
             if isinstance(parent, tloen.domain.Context):
                 return parent
         return None
-
-
-@dataclasses.dataclass
-class TrackAdd(Command):
-    context_uuid: UUID
-    track_uuid: Optional[UUID]
-
-    async def execute(self, harness):
-        context: tloen.domain.Context = harness.domain_application.registry[
-            self.context_uuid
-        ]
-        track: Track = await context.add_track()
-        self.track_uuid = track.uuid
-
-
-@dataclasses.dataclass
-class TrackCue(Command):
-    track_uuid: UUID
-
-    async def execute(self, harness):
-        track: Track = harness.domain_application.registry[self.track_uuid]
-        await track.cue()
-
-
-@dataclasses.dataclass
-class TrackDelete(Command):
-    track_uuid: UUID
-
-    async def execute(self, harness):
-        track: Track = harness.domain_application.registry[self.track_uuid]
-        await track.delete()
-
-
-@dataclasses.dataclass
-class TrackMute(Command):
-    track_uuid: UUID
-
-    async def execute(self, harness):
-        track: Track = harness.domain_application.registry[self.track_uuid]
-        await track.mute()
-
-
-@dataclasses.dataclass
-class TrackSolo(Command):
-    track_uuid: UUID
-    exclusive: bool = True
-
-    async def execute(self, harness):
-        track: Track = harness.domain_application.registry[self.track_uuid]
-        await track.solo(exclusive=self.exclusive)
-
-
-@dataclasses.dataclass
-class TrackUncue(Command):
-    track_uuid: UUID
-
-    async def execute(self, harness):
-        track: Track = harness.domain_application.registry[self.track_uuid]
-        await track.uncue()
-
-
-@dataclasses.dataclass
-class TrackUnmute(Command):
-    track_uuid: UUID
-
-    async def execute(self, harness):
-        track: Track = harness.domain_application.registry[self.track_uuid]
-        await track.unmute()
-
-
-@dataclasses.dataclass
-class TrackUnsolo(Command):
-    track_uuid: UUID
-    exclusive: bool = False
-
-    async def execute(self, harness):
-        track: Track = harness.domain_application.registry[self.track_uuid]
-        await track.unsolo(exclusive=self.exclusive)

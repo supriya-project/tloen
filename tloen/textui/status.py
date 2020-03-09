@@ -2,6 +2,7 @@ from functools import singledispatchmethod
 
 import urwid
 
+from ..bases import Event
 from ..domain.applications import (
     ApplicationBooted,
     ApplicationBooting,
@@ -59,7 +60,7 @@ class StatusWidget(urwid.WidgetWrap):
         self.text_widget.set_text(self.build_text())
 
     @singledispatchmethod
-    def handle_event(self, event):
+    def handle_event(self, event: Event):
         ...
 
     @handle_event.register

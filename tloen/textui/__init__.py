@@ -2,13 +2,13 @@ import asyncio
 
 import urwid
 
-from ..domain.applications import (
+from ..commands.applications import (
     BootApplication,
     ExitToTerminal,
     QuitApplication,
 )
-from ..domain.clips import FireSlot
-from ..domain.transports import ToggleTransport
+from ..commands.slots import FireSlot
+from ..commands.transports import ToggleTransport
 from ..pubsub import PubSub
 from .status import StatusWidget
 from .transport import TransportWidget

@@ -4,7 +4,9 @@ from typing import Dict, Optional
 
 from monome import GridApp, GridBuffer
 
-from ..domain.clips import Clip, ClipLaunched, ClipModified, ToggleClipNote
+from ..bases import Event
+from ..commands.clips import ToggleClipNote
+from ..domain.clips import Clip, ClipLaunched, ClipModified
 from ..domain.transports import TransportStopped, TransportTicked
 from ..pubsub import PubSub
 
@@ -57,7 +59,7 @@ class ClipView(GridApp):
     ### PUBLIC METHODS ###
 
     @singledispatchmethod
-    def handle_event(self, event):
+    def handle_event(self, event: Event):
         ...
 
     @handle_event.register

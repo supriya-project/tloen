@@ -1,3 +1,4 @@
+import dataclasses
 from typing import Callable, Optional
 from uuid import UUID, uuid4
 
@@ -7,6 +8,7 @@ from supriya.synthdefs import SynthDefBuilder
 from supriya.ugens import Line, Out
 from supriya.utils import locate
 
+from ..bases import Event
 from .bases import Allocatable, AllocatableContainer, ApplicationObject
 
 
@@ -230,6 +232,7 @@ class BufferParameter(Allocatable, ParameterObject):
             self._allocate_buffer(self.provider)
             if old_buffer is not None:
                 old_buffer.free()
+            self.application.pubsub.publish(ParameterModified(self.uuid))
 
     ### PUBLIC PROPERTIES ###
 
@@ -358,6 +361,7 @@ class BusParameter(Allocatable, ParameterObject):
             self._value = self.spec(value)
             if self.bus_proxy is not None:
                 self.bus_proxy.set_(self._value)
+            self.application.pubsub.publish(ParameterModified(self.uuid))
 
     ### PUBLIC PROPERTIES ###
 
@@ -447,6 +451,7 @@ class CallbackParameter(ParameterObject):
             self._value = self.spec(value)
             if self.client is not None:
                 self.callback(self.client, self.value)
+            self.application.pubsub.publish(ParameterModified(self.uuid))
 
     ### PUBLIC PROPERTIES ###
 
@@ -480,3 +485,8 @@ class ParameterGroup(AllocatableContainer):
         self._node_proxies["node"] = provider.add_group(
             target_node=target_node, add_action=self.add_action, name=self.label
         )
+
+
+@dataclasses.dataclass
+class ParameterModified(Event):
+    parameter_uuid: UUID

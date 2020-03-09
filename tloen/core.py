@@ -52,16 +52,18 @@ class Harness:
         )
         track = domain_application.contexts[0].tracks[0]
         rack = await track.add_device(domain.RackDevice)
-        for i, sample_path in enumerate([
-            "tloen:samples/808/bass-drum.wav",
-            "tloen:samples/808/snare-drum.wav",
-            "tloen:samples/808/clap.wav",
-            "tloen:samples/808/maraca.wav",
-            "tloen:samples/808/closed-hat.wav",
-            "tloen:samples/808/low-tom-tom.wav",
-            "tloen:samples/808/mid-tom-tom.wav",
-            "tloen:samples/808/high-tom-tom.wav",
-        ]):
+        for i, sample_path in enumerate(
+            [
+                "tloen:samples/808/bass-drum.wav",
+                "tloen:samples/808/snare-drum.wav",
+                "tloen:samples/808/clap.wav",
+                "tloen:samples/808/maraca.wav",
+                "tloen:samples/808/closed-hat.wav",
+                "tloen:samples/808/low-tom-tom.wav",
+                "tloen:samples/808/mid-tom-tom.wav",
+                "tloen:samples/808/high-tom-tom.wav",
+            ]
+        ):
             chain = await rack.add_chain(transfer=domain.Transfer(in_pitch=i + 60))
             sampler = await chain.add_device(domain.BasicSampler)
             await sampler.parameters["buffer_id"].set_(sample_path)

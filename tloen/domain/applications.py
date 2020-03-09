@@ -15,7 +15,7 @@ from uqbar.containers import UniqueTreeTuple
 
 import tloen.domain  # noqa
 
-from ..bases import Command, Event
+from ..bases import Event
 from ..pubsub import PubSub
 from .bases import Container
 from .clips import Scene
@@ -320,24 +320,6 @@ class Application(UniqueTreeTuple):
     @property
     def transport(self) -> Transport:
         return self._transport
-
-
-@dataclasses.dataclass
-class BootApplication(Command):
-    async def execute(self, harness):
-        await harness.domain_application.boot()
-
-
-@dataclasses.dataclass
-class ExitToTerminal(Command):
-    async def execute(self, harness):
-        await harness.exit()
-
-
-@dataclasses.dataclass
-class QuitApplication(Command):
-    async def execute(self, harness):
-        await harness.domain_application.quit()
 
 
 @dataclasses.dataclass
