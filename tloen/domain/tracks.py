@@ -708,15 +708,14 @@ class Track(UserTrackObject):
         return to_activate, to_deactivate
 
     def _serialize(self):
-        serialized = super()._serialize()
-        serialized.setdefault("spec", {}).update(
-            tracks=[track._serialize() for track in self.tracks]
-        )
-        for mapping in [serialized["meta"], serialized.get("spec", {}), serialized]:
-            for key in tuple(mapping):
-                if not mapping[key]:
-                    mapping.pop(key)
-        return serialized
+        serialized, auxiliary_entities = super()._serialize()
+        serialized["spec"]["tracks"] = []
+        for track in self.tracks:
+            serialized["spec"]["tracks"].append(str(track.uuid))
+            track_entities = track._serialize()
+            auxiliary_entities.append(track_entities[0])
+            auxiliary_entities.extend(track_entities[1])
+        return serialized, auxiliary_entities
 
     def _set_parent(self, new_parent):
         from .contexts import Context

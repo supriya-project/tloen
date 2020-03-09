@@ -12,7 +12,7 @@ class ToggleClipNote(Command):
     offset: float
     duration: float = 1 / 16
 
-    async def execute(self, harness):
+    async def do(self, harness):
         clip: Clip = harness.domain_application.registry[self.clip_uuid]
         moment = clip._interval_tree.get_moment_at(self.offset)
         for note in moment.start_intervals:
@@ -35,7 +35,7 @@ class ToggleClipNote(Command):
 class DoubleClip(Command):
     clip_uuid: UUID
 
-    async def execute(self, harness):
+    async def do(self, harness):
         clip: Clip = harness.domain_application.registry[self.clip_uuid]
         await clip.double()
 
@@ -44,6 +44,6 @@ class DoubleClip(Command):
 class HalveClip(Command):
     clip_uuid: UUID
 
-    async def execute(self, harness):
+    async def do(self, harness):
         clip: Clip = harness.domain_application.registry[self.clip_uuid]
         await clip.halve()

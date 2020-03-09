@@ -9,6 +9,6 @@ from ..domain import Context
 class AddTrack(Command):
     context_uuid: UUID
 
-    async def execute(self, harness):
+    async def do(self, harness):
         context: Context = harness.domain_application.registry[self.context_uuid]
         await context.add_track()

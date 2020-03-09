@@ -11,7 +11,7 @@ class SetParameterBuffer(Command):
     parameter_uuid: UUID
     path: str
 
-    async def execute(self, harness):
+    async def do(self, harness):
         parameter: BufferParameter = harness.domain_application.registry[
             self.parameter_uuid
         ]
@@ -23,7 +23,7 @@ class SetParameterValue(Command):
     parameter_uuid: UUID
     value: float
 
-    async def execute(self, harness):
+    async def do(self, harness):
         parameter: Union[
             BusParameter, CallbackParameter
         ] = harness.domain_application.registry[self.parameter_uuid]

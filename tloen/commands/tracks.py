@@ -13,7 +13,7 @@ class AddReceiveToTrack(Command):
     track_uuid: UUID
     source: Union[Default, UUID]
 
-    async def execute(self, harness):
+    async def do(self, harness):
         track: Track = harness.domain_application.registry[self.track_uuid]
         source = Default()
         if isinstance(self.source, UUID):
@@ -26,7 +26,7 @@ class AddSendToTrack(Command):
     track_uuid: UUID
     target: Union[Default, UUID]
 
-    async def execute(self, harness):
+    async def do(self, harness):
         track: Track = harness.domain_application.registry[self.track_uuid]
         target = Default()
         if isinstance(self.target, UUID):
@@ -38,7 +38,7 @@ class AddSendToTrack(Command):
 class CueTrack(Command):
     track_uuid: UUID
 
-    async def execute(self, harness):
+    async def do(self, harness):
         track: Track = harness.domain_application.registry[self.track_uuid]
         await track.cue()
 
@@ -47,7 +47,7 @@ class CueTrack(Command):
 class DeleteTrack(Command):
     track_uuid: UUID
 
-    async def execute(self, harness):
+    async def do(self, harness):
         track: Track = harness.domain_application.registry[self.track_uuid]
         await track.delete()
 
@@ -56,7 +56,7 @@ class DeleteTrack(Command):
 class DuplicateTrack(Command):
     track_uuid: UUID
 
-    async def execute(self, harness):
+    async def do(self, harness):
         track: Track = harness.domain_application.registry[self.track_uuid]
         await track.duplicate()
 
@@ -65,7 +65,7 @@ class DuplicateTrack(Command):
 class MuteTrack(Command):
     track_uuid: UUID
 
-    async def execute(self, harness):
+    async def do(self, harness):
         track: Track = harness.domain_application.registry[self.track_uuid]
         await track.mute()
 
@@ -75,7 +75,7 @@ class SoloTrack(Command):
     track_uuid: UUID
     exclusive: bool = True
 
-    async def execute(self, harness):
+    async def do(self, harness):
         track: Track = harness.domain_application.registry[self.track_uuid]
         await track.solo(exclusive=self.exclusive)
 
@@ -84,7 +84,7 @@ class SoloTrack(Command):
 class UncueTrack(Command):
     track_uuid: UUID
 
-    async def execute(self, harness):
+    async def do(self, harness):
         track: Track = harness.domain_application.registry[self.track_uuid]
         await track.uncue()
 
@@ -93,7 +93,7 @@ class UncueTrack(Command):
 class UnmuteTrack(Command):
     track_uuid: UUID
 
-    async def execute(self, harness):
+    async def do(self, harness):
         track: Track = harness.domain_application.registry[self.track_uuid]
         await track.unmute()
 
@@ -103,6 +103,6 @@ class UnsoloTrack(Command):
     track_uuid: UUID
     exclusive: bool = False
 
-    async def execute(self, harness):
+    async def do(self, harness):
         track: Track = harness.domain_application.registry[self.track_uuid]
         await track.unsolo(exclusive=self.exclusive)

@@ -19,6 +19,7 @@ def read_version():
 version = read_version()
 
 install_requires = [
+    "aiohttp",
     "cython",
     "prompt-toolkit >= 3.0.0",
     "pymonome >= 0.9.0",

@@ -1,16 +1,15 @@
 import asyncio
 import signal
 from collections.abc import Mapping
-from typing import Dict
-from uuid import UUID
 
-from . import domain, gridui, pubsub, textui
+from . import domain, gridui, httpui, pubsub, textui
 from .domain.applications import ApplicationStatusRefreshed
 
 
 class Registry(Mapping):
-    def __init__(self, registry: Dict[UUID, domain.ApplicationObject]):
-        self._registry = registry
+
+    def __init__(self, application):
+        self.set_application(application)
 
     def __getitem__(self, key):
         return self._registry[key]
@@ -21,8 +20,18 @@ class Registry(Mapping):
     def __len__(self):
         return len(self._registry)
 
-    def set_backing_registry(self, registry: Dict[UUID, domain.ApplicationObject]):
-        self._registry = registry
+    def set_application(self, application):
+        self._application = application
+        self._registry = application.registry
+        self._transport = application.transport
+
+    @property
+    def application(self):
+        return self._application
+
+    @property
+    def transport(self):
+        return self._transport
 
 
 class Harness:
@@ -32,9 +41,15 @@ class Harness:
         self.exit_future = loop.create_future()
         self.pubsub = pubsub.PubSub()
         self.command_queue = asyncio.Queue()
+        self.undo_stack = []
         self.domain_application = domain.Application()
-        self.registry = Registry(self.domain_application.registry)
+        self.registry = Registry(self.domain_application)
         self.gridui_application = gridui.Application(
+            command_queue=self.command_queue,
+            pubsub=self.pubsub,
+            registry=self.registry,
+        )
+        self.httpui_application = httpui.Application(
             command_queue=self.command_queue,
             pubsub=self.pubsub,
             registry=self.registry,
@@ -75,16 +90,19 @@ class Harness:
             return True
 
         self.domain_application = await self.build_application()
-        self.registry.set_backing_registry(self.domain_application.registry)
+        self.registry.set_application(self.domain_application)
         loop = asyncio.get_running_loop()
         loop.add_signal_handler(signal.SIGINT, handler)
         loop.add_signal_handler(signal.SIGTSTP, handler)
         loop.create_task(self.gridui_application.run_async())
+        loop.create_task(self.httpui_application.run_async())
         loop.create_task(self.textui_application.run_async())
         loop.create_task(self.periodic_update())
         while not self.exit_future.done():
             command = await self.command_queue.get()
-            await command.execute(self)
+            success = await command.do(self)
+            if success and hasattr(command, "undo"):
+                self.undo_stack.append(command)
 
     async def periodic_update(self):
         while not self.exit_future.done():

@@ -9,7 +9,7 @@ from ..domain import Slot
 class AddClip(Command):
     slot_uuid: UUID
 
-    async def execute(self, harness):
+    async def do(self, harness):
         slot: Slot = harness.domain_application.registry[self.slot_uuid]
         await slot.add_clip()
 
@@ -18,7 +18,7 @@ class AddClip(Command):
 class FireSlot(Command):
     # slot_uuid: UUID
 
-    async def execute(self, harness):
+    async def do(self, harness):
         slot = harness.domain_application.contexts[0].tracks[0].slots[0]
         # slot: Slot = harness.domain_application.registry[self.slot_uuid]
         await slot.fire()
@@ -28,6 +28,6 @@ class FireSlot(Command):
 class RemoveClip(Command):
     slot_uuid: UUID
 
-    async def execute(self, harness):
+    async def do(self, harness):
         slot: Slot = harness.domain_application.registry[self.slot_uuid]
         await slot.remove_clip()

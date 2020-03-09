@@ -9,6 +9,6 @@ from ..domain import Scene
 class DeleteScene(Command):
     scene_uuid: UUID
 
-    async def execute(self, harness):
+    async def do(self, harness):
         scene: Scene = harness.domain_application.registry[self.scene_uuid]
         await scene.delete()
