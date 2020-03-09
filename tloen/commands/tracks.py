@@ -1,8 +1,37 @@
 import dataclasses
 from uuid import UUID
+from typing import Union
+
+from supriya.typing import Default
 
 from ..bases import Command
 from ..domain import Track
+
+
+@dataclasses.dataclass
+class AddReceiveToTrack(Command):
+    track_uuid: UUID
+    source: Union[Default, UUID]
+
+    async def execute(self, harness):
+        track: Track = harness.domain_application.registry[self.track_uuid]
+        source = Default()
+        if isinstance(self.source, UUID):
+            source: Track = harness.domain_application.registry[self.source]
+        await track.add_receive(source)
+
+
+@dataclasses.dataclass
+class AddSendToTrack(Command):
+    track_uuid: UUID
+    target: Union[Default, UUID]
+
+    async def execute(self, harness):
+        track: Track = harness.domain_application.registry[self.track_uuid]
+        target = Default()
+        if isinstance(self.target, UUID):
+            target: Track = harness.domain_application.registry[self.target]
+        await track.add_send(target)
 
 
 @dataclasses.dataclass
@@ -21,6 +50,15 @@ class DeleteTrack(Command):
     async def execute(self, harness):
         track: Track = harness.domain_application.registry[self.track_uuid]
         await track.delete()
+
+
+@dataclasses.dataclass
+class DuplicateTrack(Command):
+    track_uuid: UUID
+
+    async def execute(self, harness):
+        track: Track = harness.domain_application.registry[self.track_uuid]
+        await track.duplicate()
 
 
 @dataclasses.dataclass

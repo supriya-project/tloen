@@ -675,6 +675,17 @@ class Track(UserTrackObject):
             to_deactivate.extend(result[1])
         return to_activate, to_deactivate
 
+    def _serialize(self):
+        serialized = super()._serialize()
+        serialized.setdefault("spec", {}).update(
+            tracks=[track._serialize() for track in self.tracks]
+        )
+        for mapping in [serialized["meta"], serialized.get("spec", {}), serialized]:
+            for key in tuple(mapping):
+                if not mapping[key]:
+                    mapping.pop(key)
+        return serialized
+
     def _set_parent(self, new_parent):
         from .contexts import Context
 
@@ -766,17 +777,6 @@ class Track(UserTrackObject):
                 raise ValueError
             for track in tracks:
                 self._tracks._remove(track)
-
-    def _serialize(self):
-        serialized = super()._serialize()
-        serialized.setdefault("spec", {}).update(
-            tracks=[track._serialize() for track in self.tracks]
-        )
-        for mapping in [serialized["meta"], serialized.get("spec", {}), serialized]:
-            for key in tuple(mapping):
-                if not mapping[key]:
-                    mapping.pop(key)
-        return serialized
 
     async def solo(self, exclusive=True):
         from .contexts import Context

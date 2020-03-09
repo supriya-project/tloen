@@ -232,7 +232,8 @@ class BufferParameter(Allocatable, ParameterObject):
             self._allocate_buffer(self.provider)
             if old_buffer is not None:
                 old_buffer.free()
-            self.application.pubsub.publish(ParameterModified(self.uuid))
+            if self.application is not None:
+                self.application.pubsub.publish(ParameterModified(self.uuid))
 
     ### PUBLIC PROPERTIES ###
 
@@ -361,7 +362,8 @@ class BusParameter(Allocatable, ParameterObject):
             self._value = self.spec(value)
             if self.bus_proxy is not None:
                 self.bus_proxy.set_(self._value)
-            self.application.pubsub.publish(ParameterModified(self.uuid))
+            if self.application is not None:
+                self.application.pubsub.publish(ParameterModified(self.uuid))
 
     ### PUBLIC PROPERTIES ###
 
@@ -451,7 +453,8 @@ class CallbackParameter(ParameterObject):
             self._value = self.spec(value)
             if self.client is not None:
                 self.callback(self.client, self.value)
-            self.application.pubsub.publish(ParameterModified(self.uuid))
+            if self.application is not None:
+                self.application.pubsub.publish(ParameterModified(self.uuid))
 
     ### PUBLIC PROPERTIES ###
 
