@@ -103,6 +103,7 @@ class Harness:
             success = await command.do(self)
             if success and hasattr(command, "undo"):
                 self.undo_stack.append(command)
+            command.future.set_result(success)
 
     async def periodic_update(self):
         while not self.exit_future.done():

@@ -57,11 +57,9 @@ class Instrument(AllocatableDevice):
         self._input_pitches[midi_message.pitch] = [midi_message.pitch]
         self._notes_to_synths[pitch] = self.node_proxies["body"].add_synth(
             synthdef=self.synthdef,
-            out=self._audio_bus_proxies["output"],
-            # TODO: Handle these via a note-to-args map
+            **self._build_kwargs(),
             frequency=conversions.midi_note_number_to_frequency(pitch),
             amplitude=conversions.midi_velocity_to_amplitude(midi_message.velocity),
-            **self.synthdef_kwargs,
         )
         return []
 
@@ -96,10 +94,8 @@ class BasicSampler(Instrument):
         self._input_pitches[midi_message.pitch] = [midi_message.pitch]
         self._notes_to_synths[pitch] = self.node_proxies["body"].add_synth(
             synthdef=self.synthdef.build(channel_count=2),
-            out=self._audio_bus_proxies["output"],
+            **self._build_kwargs(),
             amplitude=conversions.midi_velocity_to_amplitude(midi_message.velocity),
-            buffer_id=self.parameters["buffer_id"].buffer_proxy,
-            **self.synthdef_kwargs,
         )
         return []
 

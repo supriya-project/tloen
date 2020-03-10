@@ -2,8 +2,10 @@ from typing import Union
 
 from supriya.enums import AddAction
 from supriya.synthdefs import SynthDef, SynthDefFactory
+from supriya.ugens import LPF, Mix, Limiter
 
 from .devices import AllocatableDevice
+from .parameters import BusParameter, Float
 
 
 class AudioEffect(AllocatableDevice):
@@ -12,17 +14,23 @@ class AudioEffect(AllocatableDevice):
 
     def __init__(
         self,
-        synthdef: Union[SynthDef, SynthDefFactory],
         *,
+        synthdef: Union[SynthDef, SynthDefFactory],
         name=None,
         synthdef_kwargs=None,
         parameters=None,
         parameter_map=None,
         uuid=None,
     ):
-        AllocatableDevice.__init__(self, name=name, uuid=uuid)
-        self._synthdef = synthdef
-        self._synthdef_kwargs = dict(synthdef_kwargs or {})
+        AllocatableDevice.__init__(
+            self,
+            name=name,
+            parameters=parameters,
+            parameter_map=parameter_map,
+            synthdef=synthdef,
+            synthdef_kwargs=synthdef_kwargs,
+            uuid=uuid,
+        )
 
     ### PRIVATE METHODS ###
 
@@ -40,6 +48,11 @@ class AudioEffect(AllocatableDevice):
             target_node=synth_target,
             out=self.audio_bus_proxies["output"],
             **self.synthdef_kwargs,
+            **{
+                source: self.parameters[target]
+                for source, target
+                in self.parameter_map.items()
+            },
         )
 
     def _reallocate(self, difference):
@@ -54,12 +67,42 @@ class AudioEffect(AllocatableDevice):
         )
         synth_synth.free()
 
-    ### PUBLIC PROPERTIES ###
 
-    @property
-    def synthdef(self) -> Union[SynthDef, SynthDefFactory]:
-        return self._synthdef
+class LimiterDevice(AudioEffect):
 
-    @property
-    def synthdef_kwargs(self):
-        return self._synthdef_kwargs
+    def __init__(self, *, name=None, uuid=None):
+        AudioEffect.__init__(
+            self,
+            name=name,
+            parameters={
+                parameter.name: parameter
+                for parameter in [
+                    BusParameter("frequency_1", Float(default=0.025)),
+                    BusParameter("frequency_2", Float(default=0.1)),
+                ]
+            },
+            synthdef=self.build_synthdef(),
+            uuid=uuid,
+        )
+
+    def build_synthdef(self):
+        def signal_block(builder, source, state):
+            frequency_1 = builder["frequency_1"].minimum(builder["frequency_2"])
+            frequency_2 = builder["frequency_1"].maximum(builder["frequency_2"])
+            band_1 = LPF.ar(frequency=frequency_1, source=source)
+            band_2 = LPF.ar(frequency=frequency_2, source=source - band_1)
+            band_3 = source - band_2 - band_1  # TODO: optimize this
+            return Mix.multichannel(
+                sources=[Limiter.ar(source=band) for band in [band_1, band_2, band_3]],
+                channel_count=state["channel_count"],
+            )
+
+        factory = (
+            SynthDefFactory(frequency_1=200, frequency_2=2000)
+            .with_channel_count(2)
+            .with_gate()
+            .with_input()
+            .with_output(replacing=True)
+            .with_signal_block(signal_block)
+        )
+        return factory

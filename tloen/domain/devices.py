@@ -1,3 +1,4 @@
+from types import MappingProxyType
 from typing import Callable, Dict, Optional, Type, Union
 from uuid import UUID, uuid4
 
@@ -10,6 +11,8 @@ from .bases import Allocatable, Performable
 from .parameters import (
     Boolean,
     CallbackParameter,
+    BusParameter,
+    BufferParameter,
     ParameterGroup,
     ParameterObject,
 )
@@ -338,6 +341,19 @@ class AllocatableDevice(DeviceObject):
             calculation_rate=CalculationRate.AUDIO, channel_count=channel_count
         )
 
+    def _build_kwargs(self):
+        kwargs = dict(
+            out=self._audio_bus_proxies["output"],
+        )
+        kwargs.update(self.synthdef_kwargs)
+        for source, target in self.parameter_map.items():
+            parameter = self.parameters[source]
+            if isinstance(parameter, BusParameter):
+                kwargs[target] = parameter.bus_proxy
+            elif isinstance(parameter, BufferParameter):
+                kwargs[target] = parameter.buffer_proxy
+        return kwargs
+
     def _free_audio_buses(self):
         self._audio_bus_proxies.pop("output").free()
 
@@ -357,9 +373,13 @@ class AllocatableDevice(DeviceObject):
         return self._device_out
 
     @property
+    def parameter_map(self):
+        return MappingProxyType(self._parameter_map)
+
+    @property
     def synthdef(self) -> Union[SynthDef, SynthDefFactory]:
         return self._synthdef
 
     @property
     def synthdef_kwargs(self):
-        return self._synthdef_kwargs
+        return MappingProxyType(self._synthdef_kwargs)
