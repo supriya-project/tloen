@@ -3,7 +3,15 @@ from supriya.enums import DoneAction
 from supriya.synthdefs import SynthDefFactory
 from supriya.ugens import DC, Linen
 
-from tloen.domain import Application, AudioEffect, RackDevice, Arpeggiator, BasicSampler, Transfer, Note
+from tloen.domain import (
+    Application,
+    Arpeggiator,
+    AudioEffect,
+    BasicSampler,
+    Note,
+    RackDevice,
+    Transfer,
+)
 
 
 """
