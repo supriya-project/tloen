@@ -7,7 +7,6 @@ from .domain.applications import ApplicationStatusRefreshed
 
 
 class Registry(Mapping):
-
     def __init__(self, application):
         self.set_application(application)
 

@@ -86,7 +86,7 @@ class Application(UniqueTreeTuple):
         self._controllers._append(controller)
         return controller
 
-    def add_scene(self, *, name=None) -> Scene:
+    async def add_scene(self, *, name=None) -> Scene:
         from .clips import Slot
         from .tracks import Track
 
@@ -132,7 +132,7 @@ class Application(UniqueTreeTuple):
             for _ in range(track_count):
                 await context.add_track()
         for _ in range(scene_count):
-            application.add_scene()
+            await application.add_scene()
         return application
 
     async def perform(self, midi_messages, moment=None):
@@ -178,7 +178,7 @@ class Application(UniqueTreeTuple):
         for controller in controllers:
             self._controllers._remove(controller)
 
-    def remove_scenes(self, *scenes: Scene):
+    async def remove_scenes(self, *scenes: Scene):
         from .tracks import Track
 
         if not all(scene in self.scenes for scene in scenes):
@@ -234,10 +234,16 @@ class Application(UniqueTreeTuple):
             "spec": {
                 "channel_count": self.channel_count,
                 "contexts": [],
+                "scenes": [],
                 "transport": self.transport._serialize(),
             },
         }
         entities = [serialized]
+        for scene in self.scenes:
+            serialized["spec"]["scenes"].append(str(scene.uuid))
+            aux = scene._serialize()
+            entities.append(aux[0])
+            entities.extend(aux[1])
         for context in self.contexts:
             serialized["spec"]["contexts"].append(str(context.uuid))
             aux = context._serialize()

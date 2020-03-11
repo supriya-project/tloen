@@ -1,7 +1,12 @@
 import asyncio
+
 import aiohttp.web
 
-from ..commands.applications import AddContext, BootApplication, QuitApplication
+from ..commands.applications import (
+    AddContext,
+    BootApplication,
+    QuitApplication,
+)
 from ..pubsub import PubSub
 
 
@@ -12,18 +17,20 @@ class Application:
         self.registry = registry if registry is not None else {}
         self.app = aiohttp.web.Application()
         self.runner = aiohttp.web.AppRunner(self.app)
-        self.app.add_routes([
-            aiohttp.web.get("/application", self.get_application),
-            aiohttp.web.post("/application/add-context", self.add_context),
-            aiohttp.web.post("/application/boot", self.boot_application),
-        ])
+        self.app.add_routes(
+            [
+                aiohttp.web.get("/application", self.get_application),
+                aiohttp.web.post("/application/add-context", self.add_context),
+                aiohttp.web.post("/application/boot", self.boot_application),
+            ]
+        )
 
     async def exit(self):
         await self.runner.cleanup()
 
     async def run_async(self):
         await self.runner.setup()
-        await aiohttp.web.TCPSite(self.runner, 'localhost', 8080).start()
+        await aiohttp.web.TCPSite(self.runner, "localhost", 8080).start()
 
     async def boot_application(self, request):
         command = BootApplication()

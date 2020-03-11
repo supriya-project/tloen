@@ -23,6 +23,14 @@ class Note:
         if self.start_offset >= self.stop_offset:
             raise ValueError
 
+    def _serialize(self):
+        return dict(
+            start_offset=self.start_offset,
+            stop_offset=self.stop_offset,
+            pitch=self.pitch,
+            velocity=self.velocity,
+        )
+
     def transpose(self, transposition):
         return dataclasses.replace(self, self.pitch + transposition)
 
@@ -191,6 +199,22 @@ class Clip(ClipObject):
         self._remove_notes(to_remove)
         self._interval_tree.update(to_add)
 
+    @classmethod
+    async def _deserialize(cls, data, application) -> bool:
+        parent_uuid = UUID(data["meta"]["parent"])
+        parent = application.registry.get(parent_uuid)
+        if parent is None:
+            return True
+        clip = cls(
+            duration=data["spec"].get("duration", 4 / 4),
+            is_looping=bool(data["spec"].get("is_looping", True)),
+            name=data["meta"].get("name"),
+            notes=[Note(**note_spec) for note_spec in data["spec"].get("notes", [])],
+            uuid=UUID(data["meta"]["uuid"]),
+        )
+        parent._append(clip)
+        return False
+
     async def _notify(self):
         self._debug_tree(self, "Notifying")
         if self.application is None:
@@ -208,6 +232,15 @@ class Clip(ClipObject):
         self._debug_tree(self, "Editing")
         for note in notes:
             self._interval_tree.remove(note)
+
+    def _serialize(self):
+        serialized, auxiliary_entities = super()._serialize()
+        if self.parent is not None:
+            serialized["meta"]["parent"] = str(self.parent.uuid)
+        serialized["spec"]["notes"] = []
+        for note in self.notes:
+            serialized["spec"]["notes"].append(note._serialize())
+        return serialized, auxiliary_entities
 
     ### PUBLIC METHODS ###
 
@@ -306,6 +339,25 @@ class Slot(ApplicationObject):
 
     ### PRIVATE METHODS ###
 
+    @classmethod
+    async def _deserialize(cls, data, application) -> bool:
+        parent_uuid = UUID(data["meta"]["parent"])
+        parent = application.registry.get(parent_uuid)
+        if parent is None:
+            return True
+        slot = cls(uuid=UUID(data["meta"]["uuid"]))
+        parent.slots._append(slot)
+        return False
+
+    def _serialize(self):
+        serialized, auxiliary_entities = super()._serialize()
+        if self.clip is not None:
+            serialized["spec"]["clip"] = str(self.clip.uuid)
+            clip_entities = self.clip._serialize()
+            auxiliary_entities.append(clip_entities[0])
+            auxiliary_entities.extend(clip_entities[1])
+        return serialized, auxiliary_entities
+
     async def _set_clip(self, clip):
         async with self.lock([self]):
             if clip is self.clip:
@@ -381,6 +433,14 @@ class Scene(ApplicationObject):
                 *(f"    {line}" for child in self for line in str(child).splitlines()),
             ]
         )
+
+    ### PRIVATE METHODS ###
+
+    @classmethod
+    async def _deserialize(cls, data, application) -> bool:
+        scene = cls(uuid=UUID(data["meta"]["uuid"]))
+        application.scenes._append(scene)
+        return False
 
     ### PUBLIC METHODS ###
 

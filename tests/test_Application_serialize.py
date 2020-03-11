@@ -2,35 +2,18 @@ import pytest
 import yaml
 from uqbar.strings import normalize
 
-from tloen.domain import (
-    Application,
-    Arpeggiator,
-    BasicSampler,
-    RackDevice,
-    Transfer,
-)
-
 
 @pytest.mark.asyncio
-async def test_1():
-    app = Application()
-    context = await app.add_context()
-    cue_track, master_track = context.cue_track, context.master_track
-    track_one = await context.add_track(name="One")
-    track_two = await context.add_track(name="Two")
-    await track_one.add_send(track_two)
-    await track_one.solo(exclusive=False)
-    await track_two.add_send(track_one)
-    await track_two.solo(exclusive=False)
-    await track_two.mute()
-    await track_two.cue()
-    rack = await track_one.add_device(RackDevice, channel_count=4)
-    chain = await rack.add_chain(transfer=Transfer(in_pitch=64, out_pitch=60))
-    await chain.parameters["gain"].set_(-6.0)
-    arpeggiator = await chain.add_device(Arpeggiator)
-    sampler = await chain.add_device(BasicSampler)
-    await sampler.parameters["active"].set_(False)
-    await sampler.parameters["buffer_id"].set_("tloen:samples/808/bd-long-03.wav")
+async def test_1(serialization_application):
+    app = serialization_application
+    scene = app.scenes[0]
+    context = app.contexts[0]
+    cue_track = context.cue_track
+    master_track = context.master_track
+    track_one, track_two = context.tracks
+    rack = track_one.devices[0]
+    chain = rack.chains[0]
+    arpeggiator, sampler = chain.devices
     assert normalize(yaml.dump(app.serialize())) == normalize(
         f"""
         entities:
@@ -39,6 +22,8 @@ async def test_1():
             channel_count: 2
             contexts:
             - {context.uuid}
+            scenes:
+            - {scene.uuid}
             transport:
               kind: Transport
               spec:
@@ -46,6 +31,9 @@ async def test_1():
                 time_signature:
                 - 4
                 - 4
+        - kind: Scene
+          meta:
+            uuid: {scene.uuid}
         - kind: Context
           meta:
             uuid: {context.uuid}
@@ -127,6 +115,8 @@ async def test_1():
             sends:
             - {track_one.postfader_sends[0].uuid}
             - {track_one.postfader_sends[1].uuid}
+            slots:
+            - {track_one.slots[0].uuid}
         - kind: BusParameter
           meta:
             name: gain
@@ -247,6 +237,22 @@ async def test_1():
             uuid: {sampler.parameters["buffer_id"].uuid}
           spec:
             path: tloen:samples/808/bd-long-03.wav
+        - kind: Slot
+          meta:
+            parent: {track_one.uuid}
+            uuid: {track_one.slots[0].uuid}
+          spec:
+            clip: {track_one.slots[0].clip.uuid}
+        - kind: Clip
+          meta:
+            parent: {track_one.slots[0].uuid}
+            uuid: {track_one.slots[0].clip.uuid}
+          spec:
+            notes:
+            - pitch: 60
+              start_offset: 0
+              stop_offset: 0.25
+              velocity: 100.0
         - kind: Track
           meta:
             name: Two
@@ -261,6 +267,8 @@ async def test_1():
             sends:
             - {track_two.postfader_sends[0].uuid}
             - {track_two.postfader_sends[1].uuid}
+            slots:
+            - {track_two.slots[0].uuid}
         - kind: BusParameter
           meta:
             name: gain
@@ -289,5 +297,9 @@ async def test_1():
           spec:
             position: postfader
             target: {track_one.uuid}
+        - kind: Slot
+          meta:
+            parent: {track_two.uuid}
+            uuid: {track_two.slots[0].uuid}
         """
     )

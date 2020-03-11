@@ -17,7 +17,7 @@ from .bases import (
     Mixer,
     Performable,
 )
-from .clips import ClipLaunched, Slot
+from .clips import ClipLaunched, Scene, Slot
 from .devices import DeviceObject
 from .parameters import BusParameter, Float, ParameterGroup, ParameterObject
 from .sends import Receive, Send, Target
@@ -565,7 +565,7 @@ class Track(UserTrackObject):
     def _applicate(self, new_application):
         UserTrackObject._applicate(self, new_application)
         while len(new_application.scenes) < len(self.slots):
-            new_application.add_scene()
+            new_application.scenes._append(Scene())
         while len(self.slots) < len(new_application.scenes):
             self.slots._append(Slot())
 
@@ -658,6 +658,7 @@ class Track(UserTrackObject):
             await track.mute()
         if data["spec"].get("is_soloed"):
             await track.solo(exclusive=False)
+        track.slots._mutate(slice(None, None), [])
         return False
 
     async def _fire(self, slot_index, quantization=None):
@@ -709,7 +710,13 @@ class Track(UserTrackObject):
 
     def _serialize(self):
         serialized, auxiliary_entities = super()._serialize()
+        serialized["spec"]["slots"] = []
         serialized["spec"]["tracks"] = []
+        for slot in self.slots:
+            serialized["spec"]["slots"].append(str(slot.uuid))
+            slot_entities = slot._serialize()
+            auxiliary_entities.append(slot_entities[0])
+            auxiliary_entities.extend(slot_entities[1])
         for track in self.tracks:
             serialized["spec"]["tracks"].append(str(track.uuid))
             track_entities = track._serialize()

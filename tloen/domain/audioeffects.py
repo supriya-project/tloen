@@ -2,7 +2,7 @@ from typing import Union
 
 from supriya.enums import AddAction
 from supriya.synthdefs import SynthDef, SynthDefFactory
-from supriya.ugens import LPF, Mix, Limiter
+from supriya.ugens import LPF, Limiter, Mix
 
 from .devices import AllocatableDevice
 from .parameters import BusParameter, Float
@@ -50,8 +50,7 @@ class AudioEffect(AllocatableDevice):
             **self.synthdef_kwargs,
             **{
                 source: self.parameters[target]
-                for source, target
-                in self.parameter_map.items()
+                for source, target in self.parameter_map.items()
             },
         )
 
@@ -69,7 +68,6 @@ class AudioEffect(AllocatableDevice):
 
 
 class LimiterDevice(AudioEffect):
-
     def __init__(self, *, name=None, uuid=None):
         AudioEffect.__init__(
             self,

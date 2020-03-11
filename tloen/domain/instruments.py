@@ -75,6 +75,9 @@ class BasicSynth(Instrument):
 
 
 class BasicSampler(Instrument):
+
+    ### INITIALIZER ###
+
     def __init__(self, *, name=None, uuid=None):
         Instrument.__init__(
             self,
@@ -84,6 +87,11 @@ class BasicSampler(Instrument):
             parameters={"buffer_id": BufferParameter(name="buffer_id")},
             parameter_map={"buffer_id": "buffer_id"},
         )
+
+    ### PRIVATE METHODS ###
+
+    def _handle_note_off(self, moment, midi_message):
+        return []
 
     def _handle_note_on(self, moment, midi_message):
         if self.parameters["buffer_id"].buffer_proxy is None:
@@ -99,8 +107,7 @@ class BasicSampler(Instrument):
         )
         return []
 
-    def _handle_note_off(self, moment, midi_message):
-        return []
+    ### PUBLIC METHODS ###
 
     def build_synthdef(self):
         def signal_block(builder, source, state):

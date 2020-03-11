@@ -6,7 +6,7 @@ from tloen.domain import Application, Clip
 @pytest.mark.asyncio
 async def test_1():
     application = Application()
-    application.add_scene()
+    await application.add_scene()
     context = await application.add_context()
     track = await context.add_track()
     assert track.slots[0].clip is None
@@ -22,7 +22,7 @@ async def test_2():
     Replace existing clip
     """
     application = Application()
-    application.add_scene()
+    await application.add_scene()
     context = await application.add_context()
     track = await context.add_track()
     clip_one = await track.slots[0].add_clip()

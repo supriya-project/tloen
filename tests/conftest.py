@@ -3,7 +3,7 @@ from supriya.enums import DoneAction
 from supriya.synthdefs import SynthDefFactory
 from supriya.ugens import DC, Linen
 
-from tloen.domain import Application, AudioEffect, RackDevice
+from tloen.domain import Application, AudioEffect, RackDevice, Arpeggiator, BasicSampler, Transfer, Note
 
 
 """
@@ -129,3 +129,28 @@ async def channel_count_application(dc_index_synthdef_factory):
         synthdef_kwargs=dict(index=0),
     )
     return application
+
+
+@pytest.fixture
+async def serialization_application():
+    app = Application()
+    await app.add_scene()
+    context = await app.add_context()
+    track_one = await context.add_track(name="One")
+    track_two = await context.add_track(name="Two")
+    await track_one.add_send(track_two)
+    await track_one.solo(exclusive=False)
+    clip = await track_one.slots[0].add_clip()
+    await clip.add_notes([Note(0, 0.25, pitch=60)])
+    await track_two.add_send(track_one)
+    await track_two.solo(exclusive=False)
+    await track_two.mute()
+    await track_two.cue()
+    rack = await track_one.add_device(RackDevice, channel_count=4)
+    chain = await rack.add_chain(transfer=Transfer(in_pitch=64, out_pitch=60))
+    await chain.parameters["gain"].set_(-6.0)
+    await chain.add_device(Arpeggiator)
+    sampler = await chain.add_device(BasicSampler)
+    await sampler.parameters["active"].set_(False)
+    await sampler.parameters["buffer_id"].set_("tloen:samples/808/bd-long-03.wav")
+    return app

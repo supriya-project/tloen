@@ -10,9 +10,9 @@ from tloen.midi import MidiMessage, NoteOffMessage, NoteOnMessage
 from .bases import Allocatable, Performable
 from .parameters import (
     Boolean,
-    CallbackParameter,
-    BusParameter,
     BufferParameter,
+    BusParameter,
+    CallbackParameter,
     ParameterGroup,
     ParameterObject,
 )
@@ -342,9 +342,7 @@ class AllocatableDevice(DeviceObject):
         )
 
     def _build_kwargs(self):
-        kwargs = dict(
-            out=self._audio_bus_proxies["output"],
-        )
+        kwargs = dict(out=self._audio_bus_proxies["output"],)
         kwargs.update(self.synthdef_kwargs)
         for source, target in self.parameter_map.items():
             parameter = self.parameters[source]
