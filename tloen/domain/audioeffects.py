@@ -69,41 +69,26 @@ class Limiter(AudioEffect):
     # TODO: This should support a multiple-mono approach
 
     def __init__(self, *, name=None, uuid=None):
+        gain_spec = Float(default=0, minimum=-96, maximum=6)
+        frequency_1_spec = Float(default=200, minimum=20, maximum=22050)
+        frequency_2_spec = Float(default=2000, minimum=20, maximum=22050)
         AudioEffect.__init__(
             self,
             name=name,
             parameters={
                 parameter.name: parameter
                 for parameter in [
-                    BusParameter("frequency_1", Float(default=0.025)),
-                    BusParameter("frequency_2", Float(default=0.1)),
-                    BusParameter(
-                        "band_1_gain", Float(default=0, minimum=-96, maximum=6)
-                    ),
-                    BusParameter(
-                        "band_2_gain", Float(default=0, minimum=-96, maximum=6)
-                    ),
-                    BusParameter(
-                        "band_3_gain", Float(default=0, minimum=-96, maximum=6)
-                    ),
-                    BusParameter(
-                        "band_1_limit", Float(default=0, minimum=-96, maximum=6)
-                    ),
-                    BusParameter(
-                        "band_2_limit", Float(default=0, minimum=-96, maximum=6)
-                    ),
-                    BusParameter(
-                        "band_3_limit", Float(default=0, minimum=-96, maximum=6)
-                    ),
-                    BusParameter(
-                        "band_1_pregain", Float(default=0, minimum=-96, maximum=6)
-                    ),
-                    BusParameter(
-                        "band_2_pregain", Float(default=0, minimum=-96, maximum=6)
-                    ),
-                    BusParameter(
-                        "band_3_pregain", Float(default=0, minimum=-96, maximum=6)
-                    ),
+                    BusParameter("frequency_1", frequency_1_spec),
+                    BusParameter("frequency_2", frequency_2_spec),
+                    BusParameter("band_1_gain", gain_spec),
+                    BusParameter("band_2_gain", gain_spec),
+                    BusParameter("band_3_gain", gain_spec),
+                    BusParameter("band_1_limit", gain_spec),
+                    BusParameter("band_2_limit", gain_spec),
+                    BusParameter("band_3_limit", gain_spec),
+                    BusParameter("band_1_pregain", gain_spec),
+                    BusParameter("band_2_pregain", gain_spec),
+                    BusParameter("band_3_pregain", gain_spec),
                 ]
             },
             parameter_map={
@@ -159,6 +144,32 @@ class Limiter(AudioEffect):
                 band_3_limit=0,
                 band_3_pregain=0,
             )
+            .with_channel_count(2)
+            .with_gate()
+            .with_input()
+            .with_output(replacing=True)
+            .with_signal_block(signal_block)
+        )
+        return factory
+
+
+class Reverb(AudioEffect):
+
+    ### INITIALIZER ###
+
+    # TODO: This should support a multiple-mono approach
+
+    def __init__(self, *, name=None, uuid=None):
+        AudioEffect.__init__(
+            self, name=name, synthdef=self.build_synthdef(), uuid=uuid,
+        )
+
+    def build_synthdef(self):
+        def signal_block(builder, source, state):
+            return ugens.FreeVerb.ar(source=source, mix=1.0)
+
+        factory = (
+            SynthDefFactory()
             .with_channel_count(2)
             .with_gate()
             .with_input()

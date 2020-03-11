@@ -322,11 +322,6 @@ class AllocatableDevice(DeviceObject):
         self._node_proxies["node"] = provider.add_group(
             target_node=target_node, add_action=add_action, name=self.label
         )
-        self._node_proxies["parameters"] = provider.add_group(
-            target_node=self.node_proxy,
-            add_action=AddAction.ADD_TO_HEAD,
-            name="Parameters",
-        )
         self._node_proxies["body"] = provider.add_group(
             target_node=self.node_proxy, add_action=AddAction.ADD_TO_TAIL, name="Body"
         )

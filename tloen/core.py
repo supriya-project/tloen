@@ -66,6 +66,8 @@ class Harness:
         )
         track = domain_application.contexts[0].tracks[0]
         rack = await track.add_device(domain.RackDevice)
+        await track.add_device(domain.Limiter)
+        # reverb = await track.add_device(domain.Reverb)
         for i, sample_path in enumerate(
             [
                 "tloen:samples/808/bass-drum.wav",
@@ -102,7 +104,10 @@ class Harness:
             success = await command.do(self)
             if success and hasattr(command, "undo"):
                 self.undo_stack.append(command)
-            command.future.set_result(success)
+            try:
+                command.future.set_result(success)
+            except asyncio.InvalidStateError:
+                pass
 
     async def periodic_update(self):
         while not self.exit_future.done():

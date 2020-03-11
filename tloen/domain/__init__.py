@@ -1,5 +1,5 @@
 from .applications import Application
-from .audioeffects import AudioEffect, Limiter
+from .audioeffects import AudioEffect, Limiter, Reverb
 from .bases import (
     Allocatable,
     AllocatableContainer,
@@ -82,4 +82,5 @@ __all__ = [
     "Transfer",
     "Transport",
     "UserTrackObject",
+    "Reverb",
 ]
