@@ -1,8 +1,8 @@
 from typing import Union
 
+from supriya import ugens
 from supriya.enums import AddAction
 from supriya.synthdefs import SynthDef, SynthDefFactory
-from supriya.ugens import LPF, Limiter, Mix
 
 from .devices import AllocatableDevice
 from .parameters import BusParameter, Float
@@ -46,12 +46,7 @@ class AudioEffect(AllocatableDevice):
             add_action=synth_action,
             synthdef=synthdef,
             target_node=synth_target,
-            out=self.audio_bus_proxies["output"],
-            **self.synthdef_kwargs,
-            **{
-                source: self.parameters[target]
-                for source, target in self.parameter_map.items()
-            },
+            **self._build_kwargs(),
         )
 
     def _reallocate(self, difference):
@@ -67,7 +62,12 @@ class AudioEffect(AllocatableDevice):
         synth_synth.free()
 
 
-class LimiterDevice(AudioEffect):
+class Limiter(AudioEffect):
+
+    ### INITIALIZER ###
+
+    # TODO: This should support a multiple-mono approach
+
     def __init__(self, *, name=None, uuid=None):
         AudioEffect.__init__(
             self,
@@ -77,6 +77,49 @@ class LimiterDevice(AudioEffect):
                 for parameter in [
                     BusParameter("frequency_1", Float(default=0.025)),
                     BusParameter("frequency_2", Float(default=0.1)),
+                    BusParameter(
+                        "band_1_gain", Float(default=0, minimum=-96, maximum=6)
+                    ),
+                    BusParameter(
+                        "band_2_gain", Float(default=0, minimum=-96, maximum=6)
+                    ),
+                    BusParameter(
+                        "band_3_gain", Float(default=0, minimum=-96, maximum=6)
+                    ),
+                    BusParameter(
+                        "band_1_limit", Float(default=0, minimum=-96, maximum=6)
+                    ),
+                    BusParameter(
+                        "band_2_limit", Float(default=0, minimum=-96, maximum=6)
+                    ),
+                    BusParameter(
+                        "band_3_limit", Float(default=0, minimum=-96, maximum=6)
+                    ),
+                    BusParameter(
+                        "band_1_pregain", Float(default=0, minimum=-96, maximum=6)
+                    ),
+                    BusParameter(
+                        "band_2_pregain", Float(default=0, minimum=-96, maximum=6)
+                    ),
+                    BusParameter(
+                        "band_3_pregain", Float(default=0, minimum=-96, maximum=6)
+                    ),
+                ]
+            },
+            parameter_map={
+                name: name
+                for name in [
+                    "frequency_1",
+                    "frequency_2",
+                    "band_1_gain",
+                    "band_2_gain",
+                    "band_3_gain",
+                    "band_1_limit",
+                    "band_2_limit",
+                    "band_3_limit",
+                    "band_1_pregain",
+                    "band_2_pregain",
+                    "band_3_pregain",
                 ]
             },
             synthdef=self.build_synthdef(),
@@ -87,16 +130,35 @@ class LimiterDevice(AudioEffect):
         def signal_block(builder, source, state):
             frequency_1 = builder["frequency_1"].minimum(builder["frequency_2"])
             frequency_2 = builder["frequency_1"].maximum(builder["frequency_2"])
-            band_1 = LPF.ar(frequency=frequency_1, source=source)
-            band_2 = LPF.ar(frequency=frequency_2, source=source - band_1)
+            band_1 = ugens.LPF.ar(frequency=frequency_1, source=source)
+            band_2 = ugens.LPF.ar(frequency=frequency_2, source=source - band_1)
             band_3 = source - band_2 - band_1  # TODO: optimize this
-            return Mix.multichannel(
-                sources=[Limiter.ar(source=band) for band in [band_1, band_2, band_3]],
-                channel_count=state["channel_count"],
+            bands = [band_1, band_2, band_3]
+            limiters = []
+            for i, band in enumerate(bands, 1):
+                limiter = ugens.Limiter.ar(
+                    source=band * builder[f"band_{i}_pregain"].db_to_amplitude(),
+                    level=builder[f"band_{i}_limit"].db_to_amplitude(),
+                )
+                limiters.append(limiter * builder[f"band_{i}_gain"].db_to_amplitude())
+            return ugens.Mix.multichannel(
+                sources=limiters, channel_count=state["channel_count"],
             )
 
         factory = (
-            SynthDefFactory(frequency_1=200, frequency_2=2000)
+            SynthDefFactory(
+                frequency_1=200,
+                frequency_2=2000,
+                band_1_gain=0,
+                band_1_limit=0,
+                band_1_pregain=0,
+                band_2_gain=0,
+                band_2_limit=0,
+                band_2_pregain=0,
+                band_3_gain=0,
+                band_3_limit=0,
+                band_3_pregain=0,
+            )
             .with_channel_count(2)
             .with_gate()
             .with_input()

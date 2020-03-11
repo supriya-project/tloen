@@ -1,5 +1,5 @@
 from .applications import Application
-from .audioeffects import AudioEffect
+from .audioeffects import AudioEffect, Limiter
 from .bases import (
     Allocatable,
     AllocatableContainer,
@@ -63,6 +63,7 @@ __all__ = [
     "Float",
     "Instrument",
     "Integer",
+    "Limiter",
     "MasterTrack",
     "Note",
     "NoteMoment",

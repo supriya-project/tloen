@@ -350,6 +350,7 @@ class AllocatableDevice(DeviceObject):
                 kwargs[target] = parameter.bus_proxy
             elif isinstance(parameter, BufferParameter):
                 kwargs[target] = parameter.buffer_proxy
+
         return kwargs
 
     def _free_audio_buses(self):
