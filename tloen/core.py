@@ -67,7 +67,7 @@ class Harness:
         track = domain_application.contexts[0].tracks[0]
         rack = await track.add_device(domain.RackDevice)
         await track.add_device(domain.Limiter)
-        # reverb = await track.add_device(domain.Reverb)
+        reverb = await track.add_device(domain.Reverb)
         for i, sample_path in enumerate(
             [
                 "tloen:samples/808/bass-drum.wav",

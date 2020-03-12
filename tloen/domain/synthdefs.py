@@ -255,7 +255,7 @@ def build_peak_rms_synthdef(channel_count):
         return source
 
     def peak_rms_block(builder, source, state):
-        SendPeakRMS.ar(command_name="/levels", source=source)
+        SendPeakRMS.ar(command_name="/levels", source=source, reply_rate=100)
         return source
 
     factory = (

@@ -32,6 +32,9 @@ class Application:
         await self.runner.setup()
         await aiohttp.web.TCPSite(self.runner, "localhost", 8080).start()
 
+    # TODO: Include levels in return
+    # TODO: Include API action hints in return
+
     async def boot_application(self, request):
         command = BootApplication()
         await self.command_queue.put(command)
