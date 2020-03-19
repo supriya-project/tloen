@@ -283,6 +283,9 @@ class Application(UniqueTreeTuple):
             else:
                 context._reconcile()
 
+    def set_pubsub(self, pubsub: PubSub):
+        self._pubsub = pubsub
+
     ### PUBLIC PROPERTIES ###
 
     @property
@@ -336,6 +339,11 @@ class ApplicationBooting(Event):
 @dataclasses.dataclass
 class ApplicationBooted(Event):
     port: int
+
+
+@dataclasses.dataclass
+class ApplicationLoaded(Event):
+    ...
 
 
 @dataclasses.dataclass

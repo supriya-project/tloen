@@ -3,7 +3,7 @@ import signal
 from collections.abc import Mapping
 
 from . import domain, gridui, httpui, pubsub, textui
-from .domain.applications import ApplicationStatusRefreshed
+from .domain.applications import ApplicationLoaded, ApplicationStatusRefreshed
 
 
 class Registry(Mapping):
@@ -62,12 +62,12 @@ class Harness:
 
     async def build_application(self):
         domain_application = await domain.Application.new(
-            context_count=1, track_count=4, scene_count=8, pubsub=self.pubsub
+            context_count=1, track_count=4, scene_count=8
         )
         track = domain_application.contexts[0].tracks[0]
         rack = await track.add_device(domain.RackDevice)
         await track.add_device(domain.Limiter)
-        reverb = await track.add_device(domain.Reverb)
+        await track.add_device(domain.Reverb)
         for i, sample_path in enumerate(
             [
                 "tloen:samples/808/bass-drum.wav",
@@ -91,7 +91,9 @@ class Harness:
             return True
 
         self.domain_application = await self.build_application()
+        self.domain_application.set_pubsub(self.pubsub)
         self.registry.set_application(self.domain_application)
+        self.pubsub.publish(ApplicationLoaded())
         loop = asyncio.get_running_loop()
         loop.add_signal_handler(signal.SIGINT, handler)
         loop.add_signal_handler(signal.SIGTSTP, handler)

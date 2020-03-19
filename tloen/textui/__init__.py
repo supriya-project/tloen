@@ -10,8 +10,7 @@ from ..commands.applications import (
 from ..commands.slots import FireSlot
 from ..commands.transports import ToggleTransport
 from ..pubsub import PubSub
-from .status import StatusWidget
-from .transport import TransportWidget
+from .tree import Tree
 
 
 class Application:
@@ -19,24 +18,11 @@ class Application:
         self.command_queue = command_queue
         self.pubsub = pubsub or PubSub()
         self.registry = registry if registry is not None else {}
-        self.logo_widget = urwid.Text("\nt / l / ö / n", align="center")
-        self.widget = urwid.Filler(
-            urwid.Padding(
-                urwid.Columns(
-                    [
-                        self.logo_widget,
-                        (51, TransportWidget(self.pubsub)),
-                        (110, StatusWidget(self.pubsub)),
-                    ],
-                    dividechars=1,
-                ),
-                left=1,
-                right=1,
-            ),
-            valign="top",
-            top=1,
-            bottom=1,
+
+        self.widget = Tree(
+            self.command_queue, pubsub=self.pubsub, registry=self.registry,
         )
+
         self.handlers = {
             "ctrl q": QuitApplication(),
             "ctrl b": BootApplication(),
