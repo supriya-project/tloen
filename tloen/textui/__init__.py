@@ -10,7 +10,8 @@ from ..commands.applications import (
 from ..commands.slots import FireSlot
 from ..commands.transports import ToggleTransport
 from ..pubsub import PubSub
-from .tree import Tree
+from .transport import TransportWidget
+from .tree import ContextTree, DeviceTree, ParameterTree
 
 
 class Application:
@@ -19,9 +20,34 @@ class Application:
         self.pubsub = pubsub or PubSub()
         self.registry = registry if registry is not None else {}
 
-        self.widget = Tree(
+        transport_widget = TransportWidget(self.pubsub)
+
+        context_tree = ContextTree(
             self.command_queue, pubsub=self.pubsub, registry=self.registry,
         )
+
+        device_tree = DeviceTree(
+            self.command_queue, pubsub=self.pubsub, registry=self.registry,
+        )
+
+        parameter_tree = ParameterTree(
+            self.command_queue, pubsub=self.pubsub, registry=self.registry,
+        )
+
+        header = urwid.Columns([urwid.Text("\nt / l / ö / n"), transport_widget,])
+
+        body = urwid.Columns(
+            [
+                urwid.LineBox(context_tree, title="tracks", title_align="left"),
+                urwid.LineBox(device_tree, title="devices", title_align="left"),
+                urwid.LineBox(parameter_tree, title="parameters", title_align="left"),
+            ],
+            dividechars=1,
+        )
+
+        footer = urwid.LineBox(urwid.Text("..."))
+
+        self.widget = urwid.Frame(body, header=header, footer=footer)
 
         self.handlers = {
             "ctrl q": QuitApplication(),

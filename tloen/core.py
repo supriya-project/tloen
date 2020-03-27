@@ -64,7 +64,8 @@ class Harness:
         domain_application = await domain.Application.new(
             context_count=1, track_count=4, scene_count=8
         )
-        track = domain_application.contexts[0].tracks[0]
+        context = domain_application.contexts[0]
+        track = context.tracks[0]
         rack = await track.add_device(domain.RackDevice)
         await track.add_device(domain.Limiter)
         await track.add_device(domain.Reverb)
@@ -84,6 +85,9 @@ class Harness:
             sampler = await chain.add_device(domain.BasicSampler)
             await sampler.parameters["buffer_id"].set_(sample_path)
         await track.slots[0].add_clip()
+        await context.tracks[1].add_track(name="Inner")
+        subtrack = await context.tracks[1].add_track()
+        await subtrack.add_track()
         return domain_application
 
     async def run(self, gridui=True, textui=True):
