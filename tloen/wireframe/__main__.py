@@ -47,20 +47,21 @@ parameters = urwid.LineBox(
     urwid.Text("\n".join(["..."] * 10)), title="parameters", title_align="left"
 )
 
-clip = urwid.LineBox(
-    urwid.Text("..."), title="clip", title_align="left",
-)
+clip = urwid.LineBox(urwid.Text("..."), title="clip", title_align="left",)
 
-status = urwid.LineBox(
-    urwid.Button("..."), title="status", title_align="left",
-)
+status = urwid.LineBox(urwid.Button("..."), title="status", title_align="left",)
 
-view = urwid.Pile([
-    urwid.Columns([transport, logo, scenes], dividechars=1),
-    urwid.Columns([("weight", 1, browser), ("weight", 4, tracks)], dividechars=1),
-    urwid.Columns([("weight", 2, clip), ("weight", 1, devices), ("weight", 1, parameters)], dividechars=1),
-    status,
-])
+view = urwid.Pile(
+    [
+        urwid.Columns([transport, logo, scenes], dividechars=1),
+        urwid.Columns([("weight", 1, browser), ("weight", 4, tracks)], dividechars=1),
+        urwid.Columns(
+            [("weight", 2, clip), ("weight", 1, devices), ("weight", 1, parameters)],
+            dividechars=1,
+        ),
+        status,
+    ]
+)
 
 view = urwid.Filler(view, top=1, bottom=1)
 
