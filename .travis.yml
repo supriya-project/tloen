@@ -49,7 +49,9 @@ before_install:
 - make -C .travis/ install-scsynth
 - scsynth -v
 install:
-- pip install -e .
+- pip install https://github.com/josiah-wolf-oberholtzer/supriya/archive/master.zip
+- pip install cython
+- pip install -e .[test]
 before_script:
 - sudo -E su $USER -c "jackd -r -ddummy -r44100 -p1024" 2>/dev/null &
 - sleep 5  # give jackd time to start
