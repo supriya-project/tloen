@@ -30,7 +30,7 @@ pytest:
 		--durations=100 \
 		--timeout=60 \
 		tests/ \
-		supriya/
+		tloen/
 
 sanity-check:
 	python -c 'import supriya; server = supriya.Server.default().boot(); print(server); server.quit()'

@@ -34,7 +34,7 @@ class Application:
             self.command_queue, pubsub=self.pubsub, registry=self.registry,
         )
 
-        header = urwid.Columns([urwid.Text("\nt / l / ö / n"), transport_widget,])
+        header = urwid.Columns([urwid.Text("\nt / l / ö / n"), transport_widget])
 
         body = urwid.Columns(
             [
