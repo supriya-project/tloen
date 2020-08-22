@@ -35,7 +35,7 @@ extras_require = {
         "flake8",
         "isort",
         "mypy >= 0.782",
-        "pytest >= 5.0.0",
+        "pytest >= 5.4.0",
         "pytest-asyncio >= 0.14.0",
         "pytest-cov >= 2.10.0",
         "pytest-helpers-namespace >= 2019.1.8",
