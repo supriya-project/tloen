@@ -2,7 +2,8 @@ SUPERCOLLIDER_DIR = ${TRAVIS_BUILD_DIR}/supercollider
 SUPERCOLLIDER_BUILD_DIR = $(SUPERCOLLIDER_DIR)/BUILD
 
 get-type-hints:
-	pip install --target /tmp/typehints --no-deps supriya uqbar
+	pip install --target /tmp/typehints --no-deps uqbar
+	pip install --target /tmp/typehints --no-deps https://github.com/josiah-wolf-oberholtzer/supriya/archive/master.zip
 
 install-scsynth:
 	cd ${TRAVIS_BUILD_DIR} && \
