@@ -23,6 +23,18 @@ class ParameterSpec:
     def default(self):
         return self._default
 
+    ### PRIVATE METHODS ###
+
+    @classmethod
+    def _deserialize(cls, spec):
+        class_ = {
+            "boolean": Boolean,
+            "float": Float,
+            "integer": Integer,
+            "null": Null,
+        }[spec["type"]]
+        return class_._deserialize(spec)
+
 
 class Boolean(ParameterSpec):
 
@@ -37,6 +49,10 @@ class Boolean(ParameterSpec):
         return bool(value)
 
     ### PRIVATE METHODS ###
+
+    @classmethod
+    def _deserialize(cls, spec):
+        return cls(default=spec.get("default"))
 
     def _serialize(self):
         return {"type": type(self).__name__.lower(), "default": self.default}
@@ -63,6 +79,14 @@ class Float(ParameterSpec):
         return value
 
     ### PRIVATE METHODS ###
+
+    @classmethod
+    def _deserialize(cls, spec):
+        return cls(
+            default=spec.get("default", 0.0),
+            minimum=spec.get("minimum", 0.0),
+            maximum=spec.get("maximum", 0.0),
+        )
 
     def _serialize(self):
         return {
@@ -93,6 +117,14 @@ class Integer(ParameterSpec):
 
     ### PRIVATE METHODS ###
 
+    @classmethod
+    def _deserialize(cls, spec):
+        return cls(
+            default=spec.get("default", 0),
+            minimum=spec.get("minimum", 0),
+            maximum=spec.get("maximum", 1),
+        )
+
     def _serialize(self):
         return {
             "type": type(self).__name__.lower(),
@@ -110,6 +142,10 @@ class Null(ParameterSpec):
         return None
 
     ### PRIVATE METHODS ###
+
+    @classmethod
+    def _deserialize(cls, spec):
+        return cls()
 
     def _serialize(self):
         return {"type": type(self).__name__.lower()}
