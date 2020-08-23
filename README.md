@@ -11,24 +11,32 @@ model, and fleshing out a JSON API.
 
 ## Install
 
-- Install Supriya:
+- Get Supriya:
 
   ```
   git clone https://github.com/josiah-wolf-oberholtzer/supriya.git
-  cd supriya/
-  pip3 install -e .
   ```
 
-- Install Tloen:
+- Install Supriya (from within your clone):
+
+  ```
+  pip3 install -e .[cython]
+  ```
+
+- Get Tloen:
 
   ```
   git clone https://github.com/josiah-wolf-oberholtzer/tloen.git
+
+- Install Tloen (from within your clone):
+
+  ```
   pip3 install -e .[test]
   ```
 
 ## Example
 
-Because Tloen runs in an asyncio event loop, use Python 3.6+'s asyncio shell if
+Because Tloen runs in an asyncio event loop, use Python 3.8+'s asyncio REPL if
 you want to experiment interactively:
 
 ```
