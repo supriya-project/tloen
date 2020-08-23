@@ -816,6 +816,9 @@ class Track(UserTrackObject):
                 node._soloed_tracks.add(self)
             self._update_activation(self)
 
+    async def stop(self, quantization=None):
+        await self._fire(None, quantization=quantization)
+
     async def ungroup(self):
         async with self.lock([self]):
             if self.parent:

@@ -2,6 +2,7 @@ from types import MappingProxyType
 from typing import Callable, Dict, Optional, Type, Union
 from uuid import UUID, uuid4
 
+from supriya.assets.synthdefs import default
 from supriya.enums import AddAction, CalculationRate
 from supriya.synthdefs import SynthDef, SynthDefFactory
 
@@ -308,7 +309,7 @@ class AllocatableDevice(DeviceObject):
         self._device_in = DeviceIn()
         self._device_out = DeviceOut()
         self._parameter_map = parameter_map or {}
-        self._synthdef = synthdef
+        self._synthdef = synthdef or default
         self._synthdef_kwargs = dict(synthdef_kwargs or {})
         self._mutate(
             slice(None), [self._parameter_group, self._device_in, self._device_out]

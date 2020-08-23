@@ -13,7 +13,6 @@ from tloen.domain import (
     Transfer,
 )
 
-
 """
 @pytest.fixture(autouse=True)
 def logger(caplog):

@@ -52,12 +52,10 @@ isort:
 	isort \
 		--case-sensitive \
 		--multi-line 3 \
-		--recursive \
 		--thirdparty supriya \
 		--thirdparty uqbar \
 		--trailing-comma \
 		--use-parentheses \
-		-y \
 		${formatPaths}
 
 mypy:

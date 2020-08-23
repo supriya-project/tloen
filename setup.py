@@ -45,7 +45,7 @@ extras_require = {
     ],
 }
 
-with open("README.rst", "r") as file_pointer:
+with open("README.md", "r") as file_pointer:
     long_description = file_pointer.read()
 
 classifiers = [
