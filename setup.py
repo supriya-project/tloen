@@ -31,10 +31,10 @@ install_requires = [
 
 extras_require = {
     "test": [
-        "black",
+        "black == 19.10b0",  # Trailing comma behavior in 20.x needs work
         "flake8",
-        "isort",
-        "mypy >= 0.782",
+        "isort >= 5.6.4",
+        "mypy >= 0.790",
         "pytest >= 5.4.0",
         "pytest-asyncio >= 0.14.0",
         "pytest-cov >= 2.10.0",
