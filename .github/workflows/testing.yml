@@ -23,11 +23,13 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
-    - name: Install Supriya
+    - name: Install Tloen
       run: |
+        pip install https://github.com/josiah-wolf-oberholtzer/supriya/archive/master.zip
+        pip install cython
         pip install -e .
-        python -c "import supriya"
-        pip install -e .[cython,ipython,test]
+        python -c "import tloen"
+        pip install -e .[test]
     - name: Get Type Hints
       run: |
         pip install --target /tmp/typehints --no-deps uqbar
