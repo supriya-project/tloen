@@ -8,8 +8,8 @@ on:
     - master
 env:
   MYPYPATH: /tmp/typehints
-  SC_ORIGIN: https://github.com/supercollider/supercollider.git
-  SC_BRANCH: Version-3.10.0
+  SC_ORIGIN: https://github.com/josiah-wolf-oberholtzer/supercollider.git
+  SC_BRANCH: extend-node-info-response
 jobs:
   testing:
     name: Testing
