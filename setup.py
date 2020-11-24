@@ -26,7 +26,6 @@ install_requires = [
     "python-rtmidi",
     "supriya",
     "urwid >= 2.1.0",
-    "wavefile",
 ]
 
 extras_require = {
