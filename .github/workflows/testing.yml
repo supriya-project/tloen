@@ -55,11 +55,8 @@ jobs:
         make mypy
     - name: Clone SC
       run: |
-        git clone ${SC_ORIGIN} /tmp/supercollider
+        git clone --quiet --recursive --branch ${SC_BRANCH} ${SC_ORIGIN} /tmp/supercollider
         cd /tmp/supercollider
-        git checkout ${SC_BRANCH}
-        git submodule -q init
-        git submodule -q update
         mkdir BUILD
         echo "SC_COMMIT_SHA=$(git rev-parse HEAD)" >> $GITHUB_ENV
         echo "SC_ORIGIN_MD5=$(echo ${SC_ORIGIN} | md5sum | head -c 7)" >> $GITHUB_ENV
