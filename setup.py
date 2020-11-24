@@ -24,6 +24,7 @@ install_requires = [
     "prompt-toolkit >= 3.0.0",
     "pymonome >= 0.9.0",
     "python-rtmidi",
+    "sly",
     "supriya",
     "urwid >= 2.1.0",
 ]
