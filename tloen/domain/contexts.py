@@ -2,8 +2,9 @@ from typing import Optional
 from uuid import UUID, uuid4
 
 from supriya.enums import AddAction
+from supriya.exceptions import ServerCannotBoot
 from supriya.osc import find_free_port
-from supriya.provider import Provider
+from supriya.providers import Provider
 from supriya.querytree import QueryTreeGroup
 from supriya.typing import Default
 
@@ -54,8 +55,14 @@ class Context(Allocatable, Mixer):
             target_node=target_node, add_action=add_action, name=self.label
         )
 
-    async def _boot(self):
-        provider = await Provider.realtime_async(port=find_free_port())
+    async def _boot(self, provider=None, retries=3):
+        if provider is None:
+            for attempt in range(1, retries + 1):
+                try:
+                    provider = await Provider.realtime_async(port=find_free_port())
+                except ServerCannotBoot:
+                    if attempt == retries:
+                        raise
         async with provider.at(wait=True):
             self._set(provider=provider)
 

@@ -3,7 +3,7 @@ import dataclasses
 import enum
 from typing import Dict, Optional, Set, Tuple
 
-from supriya.clock import AsyncTempoClock, Moment
+from supriya.clocks import AsyncTempoClock, Moment
 
 from ..bases import Event
 from .bases import ApplicationObject
@@ -37,10 +37,10 @@ class Transport(ApplicationObject):
 
     ### PRIVATE METHODS ###
 
-    async def _application_perform_callback(
-        self, current_moment, desired_moment, event, midi_message
-    ):
-        await self.application.perform([midi_message], moment=current_moment)
+    async def _application_perform_callback(self, clock_context, midi_message):
+        await self.application.perform(
+            [midi_message], moment=clock_context.current_moment
+        )
 
     @classmethod
     async def _deserialize(cls, data, transport_object):
@@ -56,17 +56,17 @@ class Transport(ApplicationObject):
             },
         }
 
-    def _tick_callback(self, current_moment, desired_moment, event):
-        self.application.pubsub.publish(TransportTicked(desired_moment))
-        return 1 / desired_moment.time_signature[1] / 4
+    def _tick_callback(self, clock_context):
+        self.application.pubsub.publish(TransportTicked(clock_context.desired_moment))
+        return 1 / clock_context.desired_moment.time_signature[1] / 4
 
     ### PUBLIC METHODS ###
 
     async def cue(self, *args, **kwargs) -> int:
-        return await self._clock.cue(*args, **kwargs)
+        return self._clock.cue(*args, **kwargs)
 
     async def cancel(self, *args, **kwargs) -> Optional[Tuple]:
-        return await self._clock.cancel(*args, **kwargs)
+        return self._clock.cancel(*args, **kwargs)
 
     async def perform(self, midi_messages):
         if (
@@ -82,16 +82,16 @@ class Transport(ApplicationObject):
             await self.start()
 
     async def reschedule(self, *args, **kwargs) -> Optional[int]:
-        return await self._clock.reschedule(*args, **kwargs)
+        return self._clock.reschedule(*args, **kwargs)
 
     async def schedule(self, *args, **kwargs) -> int:
-        return await self._clock.schedule(*args, **kwargs)
+        return self._clock.schedule(*args, **kwargs)
 
     async def set_tempo(self, beats_per_minute: float):
-        await self._clock.change(beats_per_minute=beats_per_minute)
+        self._clock.change(beats_per_minute=beats_per_minute)
 
     async def set_time_signature(self, numerator, denominator):
-        await self._clock.change(time_signature=[numerator, denominator])
+        self._clock.change(time_signature=[numerator, denominator])
 
     async def start(self):
         async with self.lock([self]):

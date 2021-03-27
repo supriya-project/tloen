@@ -9,55 +9,19 @@ on:
 env:
   MYPYPATH: /tmp/typehints
   SC_ORIGIN: https://github.com/josiah-wolf-oberholtzer/supercollider.git
-  SC_BRANCH: extend-node-info-response
+  SC_BRANCH: s-query
+
 jobs:
-  testing:
-    name: Testing
+
+  supercollider:
+    name: SuperCollider
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: [3.8]
     steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Update APT
-      run: |
-        export DEBIAN_FRONTEND=noninteractive
-        sudo apt-get clean
-        sudo apt-get update
-    - name: Install Tloen APT Deps
-      run: |
-        export DEBIAN_FRONTEND=noninteractive
-        sudo apt-get install --yes \
-          libasound2-dev
-    - name: Install Tloen
-      run: |
-        pip install https://github.com/josiah-wolf-oberholtzer/supriya/archive/master.zip
-        pip install cython
-        pip install -e .
-        python -c "import tloen"
-        pip install -e .[test]
-    - name: Get Type Hints
-      run: |
-        pip install --target /tmp/typehints --no-deps uqbar
-        pip install --target /tmp/typehints --no-deps https://github.com/josiah-wolf-oberholtzer/supriya/archive/master.zip
-    - name: Run Black
-      run: |
-        make black-check
-    - name: Run Flake8
-      run: |
-        make flake8
-    - name: Run Mypy
-      run: |
-        make mypy
     - name: Clone SC
       run: |
         git clone --quiet --recursive --branch ${SC_BRANCH} ${SC_ORIGIN} /tmp/supercollider
         cd /tmp/supercollider
-        mkdir BUILD
+        mkdir build
         echo "SC_COMMIT_SHA=$(git rev-parse HEAD)" >> $GITHUB_ENV
         echo "SC_ORIGIN_MD5=$(echo ${SC_ORIGIN} | md5sum | head -c 7)" >> $GITHUB_ENV
     - name: Cache SC
@@ -65,10 +29,71 @@ jobs:
       uses: actions/cache@v2
       with:
         path: /tmp/supercollider
-        key: supercollider-${{ runner.os }}-${{ env.SC_ORIGIN_MD5 }}-${{ env.SC_COMMIT_SHA }}
+        key: ${{ runner.os }}-supercollider-${{ env.SC_ORIGIN_MD5 }}-${{ env.SC_COMMIT_SHA }}
     - name: Install SC Deps
+      if: steps.cache.outputs.cache-hit != 'true'
       run: |
         export DEBIAN_FRONTEND=noninteractive
+        sudo apt-get update --yes
+        sudo apt-get install --yes \
+          alsa-oss \
+          alsa-utils \
+          build-essential \
+          cmake \
+          ffmpeg \
+          jackd2 \
+          libasound2-dev \
+          libavahi-client-dev \
+          libfftw3-dev \
+          libicu-dev \
+          libjack-jackd2-dev \
+          libreadline6-dev \
+          libsndfile1-dev \
+          libudev-dev \
+          libxt-dev \
+          pkg-config
+    - name: Build SC
+      if: steps.cache.outputs.cache-hit != 'true'
+      run: |
+        if [ "$RUNNER_OS" == "Linux" ]; then
+          cmake \
+            --debug-output \
+            -DCMAKE_build_TYPE=Release \
+            -DSC_EL=OFF \
+            -DSC_IDE=OFF \
+            -DSC_QT=OFF \
+            /tmp/supercollider
+        elif [ "$RUNNER_OS" == "macOS" ]; then
+          cmake \
+            -DCMAKE_PREFIX_PATH=`brew --prefix qt5` \
+            -G Xcode \
+            /tmp/supercollider
+        else
+          echo "$RUNNER_OS not supported"
+          exit 1
+        fi
+        make
+      working-directory: /tmp/supercollider/build
+
+  test:
+    name: Test
+    needs: [supercollider]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [3.9]
+        os: [ubuntu-latest]
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install Deps
+      run: |
+        export DEBIAN_FRONTEND=noninteractive
+        sudo apt-get update --yes
         sudo apt-get install --yes \
           alsa-oss \
           alsa-utils \
@@ -88,16 +113,71 @@ jobs:
           libudev-dev \
           libxt-dev \
           pkg-config
+    - name: Install Tloen
+      run: |
+        pip install https://github.com/josiah-wolf-oberholtzer/supriya/archive/refs/heads/pattern-refactor.zip
+        pip install -e .
+    - name: Sanity-check Tloen
+      run: |
+        python -c "import tloen"
+    - name: Install Tloen Test Deps
+      run: |
+        pip install -e .[test]
+    - name: Run Black
+      run: |
+        make black-check
+    - name: Run Flake8
+      run: |
+        make flake8
+    - name: Get Type Hints
+      run: |
+        pip install --target /tmp/typehints --no-deps uqbar
+        pip install --target /tmp/typehints --no-deps https://github.com/josiah-wolf-oberholtzer/supriya/archive/master.zip
+    - name: Run Mypy
+      run: |
+        make mypy
+    - name: Clone SC
+      run: |
+        git clone --quiet --recursive --branch ${SC_BRANCH} ${SC_ORIGIN} /tmp/supercollider
+        cd /tmp/supercollider
+        mkdir build
+        echo "SC_COMMIT_SHA=$(git rev-parse HEAD)" >> $GITHUB_ENV
+        echo "SC_ORIGIN_MD5=$(echo ${SC_ORIGIN} | md5sum | head -c 7)" >> $GITHUB_ENV
+    - name: Cache SC
+      id: cache
+      uses: actions/cache@v2
+      with:
+        path: /tmp/supercollider
+        key: ${{ runner.os }}-supercollider-${{ env.SC_ORIGIN_MD5 }}-${{ env.SC_COMMIT_SHA }}
     - name: Build SC
       if: steps.cache.outputs.cache-hit != 'true'
       run: |
-        cmake --debug-output -DCMAKE_BUILD_TYPE=Release -DSC_EL=OFF -DSC_IDE=OFF -DSC_QT=OFF /tmp/supercollider > /dev/null
+        if [ "$RUNNER_OS" == "Linux" ]; then
+          cmake \
+            --debug-output \
+            -DCMAKE_build_TYPE=Release \
+            -DSC_EL=OFF \
+            -DSC_IDE=OFF \
+            -DSC_QT=OFF \
+            /tmp/supercollider
+        elif [ "$RUNNER_OS" == "macOS" ]; then
+          cmake \
+            -DCMAKE_PREFIX_PATH=`brew --prefix qt5` \
+            -G Xcode \
+            /tmp/supercollider
+        else
+          echo "$RUNNER_OS not supported"
+          exit 1
+        fi
         make
-      working-directory: /tmp/supercollider/BUILD
+      working-directory: /tmp/supercollider/build
     - name: Install SC
       run: |
         sudo make install
-      working-directory: /tmp/supercollider/BUILD
+      working-directory: /tmp/supercollider/build
+    - name: Cleanup SC Install
+      run: |
+        mkdir -p /home/runner/.local/share/SuperCollider/synthdefs
     - name: Sanity-check SC
       run: |
         scsynth -v
@@ -112,3 +192,4 @@ jobs:
     - name: Run Pytest
       run: |
         pytest
+      timeout-minutes: 10

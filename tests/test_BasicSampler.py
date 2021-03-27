@@ -30,13 +30,12 @@ async def test_add(application):
     )
     bundle_contents = [
         ["/g_new", 1044, 1, 1013],
-        ["/g_new", 1045, 0, 1044],
-        ["/g_new", 1046, 1, 1044],
-        ["/s_new", "mixer/patch[replace]/2x2", 1047, 0, 1044, "in_", 18.0, "out", 28.0],
+        ["/g_new", 1045, 1, 1044],
+        ["/s_new", "mixer/patch[replace]/2x2", 1046, 0, 1044, "in_", 18.0, "out", 28.0],
         [
             "/s_new",
             "mixer/patch[hard,mix]/2x2",
-            1048,
+            1047,
             1,
             1044,
             "in_",
@@ -87,9 +86,9 @@ async def test_perform(application):
         [
             "/s_new",
             synthdef.actual_name,
-            1049,
+            1048,
             0,
-            1046,
+            1045,
             "amplitude",
             0.62000124000248,
             "buffer_id",

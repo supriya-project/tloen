@@ -20,7 +20,7 @@ version = read_version()
 
 install_requires = [
     "aiohttp",
-    "cython",
+    "Cython >= 0.29.0",
     "prompt-toolkit >= 3.0.0",
     "pymonome >= 0.9.0",
     "python-rtmidi",
@@ -32,15 +32,15 @@ install_requires = [
 extras_require = {
     "test": [
         "black == 19.10b0",  # Trailing comma behavior in 20.x needs work
-        "flake8",
-        "isort >= 5.6.4",
-        "mypy >= 0.790",
-        "pytest >= 5.4.0",
+        "flake8 >= 3.9.0",
+        "isort >= 5.8.0",
+        "mypy >= 0.800",
+        "pytest >= 6.2.0",
         "pytest-asyncio >= 0.14.0",
-        "pytest-cov >= 2.10.0",
+        "pytest-cov >= 2.11.0",
         "pytest-helpers-namespace >= 2019.1.8",
-        "pytest-mock",
-        "pytest-rerunfailures >= 9.0",
+        "pytest-mock >= 3.5.0",
+        "pytest-rerunfailures >= 9.1.0",
         "pytest-timeout >= 1.4.0",
     ],
 }

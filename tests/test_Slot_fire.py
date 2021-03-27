@@ -2,7 +2,7 @@ import asyncio
 import logging
 
 import pytest
-from supriya.clock import AsyncTempoClock, Moment
+from supriya.clocks import AsyncTempoClock, Moment
 
 from tloen.domain import Application, Instrument, Note
 from tloen.midi import NoteOffMessage, NoteOnMessage
@@ -12,7 +12,7 @@ logger = logging.getLogger("tloen.test")
 
 @pytest.fixture(autouse=True)
 def capture_logs(caplog):
-    caplog.set_level(logging.DEBUG, logger="supriya.clock")
+    caplog.set_level(logging.DEBUG, logger="supriya.clocks")
     caplog.set_level(logging.DEBUG, logger="tloen")
 
 
@@ -50,7 +50,7 @@ async def set_time(new_time, transport):
 
 
 @pytest.mark.asyncio
-@pytest.mark.timeout(2)
+@pytest.mark.timeout(10)
 async def test_1(mocker, application):
     """
     Fire non-empty slot, then fire empty-slot

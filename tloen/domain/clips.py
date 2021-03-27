@@ -3,7 +3,7 @@ from collections import deque
 from typing import Optional, Tuple
 from uuid import UUID, uuid4
 
-from supriya.clock import TimeUnit
+from supriya.clocks import TimeUnit
 from supriya.intervals import IntervalTree
 
 from tloen.midi import NoteOffMessage, NoteOnMessage

@@ -91,14 +91,13 @@ async def test_AudioEffect_3(synthdef_factory):
     )
     bundle_contents = [
         ["/g_new", 1044, 1, 1013],
-        ["/g_new", 1045, 0, 1044],
-        ["/g_new", 1046, 1, 1044],
-        ["/s_new", synthdef.anonymous_name, 1047, 0, 1046, "out", 28.0],
-        ["/s_new", "mixer/patch[replace]/2x2", 1048, 0, 1044, "in_", 18.0, "out", 28.0],
+        ["/g_new", 1045, 1, 1044],
+        ["/s_new", synthdef.anonymous_name, 1046, 0, 1045, "out", 28.0],
+        ["/s_new", "mixer/patch[replace]/2x2", 1047, 0, 1044, "in_", 18.0, "out", 28.0],
         [
             "/s_new",
             "mixer/patch[hard,mix]/2x2",
-            1049,
+            1048,
             1,
             1044,
             "in_",
@@ -147,16 +146,15 @@ async def test_AudioEffect_4(synthdef_factory):
     assert message.to_list() == [
         None,
         [
-            ["/g_new", 1050, 1, 1013],
-            ["/g_new", 1051, 0, 1050],
-            ["/g_new", 1052, 1, 1050],
-            ["/s_new", synthdef.anonymous_name, 1053, 0, 1052, "out", 30.0],
+            ["/g_new", 1049, 1, 1013],
+            ["/g_new", 1050, 1, 1049],
+            ["/s_new", synthdef.anonymous_name, 1051, 0, 1050, "out", 30.0],
             [
                 "/s_new",
                 "mixer/patch[replace]/2x2",
-                1054,
+                1052,
                 0,
-                1050,
+                1049,
                 "in_",
                 18.0,
                 "out",
@@ -165,9 +163,9 @@ async def test_AudioEffect_4(synthdef_factory):
             [
                 "/s_new",
                 "mixer/patch[hard,mix]/2x2",
-                1055,
+                1053,
                 1,
-                1050,
+                1049,
                 "in_",
                 30.0,
                 "out",
@@ -191,37 +189,36 @@ async def test_AudioEffect_query(synthdef_factory):
     track = await context.add_track()
     await application.boot()
     await track.add_device(AudioEffect, synthdef=synthdef_factory)
-    assert str(await track.query()) == normalize(
+    assert format(await track.query(), "unindexed") == normalize(
         """
-        NODE TREE 1002 group (Track)
-            1009 group (Parameters)
-                1010 group (gain)
-                1011 group (panning)
-            1012 group (Receives)
-            1003 mixer/patch[fb,gain]/2x2 (Input)
+        NODE TREE ... group (Track)
+            ... group (Parameters)
+                ... group (gain)
+                ... group (panning)
+            ... group (Receives)
+            ... mixer/patch[fb,gain]/2x2 (Input)
                 active: 1.0, gain: 0.0, gate: 1.0, in_: 16.0, lag: 0.01, out: 18.0
-            1008 group (SubTracks)
-            1004 mixer/levels/2 (InputLevels)
+            ... group (SubTracks)
+            ... mixer/levels/2 (InputLevels)
                 out: 18.0, gate: 1.0, lag: 0.01
-            1013 group (Devices)
-                1044 group (AudioEffect)
-                    1048 mixer/patch[replace]/2x2 (DeviceIn)
+            ... group (Devices)
+                ... group (AudioEffect)
+                    ... mixer/patch[replace]/2x2 (DeviceIn)
                         active: 1.0, gate: 1.0, in_: 18.0, lag: 0.01, out: 28.0
-                    1045 group (Parameters)
-                    1046 group (Body)
-                        1047 e2f7071cbafa6a2884524e116f015fa9
+                    ... group (Body)
+                        ... e2f7071cbafa6a2884524e116f015fa9
                             out: 28.0, gate: 1.0
-                    1049 mixer/patch[hard,mix]/2x2 (DeviceOut)
+                    ... mixer/patch[hard,mix]/2x2 (DeviceOut)
                         active: 1.0, gate: 1.0, hard_gate: 1.0, in_: 28.0, lag: 0.01, mix: 1.0, out: 18.0
-            1005 mixer/levels/2 (PrefaderLevels)
+            ... mixer/levels/2 (PrefaderLevels)
                 out: 18.0, gate: 1.0, lag: 0.01
-            1014 group (PreFaderSends)
-            1006 mixer/patch[gain,hard,replace]/2x2 (Output)
+            ... group (PreFaderSends)
+            ... mixer/patch[gain,hard,replace]/2x2 (Output)
                 active: 1.0, gain: c0, gate: 1.0, hard_gate: 1.0, in_: 18.0, lag: 0.01, out: 18.0
-            1015 group (PostFaderSends)
-                1029 mixer/patch[gain]/2x2 (Send)
+            ... group (PostFaderSends)
+                ... mixer/patch[gain]/2x2 (Send)
                     active: 1.0, gain: 0.0, gate: 1.0, in_: 18.0, lag: 0.01, out: 22.0
-            1007 mixer/levels/2 (PostfaderLevels)
+            ... mixer/levels/2 (PostfaderLevels)
                 out: 18.0, gate: 1.0, lag: 0.01
         """
     )
@@ -234,35 +231,34 @@ async def test_Instrument_query(dc_instrument_synthdef_factory):
     track = await context.add_track()
     await application.boot()
     await track.add_device(Instrument, synthdef=dc_instrument_synthdef_factory)
-    assert str(await track.query()) == normalize(
+    assert format(await track.query(), "unindexed") == normalize(
         """
-        NODE TREE 1002 group (Track)
-            1009 group (Parameters)
-                1010 group (gain)
-                1011 group (panning)
-            1012 group (Receives)
-            1003 mixer/patch[fb,gain]/2x2 (Input)
+        NODE TREE ... group (Track)
+            ... group (Parameters)
+                ... group (gain)
+                ... group (panning)
+            ... group (Receives)
+            ... mixer/patch[fb,gain]/2x2 (Input)
                 active: 1.0, gain: 0.0, gate: 1.0, in_: 16.0, lag: 0.01, out: 18.0
-            1008 group (SubTracks)
-            1004 mixer/levels/2 (InputLevels)
+            ... group (SubTracks)
+            ... mixer/levels/2 (InputLevels)
                 out: 18.0, gate: 1.0, lag: 0.01
-            1013 group (Devices)
-                1044 group (Instrument)
-                    1047 mixer/patch[replace]/2x2 (DeviceIn)
+            ... group (Devices)
+                ... group (Instrument)
+                    ... mixer/patch[replace]/2x2 (DeviceIn)
                         active: 1.0, gate: 1.0, in_: 18.0, lag: 0.01, out: 28.0
-                    1045 group (Parameters)
-                    1046 group (Body)
-                    1048 mixer/patch[hard,mix]/2x2 (DeviceOut)
+                    ... group (Body)
+                    ... mixer/patch[hard,mix]/2x2 (DeviceOut)
                         active: 1.0, gate: 1.0, hard_gate: 1.0, in_: 28.0, lag: 0.01, mix: 1.0, out: 18.0
-            1005 mixer/levels/2 (PrefaderLevels)
+            ... mixer/levels/2 (PrefaderLevels)
                 out: 18.0, gate: 1.0, lag: 0.01
-            1014 group (PreFaderSends)
-            1006 mixer/patch[gain,hard,replace]/2x2 (Output)
+            ... group (PreFaderSends)
+            ... mixer/patch[gain,hard,replace]/2x2 (Output)
                 active: 1.0, gain: c0, gate: 1.0, hard_gate: 1.0, in_: 18.0, lag: 0.01, out: 18.0
-            1015 group (PostFaderSends)
-                1029 mixer/patch[gain]/2x2 (Send)
+            ... group (PostFaderSends)
+                ... mixer/patch[gain]/2x2 (Send)
                     active: 1.0, gain: 0.0, gate: 1.0, in_: 18.0, lag: 0.01, out: 22.0
-            1007 mixer/levels/2 (PostfaderLevels)
+            ... mixer/levels/2 (PostfaderLevels)
                 out: 18.0, gate: 1.0, lag: 0.01
         """
     )

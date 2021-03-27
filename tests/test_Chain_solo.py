@@ -1,8 +1,48 @@
 import asyncio
 
 import pytest
+from supriya import scsynth
+from supriya.osc import find_free_port
+from supriya.providers import Provider
+from supriya.realtime.servers import AsyncServer
 
 from tloen.domain import Application, AudioEffect, Chain, RackDevice
+
+
+@pytest.fixture(scope="module")
+def event_loop():
+    """Change event_loop fixture to module level."""
+    policy = asyncio.get_event_loop_policy()
+    loop = policy.new_event_loop()
+    yield loop
+    loop.close()
+
+
+@pytest.fixture(autouse=True, scope="module")
+def shutdown_scsynth():
+    scsynth.kill()
+    yield
+    scsynth.kill()
+
+
+@pytest.fixture(autouse=True, scope="module")
+async def shutdown_async_servers(shutdown_scsynth, event_loop):
+    for server in tuple(AsyncServer._servers):
+        await server._shutdown()
+    yield
+    for server in tuple(AsyncServer._servers):
+        await server._shutdown()
+
+
+@pytest.fixture(autouse=True, scope="module")
+async def provider(shutdown_async_servers, event_loop):
+    yield await Provider.realtime_async(port=find_free_port())
+
+
+@pytest.fixture
+async def reset_provider(provider, event_loop):
+    yield provider
+    await provider.server.reset()
 
 
 @pytest.mark.parametrize(
@@ -19,8 +59,8 @@ from tloen.domain import Application, AudioEffect, Chain, RackDevice
     ],
 )
 @pytest.mark.asyncio
-async def test_levels(chain_mute_solo_application, chain_names, levels):
-    await chain_mute_solo_application.boot()
+async def test_levels(reset_provider, chain_mute_solo_application, chain_names, levels):
+    await chain_mute_solo_application.boot(provider=reset_provider)
     for chain_name in chain_names:
         chain = chain_mute_solo_application.primary_context[chain_name]
         await chain.solo()
@@ -48,9 +88,9 @@ async def test_levels(chain_mute_solo_application, chain_names, levels):
 )
 @pytest.mark.asyncio
 async def test_transcript(
-    chain_mute_solo_application, soloed_chain_names, muted_chain_names
+    reset_provider, chain_mute_solo_application, soloed_chain_names, muted_chain_names
 ):
-    await chain_mute_solo_application.boot()
+    await chain_mute_solo_application.boot(provider=reset_provider)
     for soloed_chain_name in soloed_chain_names:
         soloed_chain = chain_mute_solo_application.primary_context[soloed_chain_name]
         with chain_mute_solo_application.primary_context.provider.server.osc_protocol.capture() as transcript:
@@ -81,9 +121,11 @@ async def test_transcript(
     ],
 )
 @pytest.mark.asyncio
-async def test_is_active(chain_mute_solo_application, booted, chain_names, expected):
+async def test_is_active(
+    reset_provider, chain_mute_solo_application, booted, chain_names, expected
+):
     if booted:
-        await chain_mute_solo_application.boot()
+        await chain_mute_solo_application.boot(provider=reset_provider)
     for chain_name in chain_names:
         chain = chain_mute_solo_application.primary_context[chain_name]
         await chain.solo()
@@ -109,9 +151,11 @@ async def test_is_active(chain_mute_solo_application, booted, chain_names, expec
     ],
 )
 @pytest.mark.asyncio
-async def test_is_soloed(chain_mute_solo_application, booted, chain_names, expected):
+async def test_is_soloed(
+    reset_provider, chain_mute_solo_application, booted, chain_names, expected
+):
     if booted:
-        await chain_mute_solo_application.boot()
+        await chain_mute_solo_application.boot(provider=reset_provider)
     for chain_name in chain_names:
         chain = chain_mute_solo_application.primary_context[chain_name]
         await chain.solo()

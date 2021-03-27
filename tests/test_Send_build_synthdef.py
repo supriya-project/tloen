@@ -1,13 +1,30 @@
 import time
 
 import pytest
+from supriya import scsynth
 from supriya.realtime import BusGroup, Server, Synth
 
 from tloen.domain.sends import Send
 
 
-@pytest.fixture
-def server():
+@pytest.fixture(autouse=True, scope="module")
+def shutdown_scsynth():
+    scsynth.kill()
+    yield
+    scsynth.kill()
+
+
+@pytest.fixture(autouse=True, scope="module")
+def shutdown_sync_servers(shutdown_scsynth):
+    for server in tuple(Server._servers):
+        server._shutdown()
+    yield
+    for server in tuple(Server._servers):
+        server._shutdown()
+
+
+@pytest.fixture(scope="module")
+def server(shutdown_sync_servers):
     server = Server.default().boot()
     yield server
     server.quit()

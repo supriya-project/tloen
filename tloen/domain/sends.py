@@ -3,7 +3,7 @@ from typing import Optional, Set, Union
 from uuid import UUID, uuid4
 
 from supriya.enums import AddAction, CalculationRate
-from supriya.provider import NodeProxy
+from supriya.providers import NodeProxy
 from supriya.typing import Default
 
 from .bases import Allocatable, ApplicationObject

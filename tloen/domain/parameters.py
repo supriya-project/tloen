@@ -2,7 +2,7 @@ import dataclasses
 from typing import Callable, Optional
 from uuid import UUID, uuid4
 
-from supriya.clock import Moment
+from supriya.clocks import Moment
 from supriya.enums import AddAction, DoneAction
 from supriya.synthdefs import SynthDefBuilder
 from supriya.ugens import Line, Out
