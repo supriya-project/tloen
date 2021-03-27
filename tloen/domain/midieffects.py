@@ -1,7 +1,7 @@
 import enum
 from typing import Dict, List, Tuple
 
-from supriya.clock import TempoClock, TimeUnit
+from supriya.clocks import TempoClock, TimeUnit
 
 from tloen.midi import NoteOffMessage, NoteOnMessage
 
@@ -124,10 +124,8 @@ class Arpeggiator(DeviceObject):
             await self.transport.cancel(self._callback_id)
         self._callback_id = None
 
-    async def _transport_note_on_callback(
-        self, current_moment, desired_moment, event, **kwargs
-    ):
-        async with self.lock([self], seconds=desired_moment.seconds):
+    async def _transport_note_on_callback(self, clock_context, **kwargs):
+        async with self.lock([self], seconds=clock_context.desired_moment.seconds):
             self._debug_tree(self, "Note On CB")
             delta = TempoClock.quantization_to_beats(self._quantization)
             if not len(self._pattern):
@@ -149,29 +147,34 @@ class Arpeggiator(DeviceObject):
             self._output_pitches.add(pitch)
             midi_messages.append(NoteOnMessage(pitch=pitch, velocity=velocity))
             for message in midi_messages:
-                self._update_captures(moment=desired_moment, message=message, label="O")
+                self._update_captures(
+                    moment=clock_context.desired_moment, message=message, label="O"
+                )
             await self.transport.schedule(
                 self._transport_note_off_callback,
-                schedule_at=desired_moment.offset + (delta * self._duration_scale),
+                schedule_at=clock_context.desired_moment.offset
+                + (delta * self._duration_scale),
                 args=(pitch,),
             )
             performer = self._next_performer()
             if performer is not None:
-                self._perform_loop(desired_moment, performer, midi_messages)
+                self._perform_loop(
+                    clock_context.desired_moment, performer, midi_messages
+                )
         return delta, TimeUnit.BEATS
 
-    async def _transport_note_off_callback(
-        self, current_moment, desired_moment, event, pitch, **kwargs
-    ):
-        async with self.lock([self], seconds=desired_moment.seconds):
+    async def _transport_note_off_callback(self, clock_context, pitch, **kwargs):
+        async with self.lock([self], seconds=clock_context.desired_moment.seconds):
             self._debug_tree(self, "Note Off CB")
             if pitch not in self._output_pitches:
                 return
             midi_messages = [NoteOffMessage(pitch=pitch)]
             for message in midi_messages:
-                self._update_captures(moment=desired_moment, message=message, label="O")
+                self._update_captures(
+                    moment=clock_context.desired_moment, message=message, label="O"
+                )
             self._output_pitches.remove(pitch)
             performer = self._next_performer()
             if performer is None:
                 return
-            self._perform_loop(desired_moment, performer, midi_messages)
+            self._perform_loop(clock_context.desired_moment, performer, midi_messages)

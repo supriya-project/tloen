@@ -234,7 +234,7 @@ def build_peak_rms_synthdef(channel_count):
             -   SendPeakRMS.ar:
                     peak_lag: 3.0
                     reply_id: 115.0
-                    reply_rate: 20.0
+                    reply_rate: 100.0
             -   Control.kr: null
             -   Linen.kr:
                     attack_time: Control.kr[1:lag]

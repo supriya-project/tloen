@@ -2,7 +2,7 @@ from typing import Dict, Union
 
 from supriya import conversions
 from supriya.assets.synthdefs import default
-from supriya.provider import SynthProxy
+from supriya.providers import SynthProxy
 from supriya.synthdefs import SynthDef, SynthDefFactory
 from supriya.ugens import PlayBuf
 

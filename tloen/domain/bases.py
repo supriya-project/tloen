@@ -15,10 +15,10 @@ from typing import (
     Union,
 )
 
-from supriya.clock import Moment
-from supriya.commands import FailResponse, NodeQueryRequest
+from supriya.clocks import Moment
+from supriya.commands import FailResponse, NodeQueryRequest, SynthQueryRequest
 from supriya.enums import AddAction
-from supriya.provider import (
+from supriya.providers import (
     BusGroupProxy,
     BusProxy,
     NodeProxy,
@@ -431,8 +431,9 @@ class Allocatable(ApplicationObject):
             node_id = stack.pop()
             if node_id in query_tree:
                 continue
-            request = NodeQueryRequest(node_id)
-            response = await request.communicate_async(server=self.provider.server)
+            response = await NodeQueryRequest(node_id).communicate_async(
+                server=self.provider.server
+            )
             if isinstance(response, FailResponse):
                 raise RuntimeError(repr(response))
             if (response.next_node_id or -1) > 0:
@@ -442,7 +443,11 @@ class Allocatable(ApplicationObject):
             if response.is_group:
                 query_tree[node_id] = QueryTreeGroup.from_response(response)
             else:
-                query_tree[node_id] = QueryTreeSynth.from_response(response)
+                # Run hypothetical SynthQueryRequest here
+                synth_response = await SynthQueryRequest(node_id).communicate_async(
+                    server=self.provider.server
+                )
+                query_tree[node_id] = QueryTreeSynth.from_response(synth_response)
             if response.parent_id in query_tree:
                 query_tree[response.parent_id]._children += (query_tree[node_id],)
         query_tree_group = query_tree[self.node_proxy.identifier]

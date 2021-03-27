@@ -10,7 +10,7 @@ from uuid import UUID
 import yaml
 from supriya.commands import StatusResponse
 from supriya.nonrealtime import Session
-from supriya.provider import Provider
+from supriya.providers import Provider
 from uqbar.containers import UniqueTreeTuple
 
 import tloen.domain  # noqa
@@ -103,7 +103,7 @@ class Application(UniqueTreeTuple):
                 track.slots._append(Slot())
         return scene
 
-    async def boot(self):
+    async def boot(self, provider=None, retries=3):
         if self.status == self.Status.REALTIME:
             return
         elif self.status == self.Status.NONREALTIME:
@@ -111,7 +111,12 @@ class Application(UniqueTreeTuple):
         elif not self.contexts:
             raise RuntimeError("No contexts to boot")
         self.pubsub.publish(ApplicationBooting())
-        await asyncio.gather(*(context._boot() for context in self.contexts))
+        await asyncio.gather(
+            *[
+                context._boot(provider=provider, retries=retries)
+                for context in self.contexts
+            ]
+        )
         self.pubsub.publish(
             ApplicationBooted(self.primary_context.provider.server.port,)
         )

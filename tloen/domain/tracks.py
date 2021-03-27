@@ -572,11 +572,13 @@ class Track(UserTrackObject):
     def _cleanup(self):
         Track._update_activation(self)
 
-    async def _clip_launch_callback(self, current_moment, desired_moment, event):
+    async def _clip_launch_callback(self, clock_context):
         self._debug_tree(
             self,
             "Launch/CB",
-            suffix="{} {}".format(self._pending_slot_index, desired_moment.offset),
+            suffix="{} {}".format(
+                self._pending_slot_index, clock_context.desired_moment.offset
+            ),
         )
         self._clip_launch_event_id = None
         # if a clip is active, perform note offs
@@ -585,7 +587,7 @@ class Track(UserTrackObject):
                 NoteOffMessage(pitch=pitch) for pitch in self._input_pitches
             ]
             if midi_messages:
-                await self.perform(midi_messages, moment=desired_moment)
+                await self.perform(midi_messages, moment=clock_context.desired_moment)
             self.slots[self._active_slot_index].clip._is_playing = False
             self.slots[self._active_slot_index].clip._start_delta = 0.0
         # if pending clip is null-ish, null out variables
@@ -604,25 +606,29 @@ class Track(UserTrackObject):
         # set variables to new clip
         self._active_slot_index = self._pending_slot_index
         self.slots[self._active_slot_index].clip._is_playing = True
-        self.slots[self._active_slot_index].clip._start_delta = desired_moment.offset
+        self.slots[
+            self._active_slot_index
+        ].clip._start_delta = clock_context.desired_moment.offset
         # schedule perform callback
         if self._clip_perform_event_id is not None:
             await self.transport.cancel(self._clip_perform_event_id)
         self._clip_perform_event_id = await self.transport.schedule(
             self._clip_perform_callback,
-            schedule_at=desired_moment.offset,
+            schedule_at=clock_context.desired_moment.offset,
             event_type=self.transport.EventType.CLIP_PERFORM,
         )
         self.application.pubsub.publish(
             ClipLaunched(clip_uuid=self.slots[self._active_slot_index].clip.uuid),
         )
 
-    async def _clip_perform_callback(self, current_moment, desired_moment, event):
+    async def _clip_perform_callback(self, clock_context):
         self._debug_tree(self, "Perform/CB", suffix=str(self._active_slot_index))
         if self._active_slot_index is None:
             return None
         clip = self.slots[self._active_slot_index].clip
-        note_moment = clip.at(desired_moment.offset, start_delta=clip._start_delta)
+        note_moment = clip.at(
+            clock_context.desired_moment.offset, start_delta=clip._start_delta
+        )
         input_pitches = sorted(self._input_pitches)
         midi_messages = []
         for midi_message in note_moment.note_off_messages:
@@ -635,10 +641,10 @@ class Track(UserTrackObject):
                 midi_messages.append(NoteOffMessage(pitch=input_pitch))
         midi_messages.extend(note_moment.note_on_messages)
         if midi_messages:
-            await self.perform(midi_messages, desired_moment)
+            await self.perform(midi_messages, clock_context.desired_moment)
         if note_moment.next_offset is None:
             return None
-        return note_moment.next_offset - desired_moment.offset
+        return note_moment.next_offset - clock_context.desired_moment.offset
 
     @classmethod
     async def _deserialize(cls, data, application) -> bool:
