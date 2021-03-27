@@ -1,9 +1,49 @@
 import asyncio
 
 import pytest
+from supriya import scsynth
+from supriya.osc import find_free_port
+from supriya.providers import Provider
+from supriya.realtime.servers import AsyncServer
 from supriya.typing import Default
 
 from tloen.domain import Application, AudioEffect, Track
+
+
+@pytest.fixture(scope="module")
+def event_loop():
+    """Change event_loop fixture to module level."""
+    policy = asyncio.get_event_loop_policy()
+    loop = policy.new_event_loop()
+    yield loop
+    loop.close()
+
+
+@pytest.fixture(autouse=True, scope="module")
+def shutdown_scsynth():
+    scsynth.kill()
+    yield
+    scsynth.kill()
+
+
+@pytest.fixture(autouse=True, scope="module")
+async def shutdown_async_servers(shutdown_scsynth, event_loop):
+    for server in tuple(AsyncServer._servers):
+        await server._shutdown()
+    yield
+    for server in tuple(AsyncServer._servers):
+        await server._shutdown()
+
+
+@pytest.fixture(autouse=True, scope="module")
+async def provider(shutdown_async_servers, event_loop):
+    yield await Provider.realtime_async(port=find_free_port())
+
+
+@pytest.fixture
+async def reset_provider(provider, event_loop):
+    yield provider
+    await provider.server.reset()
 
 
 @pytest.mark.parametrize(
@@ -20,8 +60,8 @@ from tloen.domain import Application, AudioEffect, Track
     ],
 )
 @pytest.mark.asyncio
-async def test_levels(track_mute_solo_application, track_names, levels):
-    await track_mute_solo_application.boot()
+async def test_levels(reset_provider, track_mute_solo_application, track_names, levels):
+    await track_mute_solo_application.boot(provider=reset_provider)
     # print(track_mute_solo_application)
     # print(track_mute_solo_application.primary_context.provider.server.status)
     await asyncio.sleep(0.2)
@@ -52,9 +92,9 @@ async def test_levels(track_mute_solo_application, track_names, levels):
 )
 @pytest.mark.asyncio
 async def test_transcript(
-    track_mute_solo_application, soloed_track_names, muted_track_names
+    reset_provider, track_mute_solo_application, soloed_track_names, muted_track_names
 ):
-    await track_mute_solo_application.boot()
+    await track_mute_solo_application.boot(provider=reset_provider)
     for soloed_track_name in soloed_track_names:
         soloed_track = track_mute_solo_application.primary_context[soloed_track_name]
         with track_mute_solo_application.primary_context.provider.server.osc_protocol.capture() as transcript:
@@ -85,9 +125,11 @@ async def test_transcript(
     ],
 )
 @pytest.mark.asyncio
-async def test_is_active(track_mute_solo_application, booted, track_names, expected):
+async def test_is_active(
+    reset_provider, track_mute_solo_application, booted, track_names, expected
+):
     if booted:
-        await track_mute_solo_application.boot()
+        await track_mute_solo_application.boot(provider=reset_provider)
     for track_name in track_names:
         track = track_mute_solo_application.primary_context[track_name]
         await track.solo()
@@ -113,9 +155,11 @@ async def test_is_active(track_mute_solo_application, booted, track_names, expec
     ],
 )
 @pytest.mark.asyncio
-async def test_is_soloed(track_mute_solo_application, booted, track_names, expected):
+async def test_is_soloed(
+    reset_provider, track_mute_solo_application, booted, track_names, expected
+):
     if booted:
-        await track_mute_solo_application.boot()
+        await track_mute_solo_application.boot(provider=reset_provider)
     for track_name in track_names:
         track = track_mute_solo_application.primary_context[track_name]
         await track.solo()

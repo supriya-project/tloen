@@ -1,7 +1,7 @@
 import asyncio
 
 import pytest
-from supriya.provider import RealtimeProvider
+from supriya.providers import RealtimeProvider
 from uqbar.strings import normalize
 
 from tloen.domain import Application

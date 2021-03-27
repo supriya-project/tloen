@@ -2,7 +2,7 @@ import asyncio
 import logging
 
 import pytest
-from supriya.clock import AsyncTempoClock, Moment
+from supriya.clocks import AsyncTempoClock, Moment
 
 from tloen.domain import Application, Instrument, Note
 from tloen.midi import NoteOffMessage, NoteOnMessage
@@ -12,7 +12,7 @@ logger = logging.getLogger("tloen.test")
 
 @pytest.fixture(autouse=True)
 def capture_logs(caplog):
-    caplog.set_level(logging.DEBUG, logger="supriya.clock")
+    caplog.set_level(logging.DEBUG, logger="supriya.clocks")
     caplog.set_level(logging.DEBUG, logger="tloen")
 
 

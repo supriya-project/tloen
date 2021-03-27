@@ -11,7 +11,7 @@ from tloen.midi import NoteOffMessage, NoteOnMessage
 @pytest.fixture(autouse=True)
 def logger(caplog):
     caplog.set_level(logging.DEBUG, logger="tloen.domain")
-    caplog.set_level(logging.DEBUG, logger="supriya.clock")
+    caplog.set_level(logging.DEBUG, logger="supriya.clocks")
 
 
 @pytest.fixture
@@ -24,7 +24,7 @@ async def application():
     await application.quit()
 
 
-@pytest.mark.timeout(3)
+@pytest.mark.timeout(10)
 @pytest.mark.asyncio
 async def test_timeout(application):
     await application["Track"].add_device(Arpeggiator)
