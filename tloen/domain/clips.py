@@ -45,6 +45,7 @@ class Note:
 @dataclasses.dataclass(frozen=True)
 class NoteMoment:
     offset: float = 0.0
+    local_offset: float = 0.0
     next_offset: Optional[float] = None
     start_notes: List[Note] = dataclasses.field(default_factory=list)
     stop_notes: List[Note] = dataclasses.field(default_factory=list)
@@ -118,7 +119,9 @@ class Clip(ClipObject):
             raise ValueError
         if stop_offset <= start_offset:
             raise ValueError
-        if not is_looping and (stop_marker - start_marker) != (stop_offset - start_offset):
+        if not is_looping and (stop_marker - start_marker) != (
+            stop_offset - start_offset
+        ):
             raise ValueError
         if start_marker >= loop_stop_marker:
             raise ValueError
@@ -252,7 +255,6 @@ class Clip(ClipObject):
     def _get_next_offset(self, offset, local_offset):
         next_local_offset = self._interval_tree.get_offset_after(local_offset)
         if self._is_looping:
-            print("L", offset, local_offset)
             loop_duration = self._loop_stop_marker - self._loop_start_marker
             if local_offset < self._loop_start_marker:
                 if next_local_offset is None:
@@ -265,16 +267,10 @@ class Clip(ClipObject):
             if next_local_offset is not None and next_local_offset < local_offset:
                 next_local_offset += loop_duration
         else:
-            print("!L", offset, local_offset)
             if local_offset >= self._stop_marker:
-                print("  A", self._stop_marker)
                 next_local_offset = None
             elif next_local_offset is None and local_offset < self._stop_marker:
-                print("  B")
                 next_local_offset = self._stop_marker
-            else:
-                print("  C")
-        print("  N", next_local_offset)
         if next_local_offset is None:
             return None
         return offset + (next_local_offset - local_offset)
@@ -334,17 +330,18 @@ class Clip(ClipObject):
         next_offset = self._get_next_offset(offset, local_offset)
 
         if force_stop:
-            start_notes[:] = []
             stop_notes.extend(overlap_notes)
-            overlap_notes[:] = []
             next_offset = None
+            overlap_notes[:] = []
+            start_notes[:] = []
 
         return NoteMoment(
-            offset=offset,
+            local_offset=local_offset,
             next_offset=next_offset,
+            offset=offset,
+            overlap_notes=overlap_notes,
             start_notes=start_notes,
             stop_notes=stop_notes,
-            overlap_notes=overlap_notes,
         )
 
     async def remove_notes(self, notes):
