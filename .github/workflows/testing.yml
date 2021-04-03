@@ -10,6 +10,7 @@ env:
   MYPYPATH: /tmp/typehints
   SC_ORIGIN: https://github.com/josiah-wolf-oberholtzer/supercollider.git
   SC_BRANCH: s-query
+  SUPRIYA_BRANCH: master
 
 jobs:
 
@@ -115,7 +116,7 @@ jobs:
           pkg-config
     - name: Install Tloen
       run: |
-        pip install https://github.com/josiah-wolf-oberholtzer/supriya/archive/refs/heads/pattern-refactor.zip
+        pip install https://github.com/josiah-wolf-oberholtzer/supriya/archive/refs/heads/${SUPRIYA_BRANCH}.zip
         pip install -e .
     - name: Sanity-check Tloen
       run: |
