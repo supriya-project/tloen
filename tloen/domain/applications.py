@@ -18,9 +18,9 @@ import tloen.domain  # noqa
 from ..bases import Event
 from ..pubsub import PubSub
 from .bases import Container
-from .clips import Scene
 from .contexts import Context
 from .controllers import Controller
+from .slots import Scene
 from .transports import Transport
 
 
@@ -87,7 +87,7 @@ class Application(UniqueTreeTuple):
         return controller
 
     async def add_scene(self, *, name=None) -> Scene:
-        from .clips import Slot
+        from .slots import Slot
         from .tracks import Track
 
         scene = Scene(name=name)
