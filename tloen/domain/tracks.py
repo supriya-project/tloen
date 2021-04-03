@@ -1,7 +1,7 @@
 import abc
 import logging
 from types import MappingProxyType
-from typing import Dict, Mapping, Optional, Set, Type, Union
+from typing import Dict, List, Mapping, Optional, Set, Type, Union
 from uuid import UUID, uuid4
 
 from supriya.enums import AddAction, CalculationRate
@@ -17,7 +17,7 @@ from .bases import (
     Mixer,
     Performable,
 )
-from .clips import ClipLaunched, Scene, Slot
+from .clips import Clip, ClipLaunched, Scene, Slot
 from .devices import DeviceObject
 from .parameters import BusParameter, Float, ParameterGroup, ParameterObject
 from .sends import Receive, Send, Target
@@ -556,9 +556,10 @@ class Track(UserTrackObject):
         self._clip_launch_event_id: Optional[int] = None
         self._clip_perform_event_id: Optional[int] = None
         self._pending_slot_index: Optional[int] = None
+        self._clips = Container(label="Clips")
         self._slots = Container(label="Slots")
         self._tracks = TrackContainer("input", AddAction.ADD_AFTER, label="SubTracks")
-        self._mutate(slice(1, 1), [self._slots, self._tracks])
+        self._mutate(slice(1, 1), [self._clips, self._slots, self._tracks])
 
     ### PRIVATE METHODS ###
 
@@ -780,6 +781,12 @@ class Track(UserTrackObject):
             self._tracks._append(track)
             return track
 
+    async def delete_clips(self, *, from_, to):
+        ...
+
+    async def duplicate_clips(self, *, from_, to) -> List[Clip]:
+        ...
+
     @classmethod
     async def group(cls, tracks, *, name=None):
         async with cls.lock(tracks):
@@ -790,6 +797,10 @@ class Track(UserTrackObject):
                 await group_track.add_send(Default())
             group_track.tracks._mutate(slice(None), tracks)
             return group_track
+
+    async def insert_clip(self, *, from_, to) -> Clip:
+        clip = Clip()
+        return clip
 
     async def move(self, container, position):
         async with self.lock([self, container]):
@@ -854,6 +865,10 @@ class Track(UserTrackObject):
             self._update_activation(self)
 
     ### PUBLIC PROPERTIES ###
+
+    @property
+    def clips(self) -> Container:
+        return self._clips
 
     @property
     def default_send_target(self):

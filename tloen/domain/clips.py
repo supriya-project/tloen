@@ -1,6 +1,6 @@
 import dataclasses
 from collections import deque
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 from uuid import UUID, uuid4
 
 from supriya.clocks import TimeUnit
@@ -45,11 +45,10 @@ class Note:
 @dataclasses.dataclass(frozen=True)
 class NoteMoment:
     offset: float = 0.0
-    local_offset: float = 0.0
     next_offset: Optional[float] = None
-    start_notes: Optional[Tuple[Note]] = None
-    stop_notes: Optional[Tuple[Note]] = None
-    overlap_notes: Optional[Tuple[Note]] = None
+    start_notes: List[Note] = dataclasses.field(default_factory=list)
+    stop_notes: List[Note] = dataclasses.field(default_factory=list)
+    overlap_notes: List[Note] = dataclasses.field(default_factory=list)
 
     @property
     def note_on_messages(self):
@@ -85,7 +84,7 @@ class ClipObject(ApplicationObject):
     ### INITIALIZER ###
 
     def at(self, offset, start_delta=0.0, force_stop=False):
-        pass
+        raise NotImplementedError
 
     ### PUBLIC PROPERTIES ###
 
@@ -99,13 +98,38 @@ class Clip(ClipObject):
     ### INITIALIZER ###
 
     def __init__(
-        self, *, duration=4 / 4, is_looping=True, name=None, notes=None, uuid=None
+        self,
+        *,
+        is_looping=True,
+        loop_start_marker=0.0,
+        loop_stop_marker=4 / 4,
+        start_marker=0.0,
+        start_offset=0.0,
+        stop_marker=4 / 4,
+        stop_offset=4 / 4,
+        name=None,
+        notes=None,
+        uuid=None,
     ):
         ClipObject.__init__(self, name=name, uuid=uuid)
-        self._duration = float(duration)
-        self._is_looping = is_looping
+        if loop_stop_marker <= loop_start_marker:
+            raise ValueError
+        if stop_marker <= start_marker:
+            raise ValueError
+        if stop_offset <= start_offset:
+            raise ValueError
+        if not is_looping:
+            stop_marker = start_marker + (stop_offset - start_offset)
+        elif start_marker >= loop_stop_marker:
+            raise ValueError
+        self._is_looping = bool(is_looping)
         self._is_playing = False
-        self._start_delta = 0.0
+        self._loop_start_marker = float(loop_start_marker)
+        self._loop_stop_marker = float(loop_stop_marker)
+        self._start_marker = float(start_marker)
+        self._start_offset = float(start_offset)
+        self._stop_marker = float(stop_marker)
+        self._stop_offset = float(stop_offset)
         self._interval_tree = IntervalTree()
         self._add_notes(notes or [])
 
@@ -242,6 +266,10 @@ class Clip(ClipObject):
             serialized["spec"]["notes"].append(note._serialize())
         return serialized, auxiliary_entities
 
+    def _split(self, offset) -> Tuple["Clip", "Clip"]:
+        if offset < self.start_offset or offset >= self.stop_offset:
+            raise ValueError(offset)
+
     ### PUBLIC METHODS ###
 
     async def add_notes(self, notes):
@@ -249,38 +277,56 @@ class Clip(ClipObject):
         await self._notify()
 
     def at(self, offset, start_delta=0.0, force_stop=False):
-        start_notes, stop_notes, overlap_notes = [], [], []
-        local_offset = loop_local_offset = offset - start_delta
-        count = 0
-        if self.is_looping and local_offset >= 0.0:
-            count, loop_local_offset = divmod(local_offset, self.clip_stop)
-        moment = self._interval_tree.get_moment_at(loop_local_offset)
-        start_notes = moment.start_intervals
-        stop_notes = moment.stop_intervals
-        overlap_notes = moment.overlap_intervals
-        if count and not loop_local_offset:  # at a non-zero loop boundary
-            moment_two = self._interval_tree.get_moment_at(self.duration)
-            stop_notes.extend(moment_two.overlap_intervals)
-            stop_notes.extend(moment_two.stop_intervals)
-        next_offset = self._interval_tree.get_offset_after(loop_local_offset)
-        if next_offset is None and self.is_looping:
-            next_offset = self.duration
-        if next_offset is not None:
-            if self.is_looping:
-                next_offset = min([next_offset, self.duration])
-            next_offset += start_delta + (count * self.duration)
+        local_offset = offset - start_delta + self._start_marker
+
+        if not self.is_looping or local_offset < self._loop_start_marker:
+            print("A")
+            moment = self._interval_tree.get_moment_at(local_offset)
+            start_notes = moment.start_intervals
+            stop_notes = moment.stop_intervals
+            overlap_notes = moment.overlap_intervals
+        else:
+            print("B")
+            loop_duration = self._loop_stop_marker - self._loop_start_marker
+            count, local_offset = divmod(
+                local_offset - self._loop_start_marker, loop_duration
+            )
+            moment = self._interval_tree.get_moment_at(local_offset)
+            start_notes = moment.start_intervals
+            stop_notes = moment.stop_intervals
+            overlap_notes = moment.overlap_intervals
+            if (
+                count and local_offset == self._loop_start_marker
+            ):  # at a non-zero loop boundary
+                moment_two = self._interval_tree.get_moment_at(self._loop_stop_marker)
+                stop_notes.extend(moment_two.overlap_intervals)
+                stop_notes.extend(moment_two.stop_intervals)
+
+        next_offset = next_local_offset = self._interval_tree.get_offset_after(
+            local_offset
+        )
+
+        if next_local_offset is None:
+            if self.is_looping and local_offset < self._loop_stop_marker:
+                next_local_offset = self._loop_stop_marker
+            elif not self.is_looping and local_offset < self._stop_marker:
+                next_local_offset = self._stop_marker
+
+        if next_local_offset is not None:
+            next_offset = offset + (next_local_offset - local_offset)
+
         if force_stop:
             start_notes[:] = []
             stop_notes.extend(overlap_notes)
             overlap_notes[:] = []
             next_offset = None
+
         return NoteMoment(
             offset=offset,
-            local_offset=loop_local_offset,
             next_offset=next_offset,
-            start_notes=start_notes or None,
-            stop_notes=stop_notes or None,
-            overlap_notes=overlap_notes or None,
+            start_notes=start_notes,
+            stop_notes=stop_notes,
+            overlap_notes=overlap_notes,
         )
 
     async def remove_notes(self, notes):
@@ -288,18 +334,6 @@ class Clip(ClipObject):
         await self._notify()
 
     ### PUBLIC PROPERTIES ###
-
-    @property
-    def clip_start(self):
-        return 0.0
-
-    @property
-    def clip_stop(self):
-        return self._duration if self.is_looping else self._notes.stop_offset
-
-    @property
-    def duration(self):
-        return self._duration
 
     @property
     def is_looping(self):
@@ -312,10 +346,6 @@ class Clip(ClipObject):
     @property
     def notes(self):
         return sorted(self._interval_tree)
-
-    @property
-    def clip_delta(self):
-        return self._clip_delta
 
 
 class Slot(ApplicationObject):

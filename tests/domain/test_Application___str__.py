@@ -20,6 +20,7 @@ async def test_1():
                 <Context <?> [?] {context.uuid}>
                     <Tracks [?]>
                         <Track [?] {track.uuid}>
+                            <Clips>
                             <Slots>
                             <SubTracks [?]>
                             <Parameters [?]>
@@ -74,6 +75,7 @@ async def test_2():
                 <Context <RealtimeProvider <AsyncServer: udp://127.0.0.1:{context.provider.server.port}, 8i8o>> [{context.node_proxy.identifier}] {context.uuid}>
                     <Tracks [{context.tracks.node_proxy.identifier}]>
                         <Track [{track.node_proxy.identifier}] {track.uuid}>
+                            <Clips>
                             <Slots>
                             <SubTracks [{track.tracks.node_proxy.identifier}]>
                             <Parameters [1009]>
