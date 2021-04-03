@@ -230,7 +230,6 @@ class Clip(ClipObject):
         if parent is None:
             return True
         clip = cls(
-            duration=data["spec"].get("duration", 4 / 4),
             is_looping=bool(data["spec"].get("is_looping", True)),
             name=data["meta"].get("name"),
             notes=[Note(**note_spec) for note_spec in data["spec"].get("notes", [])],
@@ -269,6 +268,7 @@ class Clip(ClipObject):
     def _split(self, offset) -> Tuple["Clip", "Clip"]:
         if offset < self.start_offset or offset >= self.stop_offset:
             raise ValueError(offset)
+        return (self, self)
 
     ### PUBLIC METHODS ###
 
