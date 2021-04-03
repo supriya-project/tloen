@@ -118,9 +118,9 @@ class Clip(ClipObject):
             raise ValueError
         if stop_offset <= start_offset:
             raise ValueError
-        if not is_looping:
-            stop_marker = start_marker + (stop_offset - start_offset)
-        elif start_marker >= loop_stop_marker:
+        if not is_looping and (stop_marker - start_marker) != (stop_offset - start_offset):
+            raise ValueError
+        if start_marker >= loop_stop_marker:
             raise ValueError
         self._is_looping = bool(is_looping)
         self._is_playing = False
@@ -238,6 +238,47 @@ class Clip(ClipObject):
         parent._append(clip)
         return False
 
+    def _get_local_offset_and_loop_count(self, offset, start_delta=0.0):
+        loop_count = 0
+        local_offset = offset - start_delta + self._start_marker - self._start_offset
+        if self._is_looping and local_offset > self._loop_start_marker:
+            loop_duration = self._loop_stop_marker - self._loop_start_marker
+            loop_count, loop_local_offset = divmod(
+                local_offset - self._loop_start_marker, loop_duration
+            )
+            local_offset = loop_local_offset + self._loop_start_marker
+        return local_offset, loop_count
+
+    def _get_next_offset(self, offset, local_offset):
+        next_local_offset = self._interval_tree.get_offset_after(local_offset)
+        if self._is_looping:
+            print("L", offset, local_offset)
+            loop_duration = self._loop_stop_marker - self._loop_start_marker
+            if local_offset < self._loop_start_marker:
+                if next_local_offset is None:
+                    next_local_offset = self._loop_start_marker
+                next_local_offset = min((next_local_offset, self._loop_start_marker))
+            else:
+                if next_local_offset is None:
+                    next_local_offset = self._loop_stop_marker
+                next_local_offset = min((next_local_offset, self._loop_stop_marker))
+            if next_local_offset is not None and next_local_offset < local_offset:
+                next_local_offset += loop_duration
+        else:
+            print("!L", offset, local_offset)
+            if local_offset >= self._stop_marker:
+                print("  A", self._stop_marker)
+                next_local_offset = None
+            elif next_local_offset is None and local_offset < self._stop_marker:
+                print("  B")
+                next_local_offset = self._stop_marker
+            else:
+                print("  C")
+        print("  N", next_local_offset)
+        if next_local_offset is None:
+            return None
+        return offset + (next_local_offset - local_offset)
+
     async def _notify(self):
         self._debug_tree(self, "Notifying")
         if self.application is None:
@@ -277,43 +318,20 @@ class Clip(ClipObject):
         await self._notify()
 
     def at(self, offset, start_delta=0.0, force_stop=False):
-        local_offset = offset - start_delta + self._start_marker
-
-        if not self.is_looping or local_offset < self._loop_start_marker:
-            print("A")
-            moment = self._interval_tree.get_moment_at(local_offset)
-            start_notes = moment.start_intervals
-            stop_notes = moment.stop_intervals
-            overlap_notes = moment.overlap_intervals
-        else:
-            print("B")
-            loop_duration = self._loop_stop_marker - self._loop_start_marker
-            count, local_offset = divmod(
-                local_offset - self._loop_start_marker, loop_duration
-            )
-            moment = self._interval_tree.get_moment_at(local_offset)
-            start_notes = moment.start_intervals
-            stop_notes = moment.stop_intervals
-            overlap_notes = moment.overlap_intervals
-            if (
-                count and local_offset == self._loop_start_marker
-            ):  # at a non-zero loop boundary
-                moment_two = self._interval_tree.get_moment_at(self._loop_stop_marker)
-                stop_notes.extend(moment_two.overlap_intervals)
-                stop_notes.extend(moment_two.stop_intervals)
-
-        next_offset = next_local_offset = self._interval_tree.get_offset_after(
-            local_offset
+        local_offset, loop_count = self._get_local_offset_and_loop_count(
+            offset, start_delta=start_delta,
         )
 
-        if next_local_offset is None:
-            if self.is_looping and local_offset < self._loop_stop_marker:
-                next_local_offset = self._loop_stop_marker
-            elif not self.is_looping and local_offset < self._stop_marker:
-                next_local_offset = self._stop_marker
+        moment = self._interval_tree.get_moment_at(local_offset)
+        start_notes = moment.start_intervals
+        stop_notes = moment.stop_intervals
+        overlap_notes = moment.overlap_intervals
+        if loop_count and local_offset == self._loop_start_marker:
+            moment_two = self._interval_tree.get_moment_at(self._loop_stop_marker)
+            stop_notes.extend(moment_two.overlap_intervals)
+            stop_notes.extend(moment_two.stop_intervals)
 
-        if next_local_offset is not None:
-            next_offset = offset + (next_local_offset - local_offset)
+        next_offset = self._get_next_offset(offset, local_offset)
 
         if force_stop:
             start_notes[:] = []

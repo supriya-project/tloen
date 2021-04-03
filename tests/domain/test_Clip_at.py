@@ -39,7 +39,7 @@ from tloen.domain import Clip, Note, NoteMoment
             },
         ),
         (
-            (False, 0, 1, -1, 1, 0, 1, [Note(0, 1)]),
+            (False, 0, 1, -1, 1, 0, 2, [Note(0, 1)]),
             {
                 (0.0, 0.0, False): NoteMoment(offset=0.0, next_offset=1.0),
                 (1.0, 0.0, False): NoteMoment(
@@ -123,7 +123,10 @@ from tloen.domain import Clip, Note, NoteMoment
         ),
         (
             (True, 0, 1, -1, 1, 0, 1, [Note(0.25, 0.75)]),
-            {(0.0, 0.0, False): NoteMoment(offset=0.0, next_offset=1.25)},
+            {
+                (0.0, 0.0, False): NoteMoment(offset=0.0, next_offset=1.0),
+                (1.0, 0.0, False): NoteMoment(offset=1.0, next_offset=1.25),
+            },
         ),
         (
             (True, 0, 1, 0.5, 1, 0, 1, [Note(0.25, 0.75)]),
