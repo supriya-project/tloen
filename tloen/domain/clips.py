@@ -1,6 +1,6 @@
 import dataclasses
 from collections import deque
-from typing import List, Optional, Tuple
+from typing import List, Optional
 from uuid import UUID, uuid4
 
 from supriya.clocks import TimeUnit
@@ -135,6 +135,7 @@ class Clip(ClipObject):
         self._stop_offset = float(stop_offset)
         self._interval_tree = IntervalTree()
         self._add_notes(notes or [])
+        self._start_delta = 0.0
 
     ### SPECIAL METHODS ###
 
@@ -301,11 +302,6 @@ class Clip(ClipObject):
         for note in self.notes:
             serialized["spec"]["notes"].append(note._serialize())
         return serialized, auxiliary_entities
-
-    def _split(self, offset) -> Tuple["Clip", "Clip"]:
-        if offset < self.start_offset or offset >= self.stop_offset:
-            raise ValueError(offset)
-        return (self, self)
 
     ### PUBLIC METHODS ###
 
