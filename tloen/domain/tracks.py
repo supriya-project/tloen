@@ -793,10 +793,14 @@ class Track(UserTrackObject):
             group_track.tracks._mutate(slice(None), tracks)
             return group_track
 
-    async def insert_clip(self, *, from_: float, to: float) -> Clip:
-        if to >= from_:
+    async def insert_clip(self, *, from_: float, to: float, **kwargs) -> Clip:
+        if to <= from_:
             raise ValueError
-        clip = Clip(start_offset=from_, stop_offset=to, stop_marker=to - from_,)
+        stop_marker = kwargs.pop("stop_marker", to - from_)
+        clip = Clip(
+            start_offset=from_, stop_offset=to, stop_marker=stop_marker, **kwargs
+        )
+        self._clips._add_clips(clip)
         return clip
 
     async def move(self, container, position):

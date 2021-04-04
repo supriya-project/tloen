@@ -1,10 +1,11 @@
 import dataclasses
 from collections import deque
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from uuid import UUID, uuid4
 
 from supriya.clocks import TimeUnit
 from supriya.intervals import IntervalTree
+from uqbar.objects import new
 
 from tloen.midi import NoteOffMessage, NoteOnMessage
 
@@ -135,7 +136,7 @@ class Clip(ClipObject):
         obj_name = type(self).__name__
         return "\n".join(
             [
-                f"<{obj_name} {self.uuid}>",
+                f"<{obj_name} {self.uuid} {self.start_offset} {self.stop_offset}>",
                 *(f"    {line}" for child in self for line in str(child).splitlines()),
             ]
         )
@@ -295,6 +296,13 @@ class Clip(ClipObject):
             serialized["spec"]["notes"].append(note._serialize())
         return serialized, auxiliary_entities
 
+    def _split(self, offset) -> Tuple["Clip", "Clip"]:
+        if self.start_offset < offset < self.stop_offset:
+            left = new(self, stop_offset=offset)
+            right = new(self, start_offset=offset)
+            return left, right
+        return self, self
+
     ### PUBLIC METHODS ###
 
     async def add_notes(self, notes):
@@ -305,7 +313,6 @@ class Clip(ClipObject):
         local_offset, loop_count = self._get_local_offset_and_loop_count(
             offset, start_delta=start_delta,
         )
-
         moment = self._interval_tree.get_moment_at(local_offset)
         start_notes = moment.start_intervals
         stop_notes = moment.stop_intervals
@@ -314,15 +321,12 @@ class Clip(ClipObject):
             moment_two = self._interval_tree.get_moment_at(self._loop_stop_marker)
             stop_notes.extend(moment_two.overlap_intervals)
             stop_notes.extend(moment_two.stop_intervals)
-
         next_offset = self._get_next_offset(offset, local_offset)
-
         if force_stop:
             stop_notes.extend(overlap_notes)
             next_offset = None
             overlap_notes[:] = []
             start_notes[:] = []
-
         return NoteMoment(
             local_offset=local_offset,
             next_offset=next_offset,
@@ -350,11 +354,67 @@ class Clip(ClipObject):
     def notes(self):
         return sorted(self._interval_tree)
 
+    @property
+    def start_offset(self):
+        return self._start_offset
+
+    @property
+    def stop_offset(self):
+        return self._stop_offset
+
 
 class ClipContainer(Container):
     def __init__(self, label=None):
         Container.__init__(self, label=label)
         self._interval_tree = IntervalTree()
+
+    def _add_clips(self, *clips: Clip):
+        new_clips = list(clips)
+        old_clips = deque()
+        for new_clip in clips:
+            intersection = self._interval_tree.find_intersection(new_clip)
+            if intersection:
+                self._remove_clips(*intersection)
+                old_clips.extend(intersection)
+
+        # loop over both new and old clips, splitting old as necessary
+        new_clips_iterator = iter(clips)
+        new_clip = next(new_clips_iterator)
+        while old_clips:
+            old_clip = old_clips.popleft()
+            # tests...
+            # old clip overlaps beginning of new clip?
+            # old clip entirely inside new clip?
+            # old clip overlaps end of new clip?
+            # old clip (post-splitting) does not overlap new clip?
+            if (old_clip.stop_offset <= new_clip.start_offset) or (
+                new_clip.stop_offset <= old_clip.start_offset
+            ):
+                try:
+                    new_clip = next(new_clips_iterator)
+                except StopIteration:
+                    new_clips.append(old_clip)
+                    break
+            if old_clip.start_offset < new_clip.start_offset:
+                left, right = old_clip._split(new_clip.start_offset)
+                new_clips.append(left)
+                old_clips.appendleft(right)
+                continue
+            if new_clip.stop_offset < old_clip.stop_offset:
+                _, right = old_clip._split(new_clip.stop_offset)
+                old_clips.appendleft(right)
+                continue
+
+        for clip in new_clips:
+            self._append(clip)
+
+        self._interval_tree.update(new_clips)
+        self._children.sort(key=lambda x: x.start_offset)
+
+    def _remove_clips(self, *clips: Clip):
+        for clip in clips:
+            self._interval_tree.remove(clip)
+            self._remove(clip)
 
 
 @dataclasses.dataclass

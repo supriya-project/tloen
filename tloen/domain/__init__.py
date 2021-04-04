@@ -11,7 +11,7 @@ from .clips import Clip, Note, NoteMoment
 from .contexts import Context
 from .controllers import Controller
 from .devices import DeviceIn, DeviceObject, DeviceOut
-from .envelops import Envelope
+from .envelopes import Envelope
 from .instruments import BasicSampler, BasicSynth, Instrument
 from .midieffects import Arpeggiator, Chord
 from .parameters import (
