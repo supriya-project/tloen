@@ -104,7 +104,6 @@ class Transport(ApplicationObject):
         await self._clock.stop()
         async with self.lock([self]):
             await asyncio.gather(*[_._stop() for _ in self._dependencies])
-            await self.application.flush()
             await self.cancel(self._tick_event_id)
         self.application.pubsub.publish(TransportStopped())
 

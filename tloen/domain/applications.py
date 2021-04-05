@@ -41,11 +41,19 @@ class Application(UniqueTreeTuple):
         self._pubsub = pubsub or PubSub()
         self._status = self.Status.OFFLINE
         self._registry: Dict[UUID, "tloen.domain.ApplicationObject"] = {}
+
         # tree objects
         self._contexts = Container(label="Contexts")
         self._controllers = Container(label="Controllers")
         self._scenes = Container(label="Scenes")
         self._transport = Transport()
+
+        # transport
+        self._is_looping = False
+        self._loop_points = (0.0, 4.0)
+        self._tempo = 120.0
+        self._time_signature = (4, 4)
+
         UniqueTreeTuple.__init__(
             self,
             children=[self._transport, self._controllers, self._scenes, self._contexts],
@@ -126,8 +134,25 @@ class Application(UniqueTreeTuple):
         self._status = self.Status.REALTIME
         return self
 
-    async def flush(self):
-        pass
+    @classmethod
+    async def deserialize(cls, data):
+        entities_data = deque(data["entities"])
+        entity_data = entities_data.popleft()
+        application = cls(channel_count=entity_data["spec"].get("channel_count", 2),)
+        await application.transport._deserialize(
+            entity_data["spec"]["transport"], application.transport,
+        )
+        while entities_data:
+            entity_data = entities_data.popleft()
+            if entity_data.get("visits", 0) > 2:
+                continue  # discard it
+            entity_class = getattr(tloen.domain, entity_data["kind"])
+            should_defer = await entity_class._deserialize(entity_data, application)
+            if should_defer:
+                entity_data["visits"] = entity_data.get("visits", 0) + 1
+                entities_data.append(entity_data)
+                continue
+        return application
 
     @classmethod
     async def new(cls, context_count=1, track_count=4, scene_count=8, **kwargs):
@@ -209,7 +234,6 @@ class Application(UniqueTreeTuple):
         with provider.at():
             for context in self.contexts:
                 context._set(provider=provider)
-        # Magic happens here
         with provider.at(provider.session.duration or 10):
             for context in self.contexts:
                 context._set(provider=None)
@@ -258,26 +282,6 @@ class Application(UniqueTreeTuple):
             clean(entity)
         return {"entities": entities}
 
-    @classmethod
-    async def deserialize(cls, data):
-        entities_data = deque(data["entities"])
-        entity_data = entities_data.popleft()
-        application = cls(channel_count=entity_data["spec"].get("channel_count", 2),)
-        await application.transport._deserialize(
-            entity_data["spec"]["transport"], application.transport,
-        )
-        while entities_data:
-            entity_data = entities_data.popleft()
-            if entity_data.get("visits", 0) > 2:
-                continue  # discard it
-            entity_class = getattr(tloen.domain, entity_data["kind"])
-            should_defer = await entity_class._deserialize(entity_data, application)
-            if should_defer:
-                entity_data["visits"] = entity_data.get("visits", 0) + 1
-                entities_data.append(entity_data)
-                continue
-        return application
-
     async def set_channel_count(self, channel_count: int):
         assert 1 <= channel_count <= 8
         self._channel_count = int(channel_count)
@@ -288,8 +292,34 @@ class Application(UniqueTreeTuple):
             else:
                 context._reconcile()
 
+    def set_is_looping(self, is_looping):
+        self._is_looping = bool(is_looping)
+        self.pubsub.publish(ApplicationLoopingChanged(self._is_looping))
+
+    def set_loop_points(self, from_: float, to: float):
+        if to <= from_:
+            raise ValueError
+        elif from_ < 0:
+            raise ValueError
+        self._loop_points = (from_, to)
+        self.pubsub.publish(ApplicationLoopPointsChanged(*self._loop_points))
+
     def set_pubsub(self, pubsub: PubSub):
         self._pubsub = pubsub
+
+    def set_tempo(self, tempo: float):
+        if tempo <= 0.0:
+            raise ValueError
+        self._tempo = tempo
+        self.pubsub.publish(ApplicationTempoChanged(self._tempo))
+
+    def set_time_signature(self, numerator: int, denominator: int):
+        if numerator < 1:
+            raise ValueError
+        if denominator < 1:
+            raise ValueError
+        self._time_signature = (int(numerator), int(denominator))
+        self.pubsub.publish(ApplicationTimeSignatureChanged(*self._time_signature))
 
     ### PUBLIC PROPERTIES ###
 
@@ -304,6 +334,14 @@ class Application(UniqueTreeTuple):
     @property
     def controllers(self) -> Tuple[Controller, ...]:
         return self._controllers
+
+    @property
+    def is_looping(self) -> bool:
+        return self._is_looping
+
+    @property
+    def loop_points(self) -> Tuple[float, float]:
+        return self._loop_points
 
     @property
     def parent(self) -> None:
@@ -330,6 +368,14 @@ class Application(UniqueTreeTuple):
     @property
     def status(self):
         return self._status
+
+    @property
+    def tempo(self) -> float:
+        return self._tempo
+
+    @property
+    def time_signature(self) -> Tuple[int, int]:
+        return self._time_signature
 
     @property
     def transport(self) -> Transport:
@@ -364,3 +410,25 @@ class ApplicationQuit(Event):
 @dataclasses.dataclass
 class ApplicationStatusRefreshed(Event):
     status: StatusResponse
+
+
+@dataclasses.dataclass
+class ApplicationLoopingChanged(Event):
+    is_looping: bool
+
+
+@dataclasses.dataclass
+class ApplicationLoopPointsChanged(Event):
+    from_: float
+    to: float
+
+
+@dataclasses.dataclass
+class ApplicationTempoChanged(Event):
+    tempo: float
+
+
+@dataclasses.dataclass
+class ApplicationTimeSignatureChanged(Event):
+    numerator: int
+    denominator: int
