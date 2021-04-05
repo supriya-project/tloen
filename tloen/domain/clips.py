@@ -1,6 +1,6 @@
 import dataclasses
 from collections import deque
-from typing import List, Optional, Tuple
+from typing import Deque, List, Optional, Tuple
 from uuid import UUID, uuid4
 
 from supriya.clocks import TimeUnit
@@ -298,8 +298,8 @@ class Clip(ClipObject):
 
     def _split(self, offset) -> Tuple["Clip", "Clip"]:
         if self.start_offset < offset < self.stop_offset:
-            left = new(self, stop_offset=offset)
-            right = new(self, start_offset=offset)
+            left = new(self, stop_offset=offset, uuid=uuid4())
+            right = new(self, start_offset=offset, uuid=uuid4())
             return left, right
         return self, self
 
@@ -370,23 +370,17 @@ class ClipContainer(Container):
 
     def _add_clips(self, *clips: Clip):
         new_clips = list(clips)
-        old_clips = deque()
+        old_clips: Deque[Clip] = deque()
         for new_clip in clips:
             intersection = self._interval_tree.find_intersection(new_clip)
             if intersection:
                 self._remove_clips(*intersection)
                 old_clips.extend(intersection)
-
         # loop over both new and old clips, splitting old as necessary
         new_clips_iterator = iter(clips)
         new_clip = next(new_clips_iterator)
         while old_clips:
             old_clip = old_clips.popleft()
-            # tests...
-            # old clip overlaps beginning of new clip?
-            # old clip entirely inside new clip?
-            # old clip overlaps end of new clip?
-            # old clip (post-splitting) does not overlap new clip?
             if (old_clip.stop_offset <= new_clip.start_offset) or (
                 new_clip.stop_offset <= old_clip.start_offset
             ):
@@ -404,10 +398,8 @@ class ClipContainer(Container):
                 _, right = old_clip._split(new_clip.stop_offset)
                 old_clips.appendleft(right)
                 continue
-
         for clip in new_clips:
             self._append(clip)
-
         self._interval_tree.update(new_clips)
         self._children.sort(key=lambda x: x.start_offset)
 
