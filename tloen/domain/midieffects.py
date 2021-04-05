@@ -6,6 +6,7 @@ from supriya.clocks import TempoClock, TimeUnit
 from tloen.midi import NoteOffMessage, NoteOnMessage
 
 from .devices import DeviceObject
+from .enums import EventType
 
 
 class Chord(DeviceObject):
@@ -114,7 +115,7 @@ class Arpeggiator(DeviceObject):
             return
         self._callback_id = await self.transport.cue(
             self._transport_note_on_callback,
-            event_type=self.transport.EventType.MIDI_PERFORM,
+            event_type=EventType.MIDI_PERFORM,
             quantization=self._quantization,
         )
 

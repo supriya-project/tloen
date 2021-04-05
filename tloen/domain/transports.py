@@ -1,28 +1,15 @@
 import asyncio
-import dataclasses
-import enum
 from typing import Dict, Optional, Set, Tuple
 
-from supriya.clocks import AsyncTempoClock, Moment
+from supriya.clocks import AsyncTempoClock
 
-from ..bases import Event
 from .bases import ApplicationObject
+from .enums import ApplicationStatus
+from .events import TransportStarted, TransportStopped, TransportTicked
 from .parameters import ParameterGroup, ParameterObject
 
 
 class Transport(ApplicationObject):
-
-    ### CLASS VARIABLES ###
-
-    class EventType(enum.IntEnum):
-        CHANGE = 0
-        SCHEDULE = 1
-        MIDI_PERFORM = 2
-        DEVICE_NOTE_OFF = 3
-        DEVICE_NOTE_ON = 4
-        CLIP_LAUNCH = 5
-        CLIP_EDIT = 6
-        CLIP_PERFORM = 7
 
     ### INITIALIZER ###
 
@@ -71,7 +58,7 @@ class Transport(ApplicationObject):
     async def perform(self, midi_messages):
         if (
             self.application is None
-            or self.application.status != self.application.Status.REALTIME
+            or self.application.status != ApplicationStatus.REALTIME
         ):
             return
         self._debug_tree(
@@ -120,18 +107,3 @@ class Transport(ApplicationObject):
     @property
     def parameters(self):
         return self._parameters
-
-
-@dataclasses.dataclass
-class TransportStarted(Event):
-    pass
-
-
-@dataclasses.dataclass
-class TransportStopped(Event):
-    pass
-
-
-@dataclasses.dataclass
-class TransportTicked(Event):  # TODO: ClipView needs to know start delta
-    moment: Moment

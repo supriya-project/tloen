@@ -1,6 +1,5 @@
 import asyncio
 import dataclasses
-import enum
 import pathlib
 from collections import deque
 from types import MappingProxyType
@@ -8,6 +7,7 @@ from typing import Deque, Dict, Mapping, Optional, Tuple, Union
 from uuid import UUID
 
 import yaml
+from supriya.clocks import AsyncTempoClock, OfflineTempoClock
 from supriya.commands import StatusResponse
 from supriya.nonrealtime import Session
 from supriya.providers import Provider
@@ -20,18 +20,12 @@ from ..pubsub import PubSub
 from .bases import Container
 from .contexts import Context
 from .controllers import Controller
+from .enums import ApplicationStatus
 from .slots import Scene
 from .transports import Transport
 
 
 class Application(UniqueTreeTuple):
-
-    ### CLASS VARIABLES ###
-
-    class Status(enum.IntEnum):
-        OFFLINE = 0
-        REALTIME = 1
-        NONREALTIME = 2
 
     ### INITIALIZER ###
 
@@ -39,7 +33,7 @@ class Application(UniqueTreeTuple):
         # non-tree objects
         self._channel_count = int(channel_count)
         self._pubsub = pubsub or PubSub()
-        self._status = self.Status.OFFLINE
+        self._status = ApplicationStatus.OFFLINE
         self._registry: Dict[UUID, "tloen.domain.ApplicationObject"] = {}
 
         # tree objects
@@ -49,6 +43,7 @@ class Application(UniqueTreeTuple):
         self._transport = Transport()
 
         # transport
+        self._clock: Union[AsyncTempoClock, OfflineTempoClock] = AsyncTempoClock()
         self._is_looping = False
         self._loop_points = (0.0, 4.0)
         self._tempo = 120.0
@@ -81,11 +76,11 @@ class Application(UniqueTreeTuple):
     ### PUBLIC METHODS ###
 
     async def add_context(self, *, name=None):
-        if self.status == self.Status.NONREALTIME:
+        if self.status == ApplicationStatus.NONREALTIME:
             raise ValueError
         context = Context(name=name)
         self._contexts._append(context)
-        if self.status == self.Status.REALTIME:
+        if self.status == ApplicationStatus.REALTIME:
             await context._boot()
         return context
 
@@ -112,12 +107,13 @@ class Application(UniqueTreeTuple):
         return scene
 
     async def boot(self, provider=None, retries=3):
-        if self.status == self.Status.REALTIME:
+        if self.status == ApplicationStatus.REALTIME:
             return
-        elif self.status == self.Status.NONREALTIME:
+        elif self.status == ApplicationStatus.NONREALTIME:
             raise ValueError
         elif not self.contexts:
             raise RuntimeError("No contexts to boot")
+        self._clock = AsyncTempoClock()
         self.pubsub.publish(ApplicationBooting())
         await asyncio.gather(
             *[
@@ -131,7 +127,7 @@ class Application(UniqueTreeTuple):
         self.pubsub.publish(
             ApplicationStatusRefreshed(self.primary_context.provider.server.status,)
         )
-        self._status = self.Status.REALTIME
+        self._status = ApplicationStatus.REALTIME
         return self
 
     @classmethod
@@ -166,17 +162,17 @@ class Application(UniqueTreeTuple):
         return application
 
     async def perform(self, midi_messages, moment=None):
-        if self.status != self.Status.REALTIME:
+        if self.status != ApplicationStatus.REALTIME:
             return
         for context in self.contexts:
             await context.perform(midi_messages, moment=moment)
 
     async def quit(self):
-        if self.status == self.Status.OFFLINE:
+        if self.status == ApplicationStatus.OFFLINE:
             return
-        elif self.status == self.Status.NONREALTIME:
+        elif self.status == ApplicationStatus.NONREALTIME:
             raise ValueError
-        self._status = self.Status.OFFLINE
+        self._status = ApplicationStatus.OFFLINE
         self.pubsub.publish(ApplicationQuitting())
         await self.transport.stop()
         for context in self.contexts:
@@ -200,7 +196,7 @@ class Application(UniqueTreeTuple):
             else:
                 self._contexts._remove(context)
         if not len(self):
-            self._status = self.Status.OFFLINE
+            self._status = ApplicationStatus.OFFLINE
 
     def remove_controllers(self, *controllers: Controller):
         if not all(controller in self.controllers for controller in controllers):
@@ -227,9 +223,10 @@ class Application(UniqueTreeTuple):
                 track.slots._remove(track.slots[index])
 
     async def render(self) -> Session:
-        if self.status != self.Status.OFFLINE:
+        if self.status != ApplicationStatus.OFFLINE:
             raise ValueError
-        self._status == self.Status.NONREALTIME
+        self._status == ApplicationStatus.NONREALTIME
+        self._clock = OfflineTempoClock()
         provider = Provider.nonrealtime()
         with provider.at():
             for context in self.contexts:
@@ -237,7 +234,7 @@ class Application(UniqueTreeTuple):
         with provider.at(provider.session.duration or 10):
             for context in self.contexts:
                 context._set(provider=None)
-        self._status = self.Status.OFFLINE
+        self._status = ApplicationStatus.OFFLINE
         return provider.session
 
     @classmethod
@@ -326,6 +323,10 @@ class Application(UniqueTreeTuple):
     @property
     def channel_count(self) -> int:
         return self._channel_count
+
+    @property
+    def clock(self) -> Union[AsyncTempoClock, OfflineTempoClock]:
+        return self._clock
 
     @property
     def contexts(self) -> Tuple[Context, ...]:

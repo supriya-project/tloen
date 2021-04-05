@@ -5,6 +5,7 @@ from supriya.providers import RealtimeProvider
 from uqbar.strings import normalize
 
 from tloen.domain import Application
+from tloen.domain.enums import ApplicationStatus
 
 
 @pytest.mark.asyncio
@@ -22,7 +23,7 @@ async def test_boot_1():
     await asyncio.sleep(
         0.01
     )  # wait one cycle because node creation waits on synthdef loading
-    assert application.status == Application.Status.REALTIME
+    assert application.status == ApplicationStatus.REALTIME
     assert isinstance(context.provider, RealtimeProvider)
     assert context.provider.server.is_running
     assert str(await context.provider.server.query()) == normalize(

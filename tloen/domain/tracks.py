@@ -19,6 +19,7 @@ from .bases import (
 )
 from .clips import Clip, ClipContainer
 from .devices import DeviceObject
+from .enums import EventType
 from .parameters import BusParameter, Float, ParameterGroup, ParameterObject
 from .sends import Receive, Send, Target
 from .slots import ClipLaunched, Scene, Slot
@@ -617,7 +618,7 @@ class Track(UserTrackObject):
         self._clip_perform_event_id = await self.transport.schedule(
             self._clip_perform_callback,
             schedule_at=clock_context.desired_moment.offset,
-            event_type=self.transport.EventType.CLIP_PERFORM,
+            event_type=EventType.CLIP_PERFORM,
         )
         self.application.pubsub.publish(
             ClipLaunched(clip_uuid=self.slots[self._active_slot_index].clip.uuid),
@@ -680,7 +681,7 @@ class Track(UserTrackObject):
             self._clip_launch_callback,
             # TODO: Get default quantization from transport itself
             quantization=quantization or "1M",
-            event_type=transport.EventType.CLIP_LAUNCH,
+            event_type=EventType.CLIP_LAUNCH,
         )
         if not transport.is_running:
             await transport.start()
