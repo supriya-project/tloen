@@ -1,8 +1,6 @@
 import asyncio
 from typing import Dict, Optional, Set, Tuple
 
-from supriya.clocks import AsyncTempoClock
-
 from .bases import ApplicationObject
 from .enums import ApplicationStatus
 from .events import TransportStarted, TransportStopped, TransportTicked
@@ -17,7 +15,6 @@ class Transport(ApplicationObject):
         ApplicationObject.__init__(self)
         self._parameter_group = ParameterGroup()
         self._parameters: Dict[str, ParameterObject] = {}
-        self._clock = AsyncTempoClock()
         self._dependencies: Set[ApplicationObject] = set()
         self._mutate(slice(None), [self._parameter_group])
         self._tick_event_id = None
@@ -38,8 +35,8 @@ class Transport(ApplicationObject):
         return {
             "kind": type(self).__name__,
             "spec": {
-                "tempo": self._clock.beats_per_minute,
-                "time_signature": list(self._clock.time_signature),
+                "tempo": self.application.clock.beats_per_minute,
+                "time_signature": list(self.application.clock.time_signature),
             },
         }
 
@@ -50,10 +47,14 @@ class Transport(ApplicationObject):
     ### PUBLIC METHODS ###
 
     async def cue(self, *args, **kwargs) -> int:
-        return self._clock.cue(*args, **kwargs)
+        if self.application is None:
+            raise ValueError
+        return self.application.clock.cue(*args, **kwargs)
 
     async def cancel(self, *args, **kwargs) -> Optional[Tuple]:
-        return self._clock.cancel(*args, **kwargs)
+        if self.application is None:
+            raise ValueError
+        return self.application.clock.cancel(*args, **kwargs)
 
     async def perform(self, midi_messages):
         if (
@@ -69,26 +70,34 @@ class Transport(ApplicationObject):
             await self.start()
 
     async def reschedule(self, *args, **kwargs) -> Optional[int]:
-        return self._clock.reschedule(*args, **kwargs)
+        if self.application is None:
+            raise ValueError
+        return self.application.clock.reschedule(*args, **kwargs)
 
     async def schedule(self, *args, **kwargs) -> int:
-        return self._clock.schedule(*args, **kwargs)
+        if self.application is None:
+            raise ValueError
+        return self.application.clock.schedule(*args, **kwargs)
 
     async def set_tempo(self, beats_per_minute: float):
-        self._clock.change(beats_per_minute=beats_per_minute)
+        if self.application is None:
+            raise ValueError
+        self.application.clock.change(beats_per_minute=beats_per_minute)
 
     async def set_time_signature(self, numerator, denominator):
-        self._clock.change(time_signature=[numerator, denominator])
+        if self.application is None:
+            raise ValueError
+        self.application.clock.change(time_signature=[numerator, denominator])
 
     async def start(self):
         async with self.lock([self]):
             self._tick_event_id = await self.cue(self._tick_callback)
             await asyncio.gather(*[_._start() for _ in self._dependencies])
-            await self._clock.start()
+            await self.application.clock.start()
         self.application.pubsub.publish(TransportStarted())
 
     async def stop(self):
-        await self._clock.stop()
+        await self.application.clock.stop()
         async with self.lock([self]):
             await asyncio.gather(*[_._stop() for _ in self._dependencies])
             await self.cancel(self._tick_event_id)
@@ -98,11 +107,11 @@ class Transport(ApplicationObject):
 
     @property
     def clock(self):
-        return self._clock
+        return self.application.clock
 
     @property
     def is_running(self):
-        return self._clock.is_running
+        return self.application.clock.is_running
 
     @property
     def parameters(self):

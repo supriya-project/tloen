@@ -36,10 +36,10 @@ async def application(mocker, monkeypatch):
     await application.quit()
 
 
-async def set_time(new_time, transport):
+async def set_time(new_time, clock):
     logger.info(f"Setting transport time to {new_time}")
-    transport._clock.get_current_time.return_value = new_time
-    transport._clock._event.set()
+    clock.get_current_time.return_value = new_time
+    clock._event.set()
     await asyncio.sleep(0.01)
 
 
@@ -52,7 +52,7 @@ async def test_1(mocker, application):
     await track.slots[0].clip.add_notes([Note(0, 1, pitch=60)])
     with track.devices[0].capture() as transcript:
         await track.slots[0].fire()
-        await set_time(0, application.transport)
+        await set_time(0, application.clock)
     assert track.slots[0].clip.is_playing
     assert list(transcript) == [
         Instrument.CaptureEntry(
@@ -69,7 +69,7 @@ async def test_1(mocker, application):
         )
     ]
     with track.devices[0].capture() as transcript:
-        await set_time(0.5, application.transport)
+        await set_time(0.5, application.clock)
     assert list(transcript) == []
     with track.devices[0].capture() as transcript:
         await track.slots[0].clip.remove_notes(track.slots[0].clip.notes)
@@ -99,14 +99,14 @@ async def test_2(mocker, application):
     track = application.contexts[0].tracks[0]
     with track.devices[0].capture() as transcript:
         await track.slots[0].fire()
-        await set_time(0, application.transport)
+        await set_time(0, application.clock)
         assert list(transcript) == []
     with track.devices[0].capture() as transcript:
         await track.slots[0].clip.add_notes([Note(0.75, 1, pitch=60)])
-        await set_time(0, application.transport)
+        await set_time(0, application.clock)
         assert list(transcript) == []
     with track.devices[0].capture() as transcript:
-        await set_time(2.0, application.transport)
+        await set_time(2.0, application.clock)
         assert list(transcript) == [
             Instrument.CaptureEntry(
                 moment=Moment(

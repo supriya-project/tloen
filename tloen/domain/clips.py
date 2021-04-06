@@ -277,7 +277,7 @@ class Clip(ClipObject):
             track = self.parent.parent.parent
             await self.transport.reschedule(
                 track._clip_perform_event_id,
-                schedule_at=self.transport._clock.get_current_time(),
+                schedule_at=self.application.clock.get_current_time(),
                 time_unit=TimeUnit.SECONDS,
             )
         self.application.pubsub.publish(ClipModified(self.uuid))

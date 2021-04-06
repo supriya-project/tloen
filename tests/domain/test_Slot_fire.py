@@ -42,10 +42,10 @@ async def application(mocker, monkeypatch):
     await application.quit()
 
 
-async def set_time(new_time, transport):
+async def set_time(new_time, clock):
     logger.info(f"Setting transport time to {new_time}")
-    transport._clock.get_current_time.return_value = new_time
-    transport._clock._event.set()
+    clock.get_current_time.return_value = new_time
+    clock._event.set()
     await asyncio.sleep(0.01)
 
 
@@ -57,8 +57,8 @@ async def test_1(mocker, application):
     """
     with application.contexts[0].tracks[0].devices[0].capture() as transcript:
         await application.contexts[0].tracks[0].slots[0].fire()
-        assert application.transport.is_running
-        await set_time(0, application.transport)
+        assert application.clock.is_running
+        await set_time(0, application.clock)
     assert list(transcript) == [
         Instrument.CaptureEntry(
             moment=Moment(
@@ -99,8 +99,8 @@ async def test_2(mocker, application):
     """
     with application.contexts[0].tracks[0].devices[0].capture() as transcript:
         await application.contexts[0].tracks[0].slots[0].fire()
-        assert application.transport.is_running
-        await set_time(0, application.transport)
+        assert application.clock.is_running
+        await set_time(0, application.clock)
     assert list(transcript) == [
         Instrument.CaptureEntry(
             moment=Moment(
