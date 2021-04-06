@@ -275,7 +275,7 @@ class Clip(ClipObject):
             return
         if self.is_playing:
             track = self.parent.parent.parent
-            await self.transport.reschedule(
+            self.application.clock.reschedule(
                 track._clip_perform_event_id,
                 schedule_at=self.application.clock.get_current_time(),
                 time_unit=TimeUnit.SECONDS,

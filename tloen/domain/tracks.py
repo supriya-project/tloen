@@ -614,8 +614,8 @@ class Track(UserTrackObject):
         ].clip._start_delta = clock_context.desired_moment.offset
         # schedule perform callback
         if self._clip_perform_event_id is not None:
-            await self.transport.cancel(self._clip_perform_event_id)
-        self._clip_perform_event_id = await self.transport.schedule(
+            self.application.clock.cancel(self._clip_perform_event_id)
+        self._clip_perform_event_id = self.application.clock.schedule(
             self._clip_perform_callback,
             schedule_at=clock_context.desired_moment.offset,
             event_type=EventType.CLIP_PERFORM,
@@ -675,16 +675,15 @@ class Track(UserTrackObject):
             return
         self._debug_tree(self, "Firing", suffix=str(slot_index))
         self._pending_slot_index = slot_index
-        transport = self.transport
-        await transport.cancel(self._clip_launch_event_id)
-        self._clip_launch_event_id = await transport.cue(
+        self.application.clock.cancel(self._clip_launch_event_id)
+        self._clip_launch_event_id = self.application.clock.cue(
             self._clip_launch_callback,
             # TODO: Get default quantization from transport itself
             quantization=quantization or "1M",
             event_type=EventType.CLIP_LAUNCH,
         )
-        if not transport.is_running:
-            await transport.start()
+        if not self.application.clock.is_running:
+            await self.application.transport.start()
 
     @classmethod
     def _recurse_activation(

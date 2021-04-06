@@ -13,7 +13,6 @@ async def test_1():
         f"""
         <Application [OFFLINE] {hex(id(application))}>
             <Transport>
-                <Parameters [?]>
             <Controllers>
             <Scenes>
             <Contexts>
@@ -68,7 +67,6 @@ async def test_2():
         f"""
         <Application [REALTIME] {hex(id(application))}>
             <Transport>
-                <Parameters [?]>
             <Controllers>
             <Scenes>
             <Contexts>

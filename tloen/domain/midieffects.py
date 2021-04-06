@@ -113,7 +113,7 @@ class Arpeggiator(DeviceObject):
         self._debug_tree(self, "Starting")
         if self._callback_id is not None:
             return
-        self._callback_id = await self.transport.cue(
+        self._callback_id = self.application.clock.cue(
             self._transport_note_on_callback,
             event_type=EventType.MIDI_PERFORM,
             quantization=self._quantization,
@@ -122,7 +122,7 @@ class Arpeggiator(DeviceObject):
     async def _stop(self):
         self._debug_tree(self, "Stopping")
         if self._callback_id is not None:
-            await self.transport.cancel(self._callback_id)
+            self.application.clock.cancel(self._callback_id)
         self._callback_id = None
 
     async def _transport_note_on_callback(self, clock_context, **kwargs):
@@ -151,7 +151,7 @@ class Arpeggiator(DeviceObject):
                 self._update_captures(
                     moment=clock_context.desired_moment, message=message, label="O"
                 )
-            await self.transport.schedule(
+            self.application.clock.schedule(
                 self._transport_note_off_callback,
                 schedule_at=clock_context.desired_moment.offset
                 + (delta * self._duration_scale),
