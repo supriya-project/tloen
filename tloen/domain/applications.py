@@ -21,6 +21,7 @@ from .bases import Container
 from .contexts import Context
 from .controllers import Controller
 from .enums import ApplicationStatus
+from .events import TransportTicked
 from .slots import Scene
 from .transports import Transport
 
@@ -65,6 +66,13 @@ class Application(UniqueTreeTuple):
         )
 
     ### PRIVATE METHODS ###
+
+    async def _callback_midi_perform(self, clock_context, midi_message):
+        await self.perform([midi_message], moment=clock_context.current_moment)
+
+    def _callback_transport_tick(self, clock_context):
+        self.pubsub.publish(TransportTicked(clock_context.desired_moment))
+        return 1 / clock_context.desired_moment.time_signature[1] / 4
 
     def _set_items(self, new_items, old_items, start_index, stop_index):
         UniqueTreeTuple._set_items(self, new_items, old_items, start_index, stop_index)

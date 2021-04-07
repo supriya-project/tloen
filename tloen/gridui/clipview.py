@@ -7,8 +7,8 @@ from monome import GridApp, GridBuffer
 from ..bases import Event
 from ..commands.clips import ToggleClipNote
 from ..domain.clips import Clip, ClipModified
+from ..domain.events import TransportStopped, TransportTicked
 from ..domain.slots import ClipLaunched
-from ..domain.transports import TransportStopped, TransportTicked
 from ..pubsub import PubSub
 
 

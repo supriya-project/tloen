@@ -3,7 +3,7 @@ from typing import Set
 
 from .bases import ApplicationObject
 from .enums import ApplicationStatus
-from .events import TransportStarted, TransportStopped, TransportTicked
+from .events import TransportStarted, TransportStopped
 
 
 class Transport(ApplicationObject):
@@ -14,17 +14,6 @@ class Transport(ApplicationObject):
         ApplicationObject.__init__(self)
         self._dependencies: Set[ApplicationObject] = set()
         self._tick_event_id = None
-
-    ### PRIVATE METHODS ###
-
-    async def _application_perform_callback(self, clock_context, midi_message):
-        await self.application.perform(
-            [midi_message], moment=clock_context.current_moment
-        )
-
-    def _tick_callback(self, clock_context):
-        self.application.pubsub.publish(TransportTicked(clock_context.desired_moment))
-        return 1 / clock_context.desired_moment.time_signature[1] / 4
 
     ### PUBLIC METHODS ###
 
@@ -38,14 +27,16 @@ class Transport(ApplicationObject):
             self, "Perform", suffix=repr([type(_).__name__ for _ in midi_messages])
         )
         self.application.clock.schedule(
-            self._application_perform_callback, args=midi_messages
+            self.application._callback_midi_perform, args=midi_messages
         )
-        if not self.is_running:
+        if not self.application.clock.is_running:
             await self.start()
 
     async def start(self):
         async with self.lock([self]):
-            self._tick_event_id = self.application.clock.cue(self._tick_callback)
+            self._tick_event_id = self.application.clock.cue(
+                self.application._callback_transport_tick
+            )
             await asyncio.gather(*[_._start() for _ in self._dependencies])
             await self.application.clock.start()
         self.application.pubsub.publish(TransportStarted())
@@ -56,13 +47,3 @@ class Transport(ApplicationObject):
             await asyncio.gather(*[_._stop() for _ in self._dependencies])
             self.application.clock.cancel(self._tick_event_id)
         self.application.pubsub.publish(TransportStopped())
-
-    ### PUBLIC PROPERTIES ###
-
-    @property
-    def clock(self):
-        return self.application.clock
-
-    @property
-    def is_running(self):
-        return self.application.clock.is_running
