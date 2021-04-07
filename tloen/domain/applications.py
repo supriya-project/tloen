@@ -3,7 +3,7 @@ import dataclasses
 import pathlib
 from collections import deque
 from types import MappingProxyType
-from typing import Deque, Dict, Mapping, Optional, Tuple, Union
+from typing import Deque, Dict, Mapping, Optional, Set, Tuple, Union
 from uuid import UUID
 
 import yaml
@@ -17,13 +17,12 @@ import tloen.domain  # noqa
 
 from ..bases import Event
 from ..pubsub import PubSub
-from .bases import Container
+from .bases import ApplicationObject, Container
 from .contexts import Context
 from .controllers import Controller
 from .enums import ApplicationStatus
-from .events import TransportTicked
+from .events import TransportStarted, TransportStopped, TransportTicked
 from .slots import Scene
-from .transports import Transport
 
 
 class Application(UniqueTreeTuple):
@@ -41,18 +40,18 @@ class Application(UniqueTreeTuple):
         self._contexts = Container(label="Contexts")
         self._controllers = Container(label="Controllers")
         self._scenes = Container(label="Scenes")
-        self._transport = Transport()
 
         # transport
         self._clock: Union[AsyncTempoClock, OfflineTempoClock] = AsyncTempoClock()
+        self._clock_dependencies: Set[ApplicationObject] = set()
         self._is_looping = False
         self._loop_points = (0.0, 4.0)
         self._tempo = 120.0
+        self._tick_event_id: Optional[int] = None
         self._time_signature = (4, 4)
 
         UniqueTreeTuple.__init__(
-            self,
-            children=[self._transport, self._controllers, self._scenes, self._contexts],
+            self, children=[self._controllers, self._scenes, self._contexts],
         )
 
     ### SPECIAL METHODS ###
@@ -183,7 +182,7 @@ class Application(UniqueTreeTuple):
             return
         self.clock.schedule(self._callback_midi_perform, args=[midi_messages])
         if not self.clock.is_running:
-            await self.transport.start()
+            await self.start()
 
     async def quit(self):
         if self.status == ApplicationStatus.OFFLINE:
@@ -192,7 +191,7 @@ class Application(UniqueTreeTuple):
             raise ValueError
         self._status = ApplicationStatus.OFFLINE
         self.pubsub.publish(ApplicationQuitting())
-        await self.transport.stop()
+        await self.stop()
         for context in self.contexts:
             provider = context.provider
             async with provider.at():
@@ -254,6 +253,18 @@ class Application(UniqueTreeTuple):
                 context._set(provider=None)
         self._status = ApplicationStatus.OFFLINE
         return provider.session
+
+    async def start(self):
+        self._tick_event_id = self.clock.cue(self._callback_transport_tick)
+        await asyncio.gather(*[_._start() for _ in self._clock_dependencies])
+        await self.clock.start()
+        self.pubsub.publish(TransportStarted())
+
+    async def stop(self):
+        await self.clock.stop()
+        await asyncio.gather(*[_._stop() for _ in self._clock_dependencies])
+        self.clock.cancel(self._tick_event_id)
+        self.pubsub.publish(TransportStopped())
 
     @classmethod
     def load(cls, file_path: Union[str, pathlib.Path]):
@@ -396,10 +407,6 @@ class Application(UniqueTreeTuple):
     @property
     def time_signature(self) -> Tuple[int, int]:
         return self._time_signature
-
-    @property
-    def transport(self) -> Transport:
-        return self._transport
 
 
 @dataclasses.dataclass

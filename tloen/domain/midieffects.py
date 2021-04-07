@@ -68,11 +68,11 @@ class Arpeggiator(DeviceObject):
 
     def _applicate(self, new_application):
         DeviceObject._applicate(self, new_application)
-        new_application.transport._dependencies.add(self)
+        new_application._clock_dependencies.add(self)
 
     def _deapplicate(self, old_application):
         DeviceObject._applicate(self, old_application)
-        old_application.transport._dependencies.remove(self)
+        old_application._clock_dependencies.remove(self)
 
     def _handle_note_off(self, moment, midi_message):
         self._input_pitches.pop(midi_message.pitch)

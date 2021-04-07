@@ -37,7 +37,7 @@ async def test_2():
     assert track_one.parent is None
     assert track_one.provider is None
     assert track_two.application is context.application
-    assert track_two.graph_order == (3, 0, 0, 0, 2, 0)
+    assert track_two.graph_order == (2, 0, 0, 0, 2, 0)
     assert track_two.parent is parent.tracks
     assert track_two.provider is context.provider
 
@@ -61,7 +61,7 @@ async def test_3():
     assert track_one.parent is None
     assert track_one.provider is None
     assert track_two.application is context.application
-    assert track_two.graph_order == (3, 0, 0, 0, 2, 0)
+    assert track_two.graph_order == (2, 0, 0, 0, 2, 0)
     assert track_two.parent is parent.tracks
     assert track_two.provider is context.provider
     assert len(transcript.sent_messages) == 1

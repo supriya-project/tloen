@@ -12,7 +12,6 @@ async def test_1():
     assert str(application) == normalize(
         f"""
         <Application [OFFLINE] {hex(id(application))}>
-            <Transport>
             <Controllers>
             <Scenes>
             <Contexts>
@@ -66,7 +65,6 @@ async def test_2():
     assert str(application) == normalize(
         f"""
         <Application [REALTIME] {hex(id(application))}>
-            <Transport>
             <Controllers>
             <Scenes>
             <Contexts>

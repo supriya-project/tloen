@@ -683,7 +683,7 @@ class Track(UserTrackObject):
             event_type=EventType.CLIP_LAUNCH,
         )
         if not self.application.clock.is_running:
-            await self.application.transport.start()
+            await self.application.start()
 
     @classmethod
     def _recurse_activation(

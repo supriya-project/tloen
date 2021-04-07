@@ -17,7 +17,7 @@ async def test_1(track):
     assert isinstance(clip, Clip)
     assert list(track.clips) == [clip]
     assert clip.application is track.application
-    assert clip.graph_order == (3, 0, 0, 0, 0, 0)
+    assert clip.graph_order == (2, 0, 0, 0, 0, 0)
     assert clip.parent is track.clips
 
 

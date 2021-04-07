@@ -7,9 +7,9 @@ from ..bases import Command
 class ToggleTransport(Command):
     async def do(self, harness):
         if harness.domain_application.clock.is_running:
-            await harness.domain_application.transport.stop()
+            await harness.domain_application.stop()
         else:
-            await harness.domain_application.transport.start()
+            await harness.domain_application.start()
 
 
 @dataclasses.dataclass

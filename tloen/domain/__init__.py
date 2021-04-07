@@ -33,7 +33,6 @@ from .tracks import (
     TrackObject,
     UserTrackObject,
 )
-from .transports import Transport
 
 __all__ = [
     "Allocatable",
@@ -81,7 +80,6 @@ __all__ = [
     "TrackContainer",
     "TrackObject",
     "Transfer",
-    "Transport",
     "UserTrackObject",
     "Reverb",
 ]
