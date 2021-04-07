@@ -135,8 +135,11 @@ class Application(UniqueTreeTuple):
         entities_data = deque(data["entities"])
         entity_data = entities_data.popleft()
         application = cls(channel_count=entity_data["spec"].get("channel_count", 2),)
-        await application.transport._deserialize(
-            entity_data["spec"]["transport"], application.transport,
+        application.clock.change(
+            beats_per_minute=entity_data["spec"]["tempo"],
+            time_signature=[
+                int(x) for x in entity_data["spec"]["time_signature"].split("/")
+            ],
         )
         while entities_data:
             entity_data = entities_data.popleft()
@@ -261,7 +264,8 @@ class Application(UniqueTreeTuple):
                 "channel_count": self.channel_count,
                 "contexts": [],
                 "scenes": [],
-                "transport": self.transport._serialize(),
+                "tempo": self.clock.beats_per_minute,
+                "time_signature": "/".join(str(_) for _ in self.clock.time_signature),
             },
         }
         entities = [serialized]

@@ -22,21 +22,6 @@ class Transport(ApplicationObject):
             [midi_message], moment=clock_context.current_moment
         )
 
-    @classmethod
-    async def _deserialize(cls, data, transport_object):
-        # await transport_object.set_tempo(data["spec"]["tempo"])
-        # await transport_object.set_time_signature(*data["spec"]["time_signature"])
-        pass
-
-    def _serialize(self):
-        return {
-            "kind": type(self).__name__,
-            "spec": {
-                "tempo": self.application.clock.beats_per_minute,
-                "time_signature": list(self.application.clock.time_signature),
-            },
-        }
-
     def _tick_callback(self, clock_context):
         self.application.pubsub.publish(TransportTicked(clock_context.desired_moment))
         return 1 / clock_context.desired_moment.time_signature[1] / 4
