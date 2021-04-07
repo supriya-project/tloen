@@ -30,7 +30,7 @@ async def test_timeout(application):
     await application["Track"].add_device(Arpeggiator)
     await application["Track"].add_device(Instrument, synthdef=default)
     await asyncio.sleep(0.1)
-    await application.transport.perform([NoteOnMessage(pitch=60, velocity=100)])
+    await application.perform([NoteOnMessage(pitch=60, velocity=100)])
     await asyncio.sleep(1.0)
 
 
@@ -63,7 +63,7 @@ async def test_midi_transcript_1(mocker, application):
     arpeggiator = await application["Track"].add_device(Arpeggiator)
     assert not application.clock.is_running
     with arpeggiator.capture() as transcript:
-        await application.transport.perform([NoteOnMessage(pitch=60, velocity=100)])
+        await application.perform([NoteOnMessage(pitch=60, velocity=100)])
         assert application.clock.is_running
         await asyncio.sleep(0.1)
         time_mock.return_value = 0.5
@@ -89,9 +89,9 @@ async def test_midi_transcript_2(mocker, application):
     arpeggiator = await application["Track"].add_device(Arpeggiator)
     assert not application.clock.is_running
     with arpeggiator.capture() as transcript:
-        await application.transport.perform([NoteOnMessage(pitch=60, velocity=100)])
-        await application.transport.perform([NoteOnMessage(pitch=63, velocity=100)])
-        await application.transport.perform([NoteOnMessage(pitch=67, velocity=100)])
+        await application.perform([NoteOnMessage(pitch=60, velocity=100)])
+        await application.perform([NoteOnMessage(pitch=63, velocity=100)])
+        await application.perform([NoteOnMessage(pitch=67, velocity=100)])
         assert application.clock.is_running
         await asyncio.sleep(0.1)
         time_mock.return_value = 0.5

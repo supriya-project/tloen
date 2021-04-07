@@ -2,7 +2,6 @@ import asyncio
 from typing import Set
 
 from .bases import ApplicationObject
-from .enums import ApplicationStatus
 from .events import TransportStarted, TransportStopped
 
 
@@ -16,21 +15,6 @@ class Transport(ApplicationObject):
         self._tick_event_id = None
 
     ### PUBLIC METHODS ###
-
-    async def perform(self, midi_messages):
-        if (
-            self.application is None
-            or self.application.status != ApplicationStatus.REALTIME
-        ):
-            return
-        self._debug_tree(
-            self, "Perform", suffix=repr([type(_).__name__ for _ in midi_messages])
-        )
-        self.application.clock.schedule(
-            self.application._callback_midi_perform, args=midi_messages
-        )
-        if not self.application.clock.is_running:
-            await self.start()
 
     async def start(self):
         async with self.lock([self]):

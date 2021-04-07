@@ -67,8 +67,14 @@ class Application(UniqueTreeTuple):
 
     ### PRIVATE METHODS ###
 
-    async def _callback_midi_perform(self, clock_context, midi_message):
-        await self.perform([midi_message], moment=clock_context.current_moment)
+    async def _callback_midi_perform(self, clock_context, midi_messages):
+        from .bases import ApplicationObject
+
+        ApplicationObject._debug_tree(
+            self, "Perform", suffix=repr([type(_).__name__ for _ in midi_messages])
+        )
+        for context in self.contexts:
+            await context.perform(midi_messages, moment=clock_context.current_moment)
 
     def _callback_transport_tick(self, clock_context):
         self.pubsub.publish(TransportTicked(clock_context.desired_moment))
@@ -172,11 +178,12 @@ class Application(UniqueTreeTuple):
             await application.add_scene()
         return application
 
-    async def perform(self, midi_messages, moment=None):
+    async def perform(self, midi_messages):
         if self.status != ApplicationStatus.REALTIME:
             return
-        for context in self.contexts:
-            await context.perform(midi_messages, moment=moment)
+        self.clock.schedule(self._callback_midi_perform, args=[midi_messages])
+        if not self.clock.is_running:
+            await self.transport.start()
 
     async def quit(self):
         if self.status == ApplicationStatus.OFFLINE:
