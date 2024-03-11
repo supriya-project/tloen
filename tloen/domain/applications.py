@@ -348,6 +348,15 @@ class Application(UniqueTreeTuple):
         self._time_signature = (int(numerator), int(denominator))
         self.pubsub.publish(ApplicationTimeSignatureChanged(*self._time_signature))
 
+    async def play(self):
+        pass
+
+    async def seek(self, offset):
+        pass
+
+    async def stop(self):
+        pass
+
     ### PUBLIC PROPERTIES ###
 
     @property
