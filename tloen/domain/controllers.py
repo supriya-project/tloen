@@ -64,9 +64,8 @@ class Controller(ApplicationObject):
             )
         if message is None:
             return
-        transport = self.transport
-        if transport is not None:
-            transport.perform([message])
+        if self.application is not None:
+            self.application.perform([message])
 
     def _reconcile(self, **kwargs):
         difference = self._get_state_difference()

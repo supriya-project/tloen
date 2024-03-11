@@ -223,13 +223,6 @@ class ApplicationObject(UniqueTreeTuple):
     def provider(self):
         return None
 
-    @property
-    def transport(self):
-        application = self.application
-        if application is None:
-            return None
-        return application.transport
-
 
 class Allocatable(ApplicationObject):
 
@@ -692,12 +685,6 @@ class Performable(ApplicationObject):
 
     def capture(self):
         return self.Capture(self)
-
-    async def flush(self, moment=None):
-        async with self.lock(
-            [self], seconds=moment.seconds if moment is not None else None
-        ):
-            pass
 
     async def perform(self, midi_messages, moment=None):
         self._debug_tree(

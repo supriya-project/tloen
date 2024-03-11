@@ -6,8 +6,9 @@ from monome import GridApp, GridBuffer
 
 from ..bases import Event
 from ..commands.clips import ToggleClipNote
-from ..domain.clips import Clip, ClipLaunched, ClipModified
-from ..domain.transports import TransportStopped, TransportTicked
+from ..domain.clips import Clip, ClipModified
+from ..domain.events import TransportStopped, TransportTicked
+from ..domain.slots import ClipLaunched
 from ..pubsub import PubSub
 
 
@@ -83,12 +84,13 @@ class ClipView(GridApp):
     def _handle_transport_ticked(self, event: TransportTicked):
         self.buffers["tick"].led_all(0)
         if self.clip is not None:
-            clip_offset = (
-                event.moment.offset - self.clip._start_delta
-            ) % self.clip.duration
-            column = int(clip_offset * 16)
-            if column < 16:
-                self.buffers["tick"].led_level_col(column, 0, [2] * 8)
+            pass
+            # clip_offset = (
+            #    event.moment.offset - self.clip._start_delta
+            # ) % self.clip.duration
+            # column = int(clip_offset * 16)
+            # if column < 16:
+            #    self.buffers["tick"].led_level_col(column, 0, [2] * 8)
         self._render()
 
     def on_grid_disconnect(self):

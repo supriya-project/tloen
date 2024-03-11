@@ -30,7 +30,7 @@ async def test_timeout(application):
     await application["Track"].add_device(Arpeggiator)
     await application["Track"].add_device(Instrument, synthdef=default)
     await asyncio.sleep(0.1)
-    await application.transport.perform([NoteOnMessage(pitch=60, velocity=100)])
+    await application.perform([NoteOnMessage(pitch=60, velocity=100)])
     await asyncio.sleep(1.0)
 
 
@@ -58,13 +58,13 @@ async def test_osc_transcript(application):
 
 @pytest.mark.asyncio
 async def test_midi_transcript_1(mocker, application):
-    time_mock = mocker.patch.object(application.transport._clock, "get_current_time")
+    time_mock = mocker.patch.object(application.clock, "get_current_time")
     time_mock.return_value = 0.0
     arpeggiator = await application["Track"].add_device(Arpeggiator)
-    assert not application.transport.is_running
+    assert not application.clock.is_running
     with arpeggiator.capture() as transcript:
-        await application.transport.perform([NoteOnMessage(pitch=60, velocity=100)])
-        assert application.transport.is_running
+        await application.perform([NoteOnMessage(pitch=60, velocity=100)])
+        assert application.clock.is_running
         await asyncio.sleep(0.1)
         time_mock.return_value = 0.5
         await asyncio.sleep(0.1)
@@ -84,15 +84,15 @@ async def test_midi_transcript_1(mocker, application):
 
 @pytest.mark.asyncio
 async def test_midi_transcript_2(mocker, application):
-    time_mock = mocker.patch.object(application.transport._clock, "get_current_time")
+    time_mock = mocker.patch.object(application.clock, "get_current_time")
     time_mock.return_value = 0.0
     arpeggiator = await application["Track"].add_device(Arpeggiator)
-    assert not application.transport.is_running
+    assert not application.clock.is_running
     with arpeggiator.capture() as transcript:
-        await application.transport.perform([NoteOnMessage(pitch=60, velocity=100)])
-        await application.transport.perform([NoteOnMessage(pitch=63, velocity=100)])
-        await application.transport.perform([NoteOnMessage(pitch=67, velocity=100)])
-        assert application.transport.is_running
+        await application.perform([NoteOnMessage(pitch=60, velocity=100)])
+        await application.perform([NoteOnMessage(pitch=63, velocity=100)])
+        await application.perform([NoteOnMessage(pitch=67, velocity=100)])
+        assert application.clock.is_running
         await asyncio.sleep(0.1)
         time_mock.return_value = 0.5
         await asyncio.sleep(0.1)

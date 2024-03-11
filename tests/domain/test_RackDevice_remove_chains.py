@@ -62,7 +62,7 @@ async def test_3():
     assert chain_one.parent is None
     assert chain_one.provider is None
     assert chain_two.application is context.application
-    assert chain_two.graph_order == (3, 0, 0, 0, 5, 0, 1, 0)
+    assert chain_two.graph_order == (2, 0, 0, 0, 6, 0, 1, 0)
     assert chain_two.parent is rack_device.chains
     assert chain_two.provider is None
 
@@ -87,6 +87,6 @@ async def test_4():
     assert chain_one.parent is None
     assert chain_one.provider is None
     assert chain_two.application is context.application
-    assert chain_two.graph_order == (3, 0, 0, 0, 5, 0, 1, 0)
+    assert chain_two.graph_order == (2, 0, 0, 0, 6, 0, 1, 0)
     assert chain_two.parent is rack_device.chains
     assert chain_two.provider is context.provider

@@ -2,6 +2,7 @@ import pytest
 from uqbar.strings import normalize
 
 from tloen.domain import Application
+from tloen.domain.enums import ApplicationStatus
 
 
 @pytest.mark.asyncio
@@ -10,7 +11,7 @@ async def test_1():
     context = await application.add_context()
     await context.add_track()
     session = await application.render()
-    assert application.status == Application.Status.OFFLINE
+    assert application.status == ApplicationStatus.OFFLINE
     assert session.to_strings() == normalize(
         """
         0.0:

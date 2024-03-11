@@ -1,15 +1,16 @@
 import dataclasses
 from collections import deque
-from typing import Optional, Tuple
+from typing import Deque, List, Optional, Tuple
 from uuid import UUID, uuid4
 
 from supriya.clocks import TimeUnit
 from supriya.intervals import IntervalTree
+from uqbar.objects import new
 
 from tloen.midi import NoteOffMessage, NoteOnMessage
 
 from ..bases import Event
-from .bases import ApplicationObject
+from .bases import ApplicationObject, Container
 
 
 @dataclasses.dataclass(frozen=True, order=True)
@@ -47,9 +48,9 @@ class NoteMoment:
     offset: float = 0.0
     local_offset: float = 0.0
     next_offset: Optional[float] = None
-    start_notes: Optional[Tuple[Note]] = None
-    stop_notes: Optional[Tuple[Note]] = None
-    overlap_notes: Optional[Tuple[Note]] = None
+    start_notes: List[Note] = dataclasses.field(default_factory=list)
+    stop_notes: List[Note] = dataclasses.field(default_factory=list)
+    overlap_notes: List[Note] = dataclasses.field(default_factory=list)
 
     @property
     def note_on_messages(self):
@@ -66,14 +67,6 @@ class NoteMoment:
         ]
 
 
-class Envelope:
-    """
-    An automation envelope, in a Clip or Timeline.
-    """
-
-    pass
-
-
 class ClipObject(ApplicationObject):
 
     ### INITIALIZER ###
@@ -85,7 +78,7 @@ class ClipObject(ApplicationObject):
     ### INITIALIZER ###
 
     def at(self, offset, start_delta=0.0, force_stop=False):
-        pass
+        raise NotImplementedError
 
     ### PUBLIC PROPERTIES ###
 
@@ -99,15 +92,43 @@ class Clip(ClipObject):
     ### INITIALIZER ###
 
     def __init__(
-        self, *, duration=4 / 4, is_looping=True, name=None, notes=None, uuid=None
+        self,
+        *,
+        is_looping=True,
+        loop_start_marker=0.0,
+        loop_stop_marker=4 / 4,
+        start_marker=0.0,
+        start_offset=0.0,
+        stop_marker=4 / 4,
+        stop_offset=4 / 4,
+        name=None,
+        notes=None,
+        uuid=None,
     ):
         ClipObject.__init__(self, name=name, uuid=uuid)
-        self._duration = float(duration)
-        self._is_looping = is_looping
-        self._is_playing = False
-        self._start_delta = 0.0
+        if loop_stop_marker <= loop_start_marker:
+            raise ValueError
+        if stop_marker <= start_marker:
+            raise ValueError
+        if stop_offset <= start_offset:
+            raise ValueError
+        if not is_looping and (stop_marker - start_marker) != (
+            stop_offset - start_offset
+        ):
+            raise ValueError
+        if start_marker >= loop_stop_marker:
+            raise ValueError
+        self._loop_start_marker = float(loop_start_marker)
+        self._loop_stop_marker = float(loop_stop_marker)
+        self._start_marker = float(start_marker)
+        self._start_offset = float(start_offset)
+        self._stop_marker = float(stop_marker)
+        self._stop_offset = float(stop_offset)
         self._interval_tree = IntervalTree()
         self._add_notes(notes or [])
+        self._is_looping = bool(is_looping)
+        self._is_playing = False
+        self._start_delta = 0.0
 
     ### SPECIAL METHODS ###
 
@@ -115,7 +136,7 @@ class Clip(ClipObject):
         obj_name = type(self).__name__
         return "\n".join(
             [
-                f"<{obj_name} {self.uuid}>",
+                f"<{obj_name} {self.uuid} {self.start_offset} {self.stop_offset}>",
                 *(f"    {line}" for child in self for line in str(child).splitlines()),
             ]
         )
@@ -206,7 +227,6 @@ class Clip(ClipObject):
         if parent is None:
             return True
         clip = cls(
-            duration=data["spec"].get("duration", 4 / 4),
             is_looping=bool(data["spec"].get("is_looping", True)),
             name=data["meta"].get("name"),
             notes=[Note(**note_spec) for note_spec in data["spec"].get("notes", [])],
@@ -215,15 +235,49 @@ class Clip(ClipObject):
         parent._append(clip)
         return False
 
+    def _get_local_offset_and_loop_count(self, offset, start_delta=0.0):
+        loop_count = 0
+        local_offset = offset - start_delta + self._start_marker - self._start_offset
+        if self._is_looping and local_offset > self._loop_start_marker:
+            loop_duration = self._loop_stop_marker - self._loop_start_marker
+            loop_count, loop_local_offset = divmod(
+                local_offset - self._loop_start_marker, loop_duration
+            )
+            local_offset = loop_local_offset + self._loop_start_marker
+        return local_offset, loop_count
+
+    def _get_next_offset(self, offset, local_offset):
+        next_local_offset = self._interval_tree.get_offset_after(local_offset)
+        if self._is_looping:
+            loop_duration = self._loop_stop_marker - self._loop_start_marker
+            if local_offset < self._loop_start_marker:
+                if next_local_offset is None:
+                    next_local_offset = self._loop_start_marker
+                next_local_offset = min((next_local_offset, self._loop_start_marker))
+            else:
+                if next_local_offset is None:
+                    next_local_offset = self._loop_stop_marker
+                next_local_offset = min((next_local_offset, self._loop_stop_marker))
+            if next_local_offset is not None and next_local_offset < local_offset:
+                next_local_offset += loop_duration
+        else:
+            if local_offset >= self._stop_marker:
+                next_local_offset = None
+            elif next_local_offset is None and local_offset < self._stop_marker:
+                next_local_offset = self._stop_marker
+        if next_local_offset is None:
+            return None
+        return offset + (next_local_offset - local_offset)
+
     async def _notify(self):
         self._debug_tree(self, "Notifying")
         if self.application is None:
             return
         if self.is_playing:
             track = self.parent.parent.parent
-            await self.transport.reschedule(
+            self.application.clock.reschedule(
                 track._clip_perform_event_id,
-                schedule_at=self.transport._clock.get_current_time(),
+                schedule_at=self.application.clock.get_current_time(),
                 time_unit=TimeUnit.SECONDS,
             )
         self.application.pubsub.publish(ClipModified(self.uuid))
@@ -242,6 +296,13 @@ class Clip(ClipObject):
             serialized["spec"]["notes"].append(note._serialize())
         return serialized, auxiliary_entities
 
+    def _split(self, offset) -> Tuple["Clip", "Clip"]:
+        if self.start_offset < offset < self.stop_offset:
+            left = new(self, stop_offset=offset, uuid=uuid4())
+            right = new(self, start_offset=offset, uuid=uuid4())
+            return left, right
+        return self, self
+
     ### PUBLIC METHODS ###
 
     async def add_notes(self, notes):
@@ -249,38 +310,30 @@ class Clip(ClipObject):
         await self._notify()
 
     def at(self, offset, start_delta=0.0, force_stop=False):
-        start_notes, stop_notes, overlap_notes = [], [], []
-        local_offset = loop_local_offset = offset - start_delta
-        count = 0
-        if self.is_looping and local_offset >= 0.0:
-            count, loop_local_offset = divmod(local_offset, self.clip_stop)
-        moment = self._interval_tree.get_moment_at(loop_local_offset)
+        local_offset, loop_count = self._get_local_offset_and_loop_count(
+            offset, start_delta=start_delta,
+        )
+        moment = self._interval_tree.get_moment_at(local_offset)
         start_notes = moment.start_intervals
         stop_notes = moment.stop_intervals
         overlap_notes = moment.overlap_intervals
-        if count and not loop_local_offset:  # at a non-zero loop boundary
-            moment_two = self._interval_tree.get_moment_at(self.duration)
+        if loop_count and local_offset == self._loop_start_marker:
+            moment_two = self._interval_tree.get_moment_at(self._loop_stop_marker)
             stop_notes.extend(moment_two.overlap_intervals)
             stop_notes.extend(moment_two.stop_intervals)
-        next_offset = self._interval_tree.get_offset_after(loop_local_offset)
-        if next_offset is None and self.is_looping:
-            next_offset = self.duration
-        if next_offset is not None:
-            if self.is_looping:
-                next_offset = min([next_offset, self.duration])
-            next_offset += start_delta + (count * self.duration)
+        next_offset = self._get_next_offset(offset, local_offset)
         if force_stop:
-            start_notes[:] = []
             stop_notes.extend(overlap_notes)
-            overlap_notes[:] = []
             next_offset = None
+            overlap_notes[:] = []
+            start_notes[:] = []
         return NoteMoment(
-            offset=offset,
-            local_offset=loop_local_offset,
+            local_offset=local_offset,
             next_offset=next_offset,
-            start_notes=start_notes or None,
-            stop_notes=stop_notes or None,
-            overlap_notes=overlap_notes or None,
+            offset=offset,
+            overlap_notes=overlap_notes,
+            start_notes=start_notes,
+            stop_notes=stop_notes,
         )
 
     async def remove_notes(self, notes):
@@ -288,18 +341,6 @@ class Clip(ClipObject):
         await self._notify()
 
     ### PUBLIC PROPERTIES ###
-
-    @property
-    def clip_start(self):
-        return 0.0
-
-    @property
-    def clip_stop(self):
-        return self._duration if self.is_looping else self._notes.stop_offset
-
-    @property
-    def duration(self):
-        return self._duration
 
     @property
     def is_looping(self):
@@ -314,166 +355,60 @@ class Clip(ClipObject):
         return sorted(self._interval_tree)
 
     @property
-    def clip_delta(self):
-        return self._clip_delta
-
-
-class Slot(ApplicationObject):
-
-    ### INITIALIZER ###
-
-    def __init__(self, *, name=None, uuid=None):
-        ApplicationObject.__init__(self, name=name)
-        self._uuid = uuid or uuid4()
-
-    ### SPECIAL METHODS ###
-
-    def __str__(self):
-        obj_name = type(self).__name__
-        return "\n".join(
-            [
-                f"<{obj_name} {self.uuid}>",
-                *(f"    {line}" for child in self for line in str(child).splitlines()),
-            ]
-        )
-
-    ### PRIVATE METHODS ###
-
-    @classmethod
-    async def _deserialize(cls, data, application) -> bool:
-        parent_uuid = UUID(data["meta"]["parent"])
-        parent = application.registry.get(parent_uuid)
-        if parent is None:
-            return True
-        slot = cls(uuid=UUID(data["meta"]["uuid"]))
-        parent.slots._append(slot)
-        return False
-
-    def _serialize(self):
-        serialized, auxiliary_entities = super()._serialize()
-        if self.clip is not None:
-            serialized["spec"]["clip"] = str(self.clip.uuid)
-            clip_entities = self.clip._serialize()
-            auxiliary_entities.append(clip_entities[0])
-            auxiliary_entities.extend(clip_entities[1])
-        return serialized, auxiliary_entities
-
-    async def _set_clip(self, clip):
-        async with self.lock([self]):
-            if clip is self.clip:
-                return
-            if self.clip is not None:
-                self._remove(self.clip)
-            if clip is not None:
-                self._append(clip)
-
-    ### PUBLIC METHODS ###
-
-    async def add_clip(self, *, notes=None, is_looping=True):
-        clip = Clip(notes=notes, is_looping=is_looping)
-        await self._set_clip(clip)
-        return clip
-
-    async def duplicate_clip(self):
-        pass
-
-    async def fire(self):
-        if not self.application:
-            return
-        track = self.track
-        if track is None:
-            return
-        await track._fire(self.parent.index(self))
-        self.application.pubsub.publish(SlotFired(self.uuid))
-
-    async def move_clip(self, slot):
-        await slot._set_clip(self.clip)
-
-    async def remove_clip(self):
-        await self._set_clip(None)
-
-    ### PUBLIC PROPERTIES ###
+    def start_offset(self):
+        return self._start_offset
 
     @property
-    def clip(self):
-        try:
-            return self[0]
-        except IndexError:
-            return None
-
-    @property
-    def track(self):
-        from .tracks import Track
-
-        for parent in self.parentage[1:]:
-            if isinstance(parent, Track):
-                return parent
-        return None
-
-    @property
-    def uuid(self):
-        return self._uuid
+    def stop_offset(self):
+        return self._stop_offset
 
 
-class Scene(ApplicationObject):
+class ClipContainer(Container):
+    def __init__(self, label=None):
+        Container.__init__(self, label=label)
+        self._interval_tree = IntervalTree()
 
-    ### INITIALIZER ###
+    def _add_clips(self, *clips: Clip):
+        new_clips = list(clips)
+        old_clips: Deque[Clip] = deque()
+        for new_clip in clips:
+            intersection = self._interval_tree.find_intersection(new_clip)
+            if intersection:
+                self._remove_clips(*intersection)
+                old_clips.extend(intersection)
+        # loop over both new and old clips, splitting old as necessary
+        new_clips_iterator = iter(clips)
+        new_clip = next(new_clips_iterator)
+        while old_clips:
+            old_clip = old_clips.popleft()
+            if (old_clip.stop_offset <= new_clip.start_offset) or (
+                new_clip.stop_offset <= old_clip.start_offset
+            ):
+                try:
+                    new_clip = next(new_clips_iterator)
+                except StopIteration:
+                    new_clips.append(old_clip)
+                    break
+            if old_clip.start_offset < new_clip.start_offset:
+                left, right = old_clip._split(new_clip.start_offset)
+                new_clips.append(left)
+                old_clips.appendleft(right)
+                continue
+            if new_clip.stop_offset < old_clip.stop_offset:
+                _, right = old_clip._split(new_clip.stop_offset)
+                old_clips.appendleft(right)
+                continue
+        for clip in new_clips:
+            self._append(clip)
+        self._interval_tree.update(new_clips)
+        self._children.sort(key=lambda x: x.start_offset)
 
-    def __init__(self, *, name=None, uuid=None):
-        ApplicationObject.__init__(self, name=name)
-        self._uuid = uuid or uuid4()
-
-    ### SPECIAL METHODS ###
-
-    def __str__(self):
-        obj_name = type(self).__name__
-        return "\n".join(
-            [
-                f"<{obj_name} {self.uuid}>",
-                *(f"    {line}" for child in self for line in str(child).splitlines()),
-            ]
-        )
-
-    ### PRIVATE METHODS ###
-
-    @classmethod
-    async def _deserialize(cls, data, application) -> bool:
-        scene = cls(uuid=UUID(data["meta"]["uuid"]))
-        application.scenes._append(scene)
-        return False
-
-    ### PUBLIC METHODS ###
-
-    def delete(self):
-        pass
-
-    def duplicate(self):
-        pass
-
-    async def fire(self):
-        pass
-
-    ### PUBLIC PROPERTIES ###
-
-    @property
-    def uuid(self):
-        return self._uuid
-
-
-class Timeline:
-    pass
-
-
-@dataclasses.dataclass
-class ClipLaunched(Event):
-    clip_uuid: UUID
+    def _remove_clips(self, *clips: Clip):
+        for clip in clips:
+            self._interval_tree.remove(clip)
+            self._remove(clip)
 
 
 @dataclasses.dataclass
 class ClipModified(Event):
     clip_uuid: UUID
-
-
-@dataclasses.dataclass
-class SlotFired(Event):
-    slot_uuid: UUID

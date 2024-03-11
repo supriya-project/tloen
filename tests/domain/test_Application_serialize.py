@@ -24,13 +24,8 @@ async def test_1(serialization_application):
             - {context.uuid}
             scenes:
             - {scene.uuid}
-            transport:
-              kind: Transport
-              spec:
-                tempo: 120.0
-                time_signature:
-                - 4
-                - 4
+            tempo: 120.0
+            time_signature: 4/4
         - kind: Scene
           meta:
             uuid: {scene.uuid}

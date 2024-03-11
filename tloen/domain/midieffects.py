@@ -6,6 +6,7 @@ from supriya.clocks import TempoClock, TimeUnit
 from tloen.midi import NoteOffMessage, NoteOnMessage
 
 from .devices import DeviceObject
+from .enums import EventType
 
 
 class Chord(DeviceObject):
@@ -67,11 +68,11 @@ class Arpeggiator(DeviceObject):
 
     def _applicate(self, new_application):
         DeviceObject._applicate(self, new_application)
-        new_application.transport._dependencies.add(self)
+        new_application._clock_dependencies.add(self)
 
     def _deapplicate(self, old_application):
         DeviceObject._applicate(self, old_application)
-        old_application.transport._dependencies.remove(self)
+        old_application._clock_dependencies.remove(self)
 
     def _handle_note_off(self, moment, midi_message):
         self._input_pitches.pop(midi_message.pitch)
@@ -112,16 +113,16 @@ class Arpeggiator(DeviceObject):
         self._debug_tree(self, "Starting")
         if self._callback_id is not None:
             return
-        self._callback_id = await self.transport.cue(
+        self._callback_id = self.application.clock.cue(
             self._transport_note_on_callback,
-            event_type=self.transport.EventType.MIDI_PERFORM,
+            event_type=EventType.MIDI_PERFORM,
             quantization=self._quantization,
         )
 
     async def _stop(self):
         self._debug_tree(self, "Stopping")
         if self._callback_id is not None:
-            await self.transport.cancel(self._callback_id)
+            self.application.clock.cancel(self._callback_id)
         self._callback_id = None
 
     async def _transport_note_on_callback(self, clock_context, **kwargs):
@@ -150,7 +151,7 @@ class Arpeggiator(DeviceObject):
                 self._update_captures(
                     moment=clock_context.desired_moment, message=message, label="O"
                 )
-            await self.transport.schedule(
+            self.application.clock.schedule(
                 self._transport_note_off_callback,
                 schedule_at=clock_context.desired_moment.offset
                 + (delta * self._duration_scale),

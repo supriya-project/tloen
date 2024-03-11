@@ -1,13 +1,13 @@
 import asyncio
 import dataclasses
-import enum
 import pathlib
 from collections import deque
 from types import MappingProxyType
-from typing import Deque, Dict, Mapping, Optional, Tuple, Union
+from typing import Deque, Dict, Mapping, Optional, Set, Tuple, Union
 from uuid import UUID
 
 import yaml
+from supriya.clocks import AsyncTempoClock, OfflineTempoClock
 from supriya.commands import StatusResponse
 from supriya.nonrealtime import Session
 from supriya.providers import Provider
@@ -17,21 +17,15 @@ import tloen.domain  # noqa
 
 from ..bases import Event
 from ..pubsub import PubSub
-from .bases import Container
-from .clips import Scene
+from .bases import ApplicationObject, Container
 from .contexts import Context
 from .controllers import Controller
-from .transports import Transport
+from .enums import ApplicationStatus
+from .events import TransportStarted, TransportStopped, TransportTicked
+from .slots import Scene
 
 
 class Application(UniqueTreeTuple):
-
-    ### CLASS VARIABLES ###
-
-    class Status(enum.IntEnum):
-        OFFLINE = 0
-        REALTIME = 1
-        NONREALTIME = 2
 
     ### INITIALIZER ###
 
@@ -39,16 +33,25 @@ class Application(UniqueTreeTuple):
         # non-tree objects
         self._channel_count = int(channel_count)
         self._pubsub = pubsub or PubSub()
-        self._status = self.Status.OFFLINE
+        self._status = ApplicationStatus.OFFLINE
         self._registry: Dict[UUID, "tloen.domain.ApplicationObject"] = {}
+
         # tree objects
         self._contexts = Container(label="Contexts")
         self._controllers = Container(label="Controllers")
         self._scenes = Container(label="Scenes")
-        self._transport = Transport()
+
+        # transport
+        self._clock: Union[AsyncTempoClock, OfflineTempoClock] = AsyncTempoClock()
+        self._clock_dependencies: Set[ApplicationObject] = set()
+        self._is_looping = False
+        self._loop_points = (0.0, 4.0)
+        self._tempo = 120.0
+        self._tick_event_id: Optional[int] = None
+        self._time_signature = (4, 4)
+
         UniqueTreeTuple.__init__(
-            self,
-            children=[self._transport, self._controllers, self._scenes, self._contexts],
+            self, children=[self._controllers, self._scenes, self._contexts],
         )
 
     ### SPECIAL METHODS ###
@@ -63,6 +66,19 @@ class Application(UniqueTreeTuple):
 
     ### PRIVATE METHODS ###
 
+    async def _callback_midi_perform(self, clock_context, midi_messages):
+        from .bases import ApplicationObject
+
+        ApplicationObject._debug_tree(
+            self, "Perform", suffix=repr([type(_).__name__ for _ in midi_messages])
+        )
+        for context in self.contexts:
+            await context.perform(midi_messages, moment=clock_context.current_moment)
+
+    def _callback_transport_tick(self, clock_context):
+        self.pubsub.publish(TransportTicked(clock_context.desired_moment))
+        return 1 / clock_context.desired_moment.time_signature[1] / 4
+
     def _set_items(self, new_items, old_items, start_index, stop_index):
         UniqueTreeTuple._set_items(self, new_items, old_items, start_index, stop_index)
         for item in new_items:
@@ -73,11 +89,11 @@ class Application(UniqueTreeTuple):
     ### PUBLIC METHODS ###
 
     async def add_context(self, *, name=None):
-        if self.status == self.Status.NONREALTIME:
+        if self.status == ApplicationStatus.NONREALTIME:
             raise ValueError
         context = Context(name=name)
         self._contexts._append(context)
-        if self.status == self.Status.REALTIME:
+        if self.status == ApplicationStatus.REALTIME:
             await context._boot()
         return context
 
@@ -87,7 +103,7 @@ class Application(UniqueTreeTuple):
         return controller
 
     async def add_scene(self, *, name=None) -> Scene:
-        from .clips import Slot
+        from .slots import Slot
         from .tracks import Track
 
         scene = Scene(name=name)
@@ -104,12 +120,13 @@ class Application(UniqueTreeTuple):
         return scene
 
     async def boot(self, provider=None, retries=3):
-        if self.status == self.Status.REALTIME:
+        if self.status == ApplicationStatus.REALTIME:
             return
-        elif self.status == self.Status.NONREALTIME:
+        elif self.status == ApplicationStatus.NONREALTIME:
             raise ValueError
         elif not self.contexts:
             raise RuntimeError("No contexts to boot")
+        self._clock = AsyncTempoClock()
         self.pubsub.publish(ApplicationBooting())
         await asyncio.gather(
             *[
@@ -123,11 +140,31 @@ class Application(UniqueTreeTuple):
         self.pubsub.publish(
             ApplicationStatusRefreshed(self.primary_context.provider.server.status,)
         )
-        self._status = self.Status.REALTIME
+        self._status = ApplicationStatus.REALTIME
         return self
 
-    async def flush(self):
-        pass
+    @classmethod
+    async def deserialize(cls, data):
+        entities_data = deque(data["entities"])
+        entity_data = entities_data.popleft()
+        application = cls(channel_count=entity_data["spec"].get("channel_count", 2),)
+        application.clock.change(
+            beats_per_minute=entity_data["spec"]["tempo"],
+            time_signature=[
+                int(x) for x in entity_data["spec"]["time_signature"].split("/")
+            ],
+        )
+        while entities_data:
+            entity_data = entities_data.popleft()
+            if entity_data.get("visits", 0) > 2:
+                continue  # discard it
+            entity_class = getattr(tloen.domain, entity_data["kind"])
+            should_defer = await entity_class._deserialize(entity_data, application)
+            if should_defer:
+                entity_data["visits"] = entity_data.get("visits", 0) + 1
+                entities_data.append(entity_data)
+                continue
+        return application
 
     @classmethod
     async def new(cls, context_count=1, track_count=4, scene_count=8, **kwargs):
@@ -140,20 +177,21 @@ class Application(UniqueTreeTuple):
             await application.add_scene()
         return application
 
-    async def perform(self, midi_messages, moment=None):
-        if self.status != self.Status.REALTIME:
+    async def perform(self, midi_messages):
+        if self.status != ApplicationStatus.REALTIME:
             return
-        for context in self.contexts:
-            await context.perform(midi_messages, moment=moment)
+        self.clock.schedule(self._callback_midi_perform, args=[midi_messages])
+        if not self.clock.is_running:
+            await self.start()
 
     async def quit(self):
-        if self.status == self.Status.OFFLINE:
+        if self.status == ApplicationStatus.OFFLINE:
             return
-        elif self.status == self.Status.NONREALTIME:
+        elif self.status == ApplicationStatus.NONREALTIME:
             raise ValueError
-        self._status = self.Status.OFFLINE
+        self._status = ApplicationStatus.OFFLINE
         self.pubsub.publish(ApplicationQuitting())
-        await self.transport.stop()
+        await self.stop()
         for context in self.contexts:
             provider = context.provider
             async with provider.at():
@@ -175,7 +213,7 @@ class Application(UniqueTreeTuple):
             else:
                 self._contexts._remove(context)
         if not len(self):
-            self._status = self.Status.OFFLINE
+            self._status = ApplicationStatus.OFFLINE
 
     def remove_controllers(self, *controllers: Controller):
         if not all(controller in self.controllers for controller in controllers):
@@ -202,19 +240,31 @@ class Application(UniqueTreeTuple):
                 track.slots._remove(track.slots[index])
 
     async def render(self) -> Session:
-        if self.status != self.Status.OFFLINE:
+        if self.status != ApplicationStatus.OFFLINE:
             raise ValueError
-        self._status == self.Status.NONREALTIME
+        self._status == ApplicationStatus.NONREALTIME
+        self._clock = OfflineTempoClock()
         provider = Provider.nonrealtime()
         with provider.at():
             for context in self.contexts:
                 context._set(provider=provider)
-        # Magic happens here
         with provider.at(provider.session.duration or 10):
             for context in self.contexts:
                 context._set(provider=None)
-        self._status = self.Status.OFFLINE
+        self._status = ApplicationStatus.OFFLINE
         return provider.session
+
+    async def start(self):
+        self._tick_event_id = self.clock.cue(self._callback_transport_tick)
+        await asyncio.gather(*[_._start() for _ in self._clock_dependencies])
+        await self.clock.start()
+        self.pubsub.publish(TransportStarted())
+
+    async def stop(self):
+        await self.clock.stop()
+        await asyncio.gather(*[_._stop() for _ in self._clock_dependencies])
+        self.clock.cancel(self._tick_event_id)
+        self.pubsub.publish(TransportStopped())
 
     @classmethod
     def load(cls, file_path: Union[str, pathlib.Path]):
@@ -240,7 +290,8 @@ class Application(UniqueTreeTuple):
                 "channel_count": self.channel_count,
                 "contexts": [],
                 "scenes": [],
-                "transport": self.transport._serialize(),
+                "tempo": self.clock.beats_per_minute,
+                "time_signature": "/".join(str(_) for _ in self.clock.time_signature),
             },
         }
         entities = [serialized]
@@ -258,26 +309,6 @@ class Application(UniqueTreeTuple):
             clean(entity)
         return {"entities": entities}
 
-    @classmethod
-    async def deserialize(cls, data):
-        entities_data = deque(data["entities"])
-        entity_data = entities_data.popleft()
-        application = cls(channel_count=entity_data["spec"].get("channel_count", 2),)
-        await application.transport._deserialize(
-            entity_data["spec"]["transport"], application.transport,
-        )
-        while entities_data:
-            entity_data = entities_data.popleft()
-            if entity_data.get("visits", 0) > 2:
-                continue  # discard it
-            entity_class = getattr(tloen.domain, entity_data["kind"])
-            should_defer = await entity_class._deserialize(entity_data, application)
-            if should_defer:
-                entity_data["visits"] = entity_data.get("visits", 0) + 1
-                entities_data.append(entity_data)
-                continue
-        return application
-
     async def set_channel_count(self, channel_count: int):
         assert 1 <= channel_count <= 8
         self._channel_count = int(channel_count)
@@ -288,8 +319,43 @@ class Application(UniqueTreeTuple):
             else:
                 context._reconcile()
 
+    def set_is_looping(self, is_looping):
+        self._is_looping = bool(is_looping)
+        self.pubsub.publish(ApplicationLoopingChanged(self._is_looping))
+
+    def set_loop_points(self, from_: float, to: float):
+        if to <= from_:
+            raise ValueError
+        elif from_ < 0:
+            raise ValueError
+        self._loop_points = (from_, to)
+        self.pubsub.publish(ApplicationLoopPointsChanged(*self._loop_points))
+
     def set_pubsub(self, pubsub: PubSub):
         self._pubsub = pubsub
+
+    def set_tempo(self, tempo: float):
+        if tempo <= 0.0:
+            raise ValueError
+        self._tempo = tempo
+        self.pubsub.publish(ApplicationTempoChanged(self._tempo))
+
+    def set_time_signature(self, numerator: int, denominator: int):
+        if numerator < 1:
+            raise ValueError
+        if denominator < 1:
+            raise ValueError
+        self._time_signature = (int(numerator), int(denominator))
+        self.pubsub.publish(ApplicationTimeSignatureChanged(*self._time_signature))
+
+    async def play(self):
+        pass
+
+    async def seek(self, offset):
+        pass
+
+    async def stop(self):
+        pass
 
     ### PUBLIC PROPERTIES ###
 
@@ -298,12 +364,24 @@ class Application(UniqueTreeTuple):
         return self._channel_count
 
     @property
+    def clock(self) -> Union[AsyncTempoClock, OfflineTempoClock]:
+        return self._clock
+
+    @property
     def contexts(self) -> Tuple[Context, ...]:
         return self._contexts
 
     @property
     def controllers(self) -> Tuple[Controller, ...]:
         return self._controllers
+
+    @property
+    def is_looping(self) -> bool:
+        return self._is_looping
+
+    @property
+    def loop_points(self) -> Tuple[float, float]:
+        return self._loop_points
 
     @property
     def parent(self) -> None:
@@ -332,8 +410,12 @@ class Application(UniqueTreeTuple):
         return self._status
 
     @property
-    def transport(self) -> Transport:
-        return self._transport
+    def tempo(self) -> float:
+        return self._tempo
+
+    @property
+    def time_signature(self) -> Tuple[int, int]:
+        return self._time_signature
 
 
 @dataclasses.dataclass
@@ -364,3 +446,25 @@ class ApplicationQuit(Event):
 @dataclasses.dataclass
 class ApplicationStatusRefreshed(Event):
     status: StatusResponse
+
+
+@dataclasses.dataclass
+class ApplicationLoopingChanged(Event):
+    is_looping: bool
+
+
+@dataclasses.dataclass
+class ApplicationLoopPointsChanged(Event):
+    from_: float
+    to: float
+
+
+@dataclasses.dataclass
+class ApplicationTempoChanged(Event):
+    tempo: float
+
+
+@dataclasses.dataclass
+class ApplicationTimeSignatureChanged(Event):
+    numerator: int
+    denominator: int

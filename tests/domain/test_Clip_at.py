@@ -1,302 +1,262 @@
+import pytest
+
 from tloen.domain import Clip, Note, NoteMoment
 
-offsets = [-0.5, 0, 0.125, 0.25, 0.5, 0.75, 1, 1.25, 2.25]
 
-
-def test_1():
-    clip = Clip()
-    assert [clip.at(offset) for offset in offsets] == [
-        NoteMoment(offset=-0.5, local_offset=-0.5, next_offset=1.0),
-        NoteMoment(offset=0, local_offset=0.0, next_offset=1.0),
-        NoteMoment(offset=0.125, local_offset=0.125, next_offset=1.0),
-        NoteMoment(offset=0.25, local_offset=0.25, next_offset=1.0),
-        NoteMoment(offset=0.5, local_offset=0.5, next_offset=1.0),
-        NoteMoment(offset=0.75, local_offset=0.75, next_offset=1.0),
-        NoteMoment(offset=1, local_offset=0.0, next_offset=2.0),
-        NoteMoment(offset=1.25, local_offset=0.25, next_offset=2.0),
-        NoteMoment(offset=2.25, local_offset=0.25, next_offset=3.0),
-    ]
-    assert [clip.at(offset, force_stop=True) for offset in offsets] == [
-        NoteMoment(offset=-0.5, local_offset=-0.5),
-        NoteMoment(offset=0, local_offset=0.0),
-        NoteMoment(offset=0.125, local_offset=0.125),
-        NoteMoment(offset=0.25, local_offset=0.25),
-        NoteMoment(offset=0.5, local_offset=0.5),
-        NoteMoment(offset=0.75, local_offset=0.75),
-        NoteMoment(offset=1, local_offset=0.0),
-        NoteMoment(offset=1.25, local_offset=0.25),
-        NoteMoment(offset=2.25, local_offset=0.25),
-    ]
-    assert [clip.at(offset, start_delta=0.5) for offset in offsets] == [
-        NoteMoment(offset=-0.5, local_offset=-1.0, next_offset=1.5),
-        NoteMoment(offset=0, local_offset=-0.5, next_offset=1.5),
-        NoteMoment(offset=0.125, local_offset=-0.375, next_offset=1.5),
-        NoteMoment(offset=0.25, local_offset=-0.25, next_offset=1.5),
-        NoteMoment(offset=0.5, local_offset=0.0, next_offset=1.5),
-        NoteMoment(offset=0.75, local_offset=0.25, next_offset=1.5),
-        NoteMoment(offset=1, local_offset=0.5, next_offset=1.5),
-        NoteMoment(offset=1.25, local_offset=0.75, next_offset=1.5),
-        NoteMoment(offset=2.25, local_offset=0.75, next_offset=2.5),
-    ]
-
-
-def test_2():
-    clip = Clip(notes=[Note(0, 1)], is_looping=False)
-    assert [clip.at(offset) for offset in offsets] == [
-        NoteMoment(offset=-0.5, local_offset=-0.5, next_offset=0.0),
-        NoteMoment(
-            offset=0, local_offset=0.0, next_offset=1.0, start_notes=[Note(0, 1)]
+@pytest.mark.parametrize(
+    "inputs, expected",
+    [
+        (
+            (False, 0, 1, 0, 1, 0, 1, [Note(0, 1)]),
+            {
+                (0.0, 0.0, False): NoteMoment(
+                    offset=0.0,
+                    local_offset=0.0,
+                    next_offset=1.0,
+                    start_notes=[Note(0, 1)],
+                ),
+                (0.5, 0.0, False): NoteMoment(
+                    offset=0.5,
+                    local_offset=0.5,
+                    next_offset=1.0,
+                    overlap_notes=[Note(0, 1)],
+                ),
+                (0.5, 0.0, True): NoteMoment(
+                    offset=0.5, local_offset=0.5, stop_notes=[Note(0, 1)]
+                ),
+                (1.0, 0.0, False): NoteMoment(
+                    offset=1.0, local_offset=1.0, stop_notes=[Note(0, 1)]
+                ),
+                (1.5, 0.0, False): NoteMoment(offset=1.5, local_offset=1.5),
+            },
         ),
-        NoteMoment(
-            offset=0.125,
-            local_offset=0.125,
-            next_offset=1.0,
-            overlap_notes=[Note(0, 1)],
+        (
+            (False, 0, 1, 0, 1, 0, 1, [Note(0.25, 0.75)]),
+            {
+                (0.0, 0.0, False): NoteMoment(
+                    offset=0.0, local_offset=0.0, next_offset=0.25
+                ),
+                (0.25, 0.0, False): NoteMoment(
+                    offset=0.25,
+                    local_offset=0.25,
+                    next_offset=0.75,
+                    start_notes=[Note(0.25, 0.75)],
+                ),
+                (0.5, 0.0, False): NoteMoment(
+                    offset=0.5,
+                    local_offset=0.5,
+                    next_offset=0.75,
+                    overlap_notes=[Note(0.25, 0.75)],
+                ),
+                (0.5, 0.0, True): NoteMoment(
+                    offset=0.5, local_offset=0.5, stop_notes=[Note(0.25, 0.75)]
+                ),
+                (0.75, 0.0, False): NoteMoment(
+                    offset=0.75,
+                    local_offset=0.75,
+                    next_offset=1.0,
+                    stop_notes=[Note(0.25, 0.75)],
+                ),
+                (1.0, 0.0, False): NoteMoment(offset=1.0, local_offset=1.0),
+                (1.5, 0.0, False): NoteMoment(offset=1.5, local_offset=1.5),
+            },
         ),
-        NoteMoment(
-            offset=0.25, local_offset=0.25, next_offset=1.0, overlap_notes=[Note(0, 1)]
+        (
+            (False, 0, 1, -1, 1, 0, 2, [Note(0, 1)]),
+            {
+                (0.0, 0.0, False): NoteMoment(
+                    offset=0.0, local_offset=-1.0, next_offset=1.0
+                ),
+                (1.0, 0.0, False): NoteMoment(
+                    offset=1.0,
+                    local_offset=0.0,
+                    next_offset=2.0,
+                    start_notes=[Note(0, 1)],
+                ),
+                (1.5, 0.0, False): NoteMoment(
+                    offset=1.5,
+                    local_offset=0.5,
+                    next_offset=2.0,
+                    overlap_notes=[Note(0, 1)],
+                ),
+                (1.5, 0.0, True): NoteMoment(
+                    offset=1.5, local_offset=0.5, stop_notes=[Note(0, 1)]
+                ),
+                (2.0, 0.0, False): NoteMoment(
+                    offset=2.0, local_offset=1.0, stop_notes=[Note(0, 1)]
+                ),
+                (2.5, 0.0, False): NoteMoment(offset=2.5, local_offset=1.5),
+            },
         ),
-        NoteMoment(
-            offset=0.5, local_offset=0.5, next_offset=1.0, overlap_notes=[Note(0, 1)]
+        (
+            (True, 0, 1, 0, 1, 0, 1, [Note(0, 1)]),
+            {
+                (0.0, 0.0, False): NoteMoment(
+                    offset=0.0,
+                    local_offset=0.0,
+                    next_offset=1.0,
+                    start_notes=[Note(0, 1)],
+                ),
+                (0.5, 0.0, False): NoteMoment(
+                    offset=0.5,
+                    local_offset=0.5,
+                    next_offset=1.0,
+                    overlap_notes=[Note(0, 1)],
+                ),
+                (1.0, 0.0, False): NoteMoment(
+                    offset=1.0,
+                    local_offset=0.0,
+                    next_offset=2.0,
+                    start_notes=[Note(0, 1)],
+                    stop_notes=[Note(0, 1)],
+                ),
+                (2.0, 0.0, False): NoteMoment(
+                    offset=2.0,
+                    local_offset=0.0,
+                    next_offset=3.0,
+                    start_notes=[Note(0, 1)],
+                    stop_notes=[Note(0, 1)],
+                ),
+            },
         ),
-        NoteMoment(
-            offset=0.75, local_offset=0.75, next_offset=1.0, overlap_notes=[Note(0, 1)]
+        (
+            (True, 0, 1, 0, 1, 0, 1, [Note(0.25, 0.75)]),
+            {
+                (0.0, 0.0, False): NoteMoment(
+                    offset=0.0, local_offset=0.0, next_offset=0.25
+                ),
+                (0.25, 0.0, False): NoteMoment(
+                    offset=0.25,
+                    local_offset=0.25,
+                    next_offset=0.75,
+                    start_notes=[Note(0.25, 0.75)],
+                ),
+                (0.5, 0.0, False): NoteMoment(
+                    offset=0.5,
+                    local_offset=0.5,
+                    next_offset=0.75,
+                    overlap_notes=[Note(0.25, 0.75)],
+                ),
+                (0.5, 0.0, True): NoteMoment(
+                    offset=0.5, local_offset=0.5, stop_notes=[Note(0.25, 0.75)]
+                ),
+                (0.75, 0.0, False): NoteMoment(
+                    offset=0.75,
+                    local_offset=0.75,
+                    next_offset=1.0,
+                    stop_notes=[Note(0.25, 0.75)],
+                ),
+                (1.0, 0.0, False): NoteMoment(
+                    offset=1.0, local_offset=0.0, next_offset=1.25
+                ),
+                (1.25, 0.0, False): NoteMoment(
+                    offset=1.25,
+                    local_offset=0.25,
+                    next_offset=1.75,
+                    start_notes=[Note(0.25, 0.75)],
+                ),
+            },
         ),
-        NoteMoment(offset=1, local_offset=1.0, stop_notes=[Note(0, 1)]),
-        NoteMoment(offset=1.25, local_offset=1.25),
-        NoteMoment(offset=2.25, local_offset=2.25),
-    ]
-    assert [clip.at(offset, force_stop=True) for offset in offsets] == [
-        NoteMoment(offset=-0.5, local_offset=-0.5),
-        NoteMoment(offset=0, local_offset=0.0),
-        NoteMoment(offset=0.125, local_offset=0.125, stop_notes=[Note(0, 1)]),
-        NoteMoment(offset=0.25, local_offset=0.25, stop_notes=[Note(0, 1)]),
-        NoteMoment(offset=0.5, local_offset=0.5, stop_notes=[Note(0, 1)]),
-        NoteMoment(offset=0.75, local_offset=0.75, stop_notes=[Note(0, 1)]),
-        NoteMoment(offset=1, local_offset=1.0, stop_notes=[Note(0, 1)]),
-        NoteMoment(offset=1.25, local_offset=1.25),
-        NoteMoment(offset=2.25, local_offset=2.25),
-    ]
-    assert [clip.at(offset, start_delta=0.5) for offset in offsets] == [
-        NoteMoment(offset=-0.5, local_offset=-1.0, next_offset=0.5),
-        NoteMoment(offset=0, local_offset=-0.5, next_offset=0.5),
-        NoteMoment(offset=0.125, local_offset=-0.375, next_offset=0.5),
-        NoteMoment(offset=0.25, local_offset=-0.25, next_offset=0.5),
-        NoteMoment(
-            offset=0.5, local_offset=0.0, next_offset=1.5, start_notes=[Note(0, 1)]
+        (
+            (True, 0, 1, -1, 1, 0, 1, [Note(0, 1)]),
+            {
+                (-1.0, 0.0, False): NoteMoment(
+                    offset=-1.0, local_offset=-2.0, next_offset=1.0
+                ),
+                (0.0, 0.0, False): NoteMoment(
+                    offset=0.0, local_offset=-1.0, next_offset=1.0
+                ),
+                (1.0, 0.0, False): NoteMoment(
+                    offset=1.0,
+                    local_offset=0.0,
+                    next_offset=2.0,
+                    start_notes=[Note(0, 1)],
+                ),
+                (1.5, 0.0, False): NoteMoment(
+                    offset=1.5,
+                    local_offset=0.5,
+                    next_offset=2.0,
+                    overlap_notes=[Note(0, 1)],
+                ),
+                (2.0, 0.0, False): NoteMoment(
+                    offset=2.0,
+                    local_offset=0.0,
+                    next_offset=3.0,
+                    start_notes=[Note(0, 1)],
+                    stop_notes=[Note(0, 1)],
+                ),
+                (3.0, 0.0, False): NoteMoment(
+                    offset=3.0,
+                    local_offset=0.0,
+                    next_offset=4.0,
+                    start_notes=[Note(0, 1)],
+                    stop_notes=[Note(0, 1)],
+                ),
+            },
         ),
-        NoteMoment(
-            offset=0.75, local_offset=0.25, next_offset=1.5, overlap_notes=[Note(0, 1)]
+        (
+            (True, 0, 1, -1, 1, 0, 1, [Note(0.25, 0.75)]),
+            {
+                (0.0, 0.0, False): NoteMoment(
+                    offset=0.0, local_offset=-1.0, next_offset=1.0
+                ),
+                (1.0, 0.0, False): NoteMoment(
+                    offset=1.0, local_offset=0.0, next_offset=1.25
+                ),
+            },
         ),
-        NoteMoment(
-            offset=1, local_offset=0.5, next_offset=1.5, overlap_notes=[Note(0, 1)]
+        (
+            (True, 0, 1, 0.5, 1, 0, 1, [Note(0.25, 0.75)]),
+            {
+                (0.0, 0.0, False): NoteMoment(
+                    offset=0.0,
+                    local_offset=0.5,
+                    next_offset=0.25,
+                    overlap_notes=[Note(0.25, 0.75)],
+                ),
+            },
         ),
-        NoteMoment(
-            offset=1.25, local_offset=0.75, next_offset=1.5, overlap_notes=[Note(0, 1)]
-        ),
-        NoteMoment(offset=2.25, local_offset=1.75),
-    ]
-
-
-def test_3():
-    clip = Clip(notes=[Note(0, 1)])
-    assert [clip.at(offset) for offset in offsets] == [
-        NoteMoment(offset=-0.5, local_offset=-0.5, next_offset=0.0),
-        NoteMoment(
-            offset=0, local_offset=0.0, next_offset=1.0, start_notes=[Note(0, 1)]
-        ),
-        NoteMoment(
-            offset=0.125,
-            local_offset=0.125,
-            next_offset=1.0,
-            overlap_notes=[Note(0, 1)],
-        ),
-        NoteMoment(
-            offset=0.25, local_offset=0.25, next_offset=1.0, overlap_notes=[Note(0, 1)]
-        ),
-        NoteMoment(
-            offset=0.5, local_offset=0.5, next_offset=1.0, overlap_notes=[Note(0, 1)]
-        ),
-        NoteMoment(
-            offset=0.75, local_offset=0.75, next_offset=1.0, overlap_notes=[Note(0, 1)]
-        ),
-        NoteMoment(
-            offset=1,
-            local_offset=0.0,
-            next_offset=2.0,
-            start_notes=[Note(0, 1)],
-            stop_notes=[Note(0, 1)],
-        ),
-        NoteMoment(
-            offset=1.25, local_offset=0.25, next_offset=2.0, overlap_notes=[Note(0, 1)]
-        ),
-        NoteMoment(
-            offset=2.25, local_offset=0.25, next_offset=3.0, overlap_notes=[Note(0, 1)]
-        ),
-    ]
-    assert [clip.at(offset, force_stop=True) for offset in offsets] == [
-        NoteMoment(offset=-0.5, local_offset=-0.5),
-        NoteMoment(offset=0, local_offset=0.0),
-        NoteMoment(offset=0.125, local_offset=0.125, stop_notes=[Note(0, 1)]),
-        NoteMoment(offset=0.25, local_offset=0.25, stop_notes=[Note(0, 1)]),
-        NoteMoment(offset=0.5, local_offset=0.5, stop_notes=[Note(0, 1)]),
-        NoteMoment(offset=0.75, local_offset=0.75, stop_notes=[Note(0, 1)]),
-        NoteMoment(offset=1, local_offset=0.0, stop_notes=[Note(0, 1)]),
-        NoteMoment(offset=1.25, local_offset=0.25, stop_notes=[Note(0, 1)]),
-        NoteMoment(offset=2.25, local_offset=0.25, stop_notes=[Note(0, 1)]),
-    ]
-    assert [clip.at(offset, start_delta=0.5) for offset in offsets] == [
-        NoteMoment(offset=-0.5, local_offset=-1.0, next_offset=0.5),
-        NoteMoment(offset=0, local_offset=-0.5, next_offset=0.5),
-        NoteMoment(offset=0.125, local_offset=-0.375, next_offset=0.5),
-        NoteMoment(offset=0.25, local_offset=-0.25, next_offset=0.5),
-        NoteMoment(
-            offset=0.5,
-            local_offset=0.0,
-            next_offset=1.5,
-            start_notes=[Note(0, 1, pitch=0.0)],
-        ),
-        NoteMoment(
-            offset=0.75, local_offset=0.25, next_offset=1.5, overlap_notes=[Note(0, 1)]
-        ),
-        NoteMoment(
-            offset=1, local_offset=0.5, next_offset=1.5, overlap_notes=[Note(0, 1)]
-        ),
-        NoteMoment(
-            offset=1.25, local_offset=0.75, next_offset=1.5, overlap_notes=[Note(0, 1)]
-        ),
-        NoteMoment(
-            offset=2.25, local_offset=0.75, next_offset=2.5, overlap_notes=[Note(0, 1)]
-        ),
-    ]
-
-
-def test_4():
-    clip = Clip(
-        notes=[
-            Note(0, 0.25, pitch=60),
-            Note(0.25, 0.5, pitch=62),
-            Note(0.5, 0.75, pitch=64),
-            Note(0.75, 1.0, pitch=65),
-        ]
-    )
-    assert [clip.at(offset) for offset in offsets] == [
-        NoteMoment(offset=-0.5, local_offset=-0.5, next_offset=0.0),
-        NoteMoment(
-            offset=0,
-            local_offset=0.0,
-            next_offset=0.25,
-            start_notes=[Note(0, 0.25, pitch=60)],
-        ),
-        NoteMoment(
-            offset=0.125,
-            local_offset=0.125,
-            next_offset=0.25,
-            overlap_notes=[Note(0, 0.25, pitch=60)],
-        ),
-        NoteMoment(
-            offset=0.25,
-            local_offset=0.25,
-            next_offset=0.5,
-            start_notes=[Note(0.25, 0.5, pitch=62)],
-            stop_notes=[Note(0, 0.25, pitch=60)],
-        ),
-        NoteMoment(
-            offset=0.5,
-            local_offset=0.5,
-            next_offset=0.75,
-            start_notes=[Note(0.5, 0.75, pitch=64)],
-            stop_notes=[Note(0.25, 0.5, pitch=62)],
-        ),
-        NoteMoment(
-            offset=0.75,
-            local_offset=0.75,
-            next_offset=1.0,
-            start_notes=[Note(0.75, 1.0, pitch=65)],
-            stop_notes=[Note(0.5, 0.75, pitch=64)],
-        ),
-        NoteMoment(
-            offset=1,
-            local_offset=0.0,
-            next_offset=1.25,
-            start_notes=[Note(0, 0.25, pitch=60)],
-            stop_notes=[Note(0.75, 1.0, pitch=65)],
-        ),
-        NoteMoment(
-            offset=1.25,
-            local_offset=0.25,
-            next_offset=1.5,
-            start_notes=[Note(0.25, 0.5, pitch=62)],
-            stop_notes=[Note(0, 0.25, pitch=60)],
-        ),
-        NoteMoment(
-            offset=2.25,
-            local_offset=0.25,
-            next_offset=2.5,
-            start_notes=[Note(0.25, 0.5, pitch=62)],
-            stop_notes=[Note(0, 0.25, pitch=60)],
-        ),
-    ]
-    assert [clip.at(offset, force_stop=True) for offset in offsets] == [
-        NoteMoment(offset=-0.5, local_offset=-0.5),
-        NoteMoment(offset=0, local_offset=0.0),
-        NoteMoment(
-            offset=0.125, local_offset=0.125, stop_notes=[Note(0, 0.25, pitch=60)]
-        ),
-        NoteMoment(
-            offset=0.25, local_offset=0.25, stop_notes=[Note(0, 0.25, pitch=60)]
-        ),
-        NoteMoment(
-            offset=0.5, local_offset=0.5, stop_notes=[Note(0.25, 0.5, pitch=62)]
-        ),
-        NoteMoment(
-            offset=0.75, local_offset=0.75, stop_notes=[Note(0.5, 0.75, pitch=64)]
-        ),
-        NoteMoment(offset=1, local_offset=0.0, stop_notes=[Note(0.75, 1.0, pitch=65)]),
-        NoteMoment(
-            offset=1.25, local_offset=0.25, stop_notes=[Note(0, 0.25, pitch=60)]
-        ),
-        NoteMoment(
-            offset=2.25, local_offset=0.25, stop_notes=[Note(0, 0.25, pitch=60)]
-        ),
-    ]
-    assert [clip.at(offset, start_delta=0.5) for offset in offsets] == [
-        NoteMoment(offset=-0.5, local_offset=-1.0, next_offset=0.5),
-        NoteMoment(offset=0, local_offset=-0.5, next_offset=0.5),
-        NoteMoment(offset=0.125, local_offset=-0.375, next_offset=0.5),
-        NoteMoment(offset=0.25, local_offset=-0.25, next_offset=0.5),
-        NoteMoment(
-            offset=0.5,
-            local_offset=0.0,
-            next_offset=0.75,
-            start_notes=[Note(0, 0.25, pitch=60)],
-        ),
-        NoteMoment(
-            offset=0.75,
-            local_offset=0.25,
-            next_offset=1.0,
-            start_notes=[Note(0.25, 0.5, pitch=62)],
-            stop_notes=[Note(0, 0.25, pitch=60)],
-        ),
-        NoteMoment(
-            offset=1,
-            local_offset=0.5,
-            next_offset=1.25,
-            start_notes=[Note(0.5, 0.75, pitch=64)],
-            stop_notes=[Note(0.25, 0.5, pitch=62)],
-        ),
-        NoteMoment(
-            offset=1.25,
-            local_offset=0.75,
-            next_offset=1.5,
-            start_notes=[Note(0.75, 1.0, pitch=65)],
-            stop_notes=[Note(0.5, 0.75, pitch=64)],
-        ),
-        NoteMoment(
-            offset=2.25,
-            local_offset=0.75,
-            next_offset=2.5,
-            start_notes=[Note(0.75, 1.0, pitch=65)],
-            stop_notes=[Note(0.5, 0.75, pitch=64)],
-        ),
-    ]
+    ],
+)
+def test_at(
+    inputs, expected,
+):
+    (
+        is_looping,
+        loop_start_marker,
+        loop_stop_marker,
+        start_marker,
+        stop_marker,
+        start_offset,
+        stop_offset,
+        notes,
+    ) = inputs
+    if isinstance(expected, Exception):
+        with pytest.raises(expected):
+            clip = Clip(
+                is_looping=is_looping,
+                loop_start_marker=loop_start_marker,
+                loop_stop_marker=loop_stop_marker,
+                start_marker=start_marker,
+                start_offset=start_offset,
+                stop_marker=stop_marker,
+                stop_offset=stop_offset,
+                notes=notes,
+            )
+    else:
+        clip = Clip(
+            is_looping=is_looping,
+            loop_start_marker=loop_start_marker,
+            loop_stop_marker=loop_stop_marker,
+            start_marker=start_marker,
+            start_offset=start_offset,
+            stop_marker=stop_marker,
+            stop_offset=stop_offset,
+            notes=notes,
+        )
+        actual = {}
+        for (offset, start_delta, force_stop), moment in expected.items():
+            actual[(offset, start_delta, force_stop)] = clip.at(
+                offset, start_delta=start_delta, force_stop=force_stop
+            )
+        assert actual == expected

@@ -22,15 +22,10 @@ class Registry(Mapping):
     def set_application(self, application):
         self._application = application
         self._registry = application.registry
-        self._transport = application.transport
 
     @property
     def application(self):
         return self._application
-
-    @property
-    def transport(self):
-        return self._transport
 
 
 class Harness:

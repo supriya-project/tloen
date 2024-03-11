@@ -17,10 +17,12 @@ from .bases import (
     Mixer,
     Performable,
 )
-from .clips import ClipLaunched, Scene, Slot
+from .clips import Clip, ClipContainer
 from .devices import DeviceObject
+from .enums import EventType
 from .parameters import BusParameter, Float, ParameterGroup, ParameterObject
 from .sends import Receive, Send, Target
+from .slots import ClipLaunched, Scene, Slot
 from .synthdefs import build_patch_synthdef, build_peak_rms_synthdef
 
 logger = logging.getLogger("tloen.domain")
@@ -556,9 +558,10 @@ class Track(UserTrackObject):
         self._clip_launch_event_id: Optional[int] = None
         self._clip_perform_event_id: Optional[int] = None
         self._pending_slot_index: Optional[int] = None
+        self._clips = ClipContainer(label="Clips")
         self._slots = Container(label="Slots")
         self._tracks = TrackContainer("input", AddAction.ADD_AFTER, label="SubTracks")
-        self._mutate(slice(1, 1), [self._slots, self._tracks])
+        self._mutate(slice(1, 1), [self._clips, self._slots, self._tracks])
 
     ### PRIVATE METHODS ###
 
@@ -611,11 +614,11 @@ class Track(UserTrackObject):
         ].clip._start_delta = clock_context.desired_moment.offset
         # schedule perform callback
         if self._clip_perform_event_id is not None:
-            await self.transport.cancel(self._clip_perform_event_id)
-        self._clip_perform_event_id = await self.transport.schedule(
+            self.application.clock.cancel(self._clip_perform_event_id)
+        self._clip_perform_event_id = self.application.clock.schedule(
             self._clip_perform_callback,
             schedule_at=clock_context.desired_moment.offset,
-            event_type=self.transport.EventType.CLIP_PERFORM,
+            event_type=EventType.CLIP_PERFORM,
         )
         self.application.pubsub.publish(
             ClipLaunched(clip_uuid=self.slots[self._active_slot_index].clip.uuid),
@@ -672,16 +675,15 @@ class Track(UserTrackObject):
             return
         self._debug_tree(self, "Firing", suffix=str(slot_index))
         self._pending_slot_index = slot_index
-        transport = self.transport
-        await transport.cancel(self._clip_launch_event_id)
-        self._clip_launch_event_id = await transport.cue(
+        self.application.clock.cancel(self._clip_launch_event_id)
+        self._clip_launch_event_id = self.application.clock.cue(
             self._clip_launch_callback,
             # TODO: Get default quantization from transport itself
             quantization=quantization or "1M",
-            event_type=transport.EventType.CLIP_LAUNCH,
+            event_type=EventType.CLIP_LAUNCH,
         )
-        if not transport.is_running:
-            await transport.start()
+        if not self.application.clock.is_running:
+            await self.application.start()
 
     @classmethod
     def _recurse_activation(
@@ -791,6 +793,16 @@ class Track(UserTrackObject):
             group_track.tracks._mutate(slice(None), tracks)
             return group_track
 
+    async def insert_clip(self, *, from_: float, to: float, **kwargs) -> Clip:
+        if to <= from_:
+            raise ValueError
+        stop_marker = kwargs.pop("stop_marker", to - from_)
+        clip = Clip(
+            start_offset=from_, stop_offset=to, stop_marker=stop_marker, **kwargs
+        )
+        self._clips._add_clips(clip)
+        return clip
+
     async def move(self, container, position):
         async with self.lock([self, container]):
             container.tracks._mutate(slice(position, position), [self])
@@ -854,6 +866,10 @@ class Track(UserTrackObject):
             self._update_activation(self)
 
     ### PUBLIC PROPERTIES ###
+
+    @property
+    def clips(self) -> Container:
+        return self._clips
 
     @property
     def default_send_target(self):
