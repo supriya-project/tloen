@@ -74,8 +74,8 @@ keywords = [
 
 if __name__ == "__main__":
     setuptools.setup(
-        author="Josiah Wolf Oberholtzer",
-        author_email="josiah.oberholtzer@gmail.com",
+        author="Joséphine Wolf Oberholtzer",
+        author_email="josephine.wolf.oberholtzer@gmail.com",
         classifiers=classifiers,
         description="Supriya's DAW",
         extras_require=extras_require,
@@ -86,7 +86,7 @@ if __name__ == "__main__":
         long_description=long_description,
         name=package_name,
         packages=[package_name],
-        url=f"https://github.com/josiah-wolf-oberholtzer/{package_name}",
+        url=f"https://github.com/supriya-project/{package_name}",
         version=version,
         zip_safe=False,
     )
