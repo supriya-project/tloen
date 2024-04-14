@@ -2,7 +2,7 @@
 
 Tloen is a pre-alpha DAW framework built on top of Python 3's
 [asyncio](https://docs.python.org/3/library/asyncio.html) and
-[Supriya](https://github.com/josiah-wolf-oberholtzer/supriya), 
+[Supriya](https://github.com/supriya-project/supriya), 
 with a domain model inspired by Ableton Live.
 
 Current development is focused on solidifying and testing the core domain
@@ -14,7 +14,7 @@ model, and fleshing out a JSON API.
 - Get Supriya:
 
   ```
-  git clone https://github.com/josiah-wolf-oberholtzer/supriya.git
+  git clone https://github.com/supriya-project/supriya.git
   ```
 
 - Install Supriya (from within your clone):
@@ -26,7 +26,7 @@ model, and fleshing out a JSON API.
 - Get Tloen:
 
   ```
-  git clone https://github.com/josiah-wolf-oberholtzer/tloen.git
+  git clone https://github.com/supriya-project/tloen.git
 
 - Install Tloen (from within your clone):
 

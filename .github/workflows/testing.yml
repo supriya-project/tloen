@@ -8,7 +8,7 @@ on:
     - master
 env:
   MYPYPATH: /tmp/typehints
-  SC_ORIGIN: https://github.com/josiah-wolf-oberholtzer/supercollider.git
+  SC_ORIGIN: https://github.com/SuperCollider/supercollider.git
   SC_BRANCH: s-query
   SUPRIYA_BRANCH: master
 
@@ -116,7 +116,7 @@ jobs:
           pkg-config
     - name: Install Tloen
       run: |
-        pip install https://github.com/josiah-wolf-oberholtzer/supriya/archive/refs/heads/${SUPRIYA_BRANCH}.zip
+        pip install https://github.com/supriya-project/supriya/archive/refs/heads/${SUPRIYA_BRANCH}.zip
         pip install -e .
     - name: Sanity-check Tloen
       run: |
@@ -133,7 +133,7 @@ jobs:
     - name: Get Type Hints
       run: |
         pip install --target /tmp/typehints --no-deps uqbar
-        pip install --target /tmp/typehints --no-deps https://github.com/josiah-wolf-oberholtzer/supriya/archive/master.zip
+        pip install --target /tmp/typehints --no-deps https://github.com/supriya-project/supriya/archive/master.zip
     - name: Run Mypy
       run: |
         make mypy
